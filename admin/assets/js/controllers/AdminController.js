@@ -1114,22 +1114,26 @@ const app = createApp({
                             if (prof.email) currentAdmin.value.email = prof.email;
                             const key = (currentAdmin.value.role === 'SUPER_ADMIN' || currentAdmin.value.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
                             sessionStorage.setItem(key, JSON.stringify(currentAdmin.value));
-                            localStorage.setItem(key, JSON.stringify(currentAdmin.value));
                         }
                     }
                 }).catch(() => {});
         };
 
-        onMounted(() => {
-            const s = sessionStorage.getItem('gncp_admin_user') || sessionStorage.getItem('gncp_station_user') || localStorage.getItem('gncp_admin_user') || localStorage.getItem('gncp_station_user');
-            if (s) {
-                try {
-                    const u = JSON.parse(s);
-                    if (u && (u.role === 'SUPER_ADMIN' || u.role === 'ADMIN')) {
-                        currentAdmin.value = u;
+        onMounted(async () => {
+            // Purge any stale localStorage session data
+            localStorage.removeItem('gncp_admin_user');
+            localStorage.removeItem('gncp_station_user');
+
+            try {
+                const res = await fetch('../api/index.php?action=auth/check', { credentials: 'same-origin' });
+                if (res.ok) {
+                    const result = await res.json();
+                    if (result.success && result.data && (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN')) {
+                        currentAdmin.value = result.data;
+                        sessionStorage.setItem('gncp_admin_user', JSON.stringify(result.data));
                         fetchCurrentProfile();
-                        if (u.must_change_password && typeof window.PasswordChangeGuard !== 'undefined') {
-                            window.PasswordChangeGuard.checkAndPrompt(u, function() {
+                        if (result.data.must_change_password && typeof window.PasswordChangeGuard !== 'undefined') {
+                            window.PasswordChangeGuard.checkAndPrompt(result.data, function() {
                                 loadAll();
                                 startLiveSync();
                             });
@@ -1139,15 +1143,22 @@ const app = createApp({
                         }
                         return;
                     }
-                } catch(e) {
-                    console.error('[Admin] onMounted init error:', e);
                 }
+            } catch (err) {
+                console.warn('[Admin] Live auth check error:', err);
             }
-            sessionStorage.removeItem('gncp_admin_user');
-            sessionStorage.removeItem('gncp_station_user');
-            localStorage.removeItem('gncp_admin_user');
-            localStorage.removeItem('gncp_station_user');
-            window.location.href = '../index.html?clear=true&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+
+            if (typeof window.SessionExpirationGuard !== 'undefined') {
+                window.SessionExpirationGuard.handleExpiredSession({
+                    title: 'Session Expired',
+                    message: 'Your administrator session has expired. Please sign in again to continue managing the system.',
+                    reason: 'expired'
+                });
+            } else {
+                sessionStorage.removeItem('gncp_admin_user');
+                sessionStorage.removeItem('gncp_station_user');
+                window.location.href = '../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            }
         });
 
         onUnmounted(() => {
@@ -1452,7 +1463,7 @@ const app = createApp({
                     const upJson = await upRes.json();
                     if (upJson.success) imageUrl = upJson.url;
                 }
-                const stored = sessionStorage.getItem('gncp_admin_user') || localStorage.getItem('gncp_admin_user');
+                const stored = sessionStorage.getItem('gncp_admin_user');
                 const admin = stored ? JSON.parse(stored) : {};
                 const payload = {
                     id: announcementForm.id,
@@ -2287,12 +2298,6 @@ const app = createApp({
                             p.avatar = newFilename;
                             sessionStorage.setItem('gncp_admin_user', JSON.stringify(p));
                         }
-                        const rawLoc = localStorage.getItem('gncp_admin_user');
-                        if (rawLoc) {
-                            const p = JSON.parse(rawLoc);
-                            p.avatar = newFilename;
-                            localStorage.setItem('gncp_admin_user', JSON.stringify(p));
-                        }
                         notify(true, 'Profile picture updated successfully.');
                     } else {
                         Swal.fire('Upload Failed', data.message || 'Unable to update profile picture.', 'error');
@@ -2336,14 +2341,6 @@ const app = createApp({
                         p.email = user.value.email;
                         p.avatar = avatarFilename;
                         sessionStorage.setItem('gncp_admin_user', JSON.stringify(p));
-                    }
-                    const rawLoc = localStorage.getItem('gncp_admin_user');
-                    if (rawLoc) {
-                        const p = JSON.parse(rawLoc);
-                        p.name = user.value.name;
-                        p.email = user.value.email;
-                        p.avatar = avatarFilename;
-                        localStorage.setItem('gncp_admin_user', JSON.stringify(p));
                     }
                     notify(true, 'Personal details updated successfully.');
                 } else {

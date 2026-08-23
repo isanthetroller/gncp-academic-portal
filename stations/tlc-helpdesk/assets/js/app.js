@@ -14,8 +14,8 @@ window.app = createApp({
         const currentView = ref('dashboard');
         const searchQuery = ref('');
         const activeFilter = ref('All');
-        const sortBy = ref('referenceNumber');
-        const sortDesc = ref(false);
+        const sortBy = ref('arrivedAt');
+        const sortDesc = ref(false); // FIFO: Earliest arrivals served first (First In, First Out)
         const selectedStudent = ref(null);
         const students = ref([]);
 
@@ -71,9 +71,17 @@ window.app = createApp({
                 const help = s.helpdesk || {};
                 const studentName = s.name || s.fullName || (s.firstName ? [s.firstName, s.middleName, s.lastName].filter(Boolean).join(' ') : '') || (s.form ? [s.form.firstName, s.form.middleName, s.form.lastName].filter(Boolean).join(' ') : '') || 'Applicant';
                 const studentProg = s.program || s.courseCode || (s.form ? s.form.courseCode : '') || '---';
+
+                const padId = String(s.id || (i + 1)).padStart(3, '0');
+                const queueTicket = (s.queueTickets && s.queueTickets.helpdesk) ? s.queueTickets.helpdesk : ('ADV-' + padId);
+                const arrivedAt = (s.stationArrivals && s.stationArrivals.helpdesk) ? s.stationArrivals.helpdesk : (s.createdAt || s.datePreRegistered || '');
+
                 const flatStudent = {
                     id: s.referenceNumber || s.id,
                     referenceNumber: s.referenceNumber || s.id,
+                    queueTicket: queueTicket,
+                    arrivedAt: arrivedAt,
+                    createdAt: s.createdAt,
                     name: studentName,
                     program: studentProg,
                     studentType: s.studentType || (s.form ? s.form.studentType : 'REGULAR'),
@@ -110,16 +118,22 @@ window.app = createApp({
                 }).catch(() => {});
         };
 
-        const checkSession = () => {
-            const stored = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user') || localStorage.getItem('gncp_station_user') || localStorage.getItem('gncp_admin_user');
-            if (stored) {
-                try {
-                    const user = JSON.parse(stored);
-                    if (user && (user.role === 'HELPDESK' || user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'REGISTRAR')) {
-                        currentUser.value = user;
+        const checkSession = async () => {
+            localStorage.removeItem('gncp_station_user');
+            localStorage.removeItem('gncp_admin_user');
+
+            try {
+                const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
+                if (res.ok) {
+                    const result = await res.json();
+                    const allowedRoles = ['HELPDESK', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'];
+                    if (result.success && result.data && allowedRoles.includes(result.data.role)) {
+                        currentUser.value = result.data;
+                        const sessionKey = (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
+                        sessionStorage.setItem(sessionKey, JSON.stringify(result.data));
                         fetchCurrentProfile();
-                        if (user.must_change_password && typeof window.PasswordChangeGuard !== 'undefined') {
-                            window.PasswordChangeGuard.checkAndPrompt(user, function() {
+                        if (result.data.must_change_password && typeof window.PasswordChangeGuard !== 'undefined') {
+                            window.PasswordChangeGuard.checkAndPrompt(result.data, function() {
                                 loadQueue();
                             });
                         } else {
@@ -127,18 +141,23 @@ window.app = createApp({
                         }
                         return;
                     }
-                } catch (e) {
-                    console.error('[Helpdesk] Session parse error:', e);
                 }
+            } catch (e) {
+                console.error('[Helpdesk] Session check error:', e);
             }
-            sessionStorage.removeItem('gncp_station_user');
-            sessionStorage.removeItem('gncp_admin_user');
-            localStorage.removeItem('gncp_station_user');
-            localStorage.removeItem('gncp_admin_user');
-            window.location.href = '../../index.html?clear=true&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+
+            if (typeof window.SessionExpirationGuard !== 'undefined') {
+                window.SessionExpirationGuard.handleExpiredSession({
+                    title: 'Session Expired',
+                    message: 'Your helpdesk advising session has expired. Please sign in again to continue student evaluation.',
+                    reason: 'expired'
+                });
+            } else {
+                sessionStorage.removeItem('gncp_station_user');
+                sessionStorage.removeItem('gncp_admin_user');
+                window.location.href = '../../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            }
         };
-
-
 
         let clockTimer = null;
         const stopLiveSync = () => {
@@ -204,6 +223,12 @@ window.app = createApp({
             return sortDesc.value ? 'fa-solid fa-sort-down text-success ms-1' : 'fa-solid fa-sort-up text-success ms-1';
         };
 
+        const getQueueRank = (student) => {
+            const pendingList = filteredStudents.value.filter(s => s.status === 'PENDING');
+            const idx = pendingList.findIndex(s => s.referenceNumber === student.referenceNumber);
+            return idx >= 0 ? idx + 1 : null;
+        };
+
         const filteredStudents = computed(() => {
             const query = searchQuery.value.trim().toLowerCase();
             const result = [];
@@ -215,7 +240,8 @@ window.app = createApp({
                 if (query) {
                     const nameMatches = student.name.toLowerCase().indexOf(query) !== -1;
                     const refMatches = student.referenceNumber.toLowerCase().indexOf(query) !== -1;
-                    matchesQuery = nameMatches || refMatches;
+                    const ticketMatches = student.queueTicket && student.queueTicket.toLowerCase().indexOf(query) !== -1;
+                    matchesQuery = nameMatches || refMatches || ticketMatches;
                 }
 
                 // Matches filter
@@ -235,10 +261,15 @@ window.app = createApp({
                 }
             }
 
-            // Registrar Sorting Logic
+            // FIFO (First In, First Out) / Header Sorting Logic
             return [...result].sort((a, b) => {
                 let vA = a[sortBy.value] || '';
                 let vB = b[sortBy.value] || '';
+                if (sortBy.value === 'arrivedAt' || sortBy.value === 'createdAt') {
+                    vA = vA ? new Date(vA).getTime() : (a.id || 0);
+                    vB = vB ? new Date(vB).getTime() : (b.id || 0);
+                    return sortDesc.value ? vB - vA : vA - vB;
+                }
                 if (typeof vA === 'string') vA = vA.toLowerCase();
                 if (typeof vB === 'string') vB = vB.toLowerCase();
                 if (vA < vB) return sortDesc.value ? 1 : -1;
@@ -246,6 +277,16 @@ window.app = createApp({
                 return 0;
             });
         });
+
+        const nextInQueue = computed(() => {
+            return filteredStudents.value.find(s => s.status === 'PENDING') || filteredStudents.value[0] || null;
+        });
+
+        const callNextStudent = () => {
+            if (nextInQueue.value) {
+                openReview(nextInQueue.value);
+            }
+        };
 
         const pendingCount = computed(() => {
             let count = 0;
@@ -356,12 +397,14 @@ window.app = createApp({
                         s.helpdesk.advisedSubjects = subjects;
 
                         // Auto-open next step (Medical Clearance)
-                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING');
+                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING' || r.status === 'LOCKED');
                         if (nextStep) {
                             nextStep.status = 'IN_PROGRESS';
+                            nextStep.updatedAt = new Date().toISOString();
                         }
                     } else if (student.status === 'FLAGGED') {
                         s.roadmap[currentStepIdx].status = 'FLAGGED';
+                        s.roadmap[currentStepIdx].updatedAt = new Date().toISOString();
                     } else {
                         s.roadmap[currentStepIdx].status = 'IN_PROGRESS';
                     }
@@ -372,8 +415,20 @@ window.app = createApp({
 
         const markCompleted = () => {
             if (!selectedStudent.value) return;
+            const sName = selectedStudent.value.name;
             selectedStudent.value.status = 'COMPLETED';
             persistStudentUpdate(selectedStudent.value);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `Academic advising cleared for ${sName}`,
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            }
             if (document.activeElement) {
                 document.activeElement.blur();
             }
@@ -383,8 +438,20 @@ window.app = createApp({
 
         const flagFollowUp = () => {
             if (!selectedStudent.value) return;
+            const sName = selectedStudent.value.name;
             selectedStudent.value.status = 'FLAGGED';
             persistStudentUpdate(selectedStudent.value);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'warning',
+                    title: `Student ${sName} flagged for follow-up`,
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            }
             if (document.activeElement) {
                 document.activeElement.blur();
             }
@@ -399,6 +466,17 @@ window.app = createApp({
                     student.status = 'COMPLETED';
                     persistStudentUpdate(student);
                 }
+            }
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'All queued students marked cleared',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
             }
         };
 
@@ -550,12 +628,6 @@ window.app = createApp({
                             p.avatar = newFilename;
                             sessionStorage.setItem('gncp_station_user', JSON.stringify(p));
                         }
-                        const rawLoc = localStorage.getItem('gncp_station_user');
-                        if (rawLoc) {
-                            const p = JSON.parse(rawLoc);
-                            p.avatar = newFilename;
-                            localStorage.setItem('gncp_station_user', JSON.stringify(p));
-                        }
                         Swal.fire('Success', 'Profile picture updated successfully.', 'success');
                     } else { Swal.fire('Upload Failed', data.message || 'Unable to update profile picture.', 'error'); }
                 } catch (err) { Swal.fire('Error', 'Unable to process image upload.', 'error'); }
@@ -591,14 +663,6 @@ window.app = createApp({
                         p.email = user.value.email;
                         p.avatar = avatarFilename;
                         sessionStorage.setItem('gncp_station_user', JSON.stringify(p));
-                    }
-                    const rawLoc = localStorage.getItem('gncp_station_user');
-                    if (rawLoc) {
-                        const p = JSON.parse(rawLoc);
-                        p.name = user.value.name;
-                        p.email = user.value.email;
-                        p.avatar = avatarFilename;
-                        localStorage.setItem('gncp_station_user', JSON.stringify(p));
                     }
                     Swal.fire('Success', 'Personal details updated successfully.', 'success');
                 } else { Swal.fire('Update Failed', data.message || 'Unable to update profile.', 'error'); }
@@ -639,6 +703,9 @@ window.app = createApp({
             selectedStudent,
             students,
             filteredStudents,
+            nextInQueue,
+            callNextStudent,
+            getQueueRank,
             pendingCount,
             completedToday,
             flaggedCount,

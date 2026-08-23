@@ -71,7 +71,7 @@ try {
 
             $enrollments = $pdo->query("SELECT * FROM `enrollments` ORDER BY `id` DESC")->fetchAll(PDO::FETCH_ASSOC);
 
-            $preEnrollments = $pdo->query("SELECT * FROM `pre_enrollments` ORDER BY `created_at` DESC")->fetchAll(PDO::FETCH_ASSOC);
+            $preEnrollments = $pdo->query("SELECT * FROM `pre_enrollments` ORDER BY `created_at` ASC")->fetchAll(PDO::FETCH_ASSOC);
             $pendingApplications = array_map(function($row) {
                 $fullName = trim($row['first_name'] . ' ' . ($row['middle_name'] ? $row['middle_name'] . ' ' : '') . $row['last_name']);
                 $requirements = getRequirementsForType($row['student_type'] ?? 'FRESHMAN', $row['shs_track'] ?? '');
@@ -80,19 +80,32 @@ try {
                     'docs' => ['psa' => 'not-submitted', 'reportCard' => 'not-submitted', 'goodMoral' => 'not-submitted'],
                     'notes' => '', 'verifiedBy' => '', 'dateVerified' => ''
                 ];
+                $rowId = (int)($row['id'] ?? 0);
+                $padId = str_pad((string)($rowId > 0 ? $rowId : rand(1, 999)), 3, '0', STR_PAD_LEFT);
 
                 return [
+                    'id'              => $rowId,
+                    'queueTicket'     => 'REG-' . $padId,
                     'referenceNumber' => $row['temp_student_id'],
                     'tempPin'         => $row['temp_pin'],
                     'applicantName'   => $fullName ?: 'New Applicant',
                     'program'         => $row['course_code'],
                     'yearLevel'       => $row['year_level_applied'] ?? '1st Year',
                     'studentType'     => $row['student_type'] ?? 'FRESHMAN',
+                    'shsTrack'        => $row['shs_track'] ?? '',
+                    'academicInfo'    => [
+                        'elementary'  => $row['elementary_school'] ?? '',
+                        'juniorHigh'  => $row['junior_high_school'] ?? '',
+                        'seniorHigh'  => $row['senior_high_school'] ?? '',
+                        'shsTrack'    => $row['shs_track'] ?? '',
+                        'honors'      => $row['honors'] ?? ''
+                    ],
                     'previousCollege' => $row['previous_college'] ?? null,
                     'nstp'            => $row['nstp'] ?? 'N/A',
                     'dateSubmitted'   => date('Y-m-d', strtotime($row['created_at'])),
+                    'createdAt'       => $row['created_at'],
                     'status'          => $row['status'],
-                    'reviewedToday'   => in_array($row['status'], ['Approved', 'Rejected']),
+                    'reviewedToday'   => in_array($row['status'], ['Approved', 'Rejected', 'VERIFIED']),
                     'sectionCode'     => $row['section_code'] ?? null,
                     'personalInfo'    => ['birthDate' => $row['birth_date'], 'gender' => $row['gender'], 'address' => $row['address']],
                     'contactInfo'     => ['email' => $row['email'], 'phone' => $row['phone'], 'guardian' => $row['emergency_contact_name']],

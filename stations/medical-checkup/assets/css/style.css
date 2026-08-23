@@ -346,9 +346,9 @@ a { text-decoration: none; }
     background: #F9FAFB;
     border-bottom: 1.5px solid var(--gray-border);
     white-space: nowrap;
+}
 .data-table tbody tr {
     transition: background-color 0.15s ease;
-    cursor: pointer;
 }
 .data-table tbody tr:hover td { 
     background: #E6F4EA !important; 

@@ -95,8 +95,12 @@ CREATE TABLE IF NOT EXISTS `station_users` (
     `status`                VARCHAR(20) DEFAULT 'PENDING',
     `avatar`                VARCHAR(255) DEFAULT NULL,
     `must_change_password`  TINYINT(1) NOT NULL DEFAULT 1,
+    `active_session_token`  VARCHAR(64) DEFAULT NULL,
+    `last_login_at`         DATETIME DEFAULT NULL,
+    `last_login_ip`         VARCHAR(45) DEFAULT NULL,
     `created_at`            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_user_role_status` (`role`, `status`)
+    INDEX `idx_user_role_status` (`role`, `status`),
+    INDEX `idx_active_session` (`active_session_token`)
 ) ENGINE=InnoDB;
 
 -- Default bootstrap staff and admin accounts
@@ -126,6 +130,9 @@ CREATE TABLE IF NOT EXISTS `students` (
     `curriculum_version` VARCHAR(100) DEFAULT '2022 Curriculum',
     `status`        VARCHAR(20) DEFAULT 'Active',
     `must_change_password` TINYINT(1) NOT NULL DEFAULT 1,
+    `active_session_token` VARCHAR(64) DEFAULT NULL,
+    `last_login_at` DATETIME DEFAULT NULL,
+    `last_login_ip` VARCHAR(45) DEFAULT NULL,
     `temp_reference_no` VARCHAR(50) DEFAULT NULL,
     `personal_info` TEXT DEFAULT NULL,
     `academic_info` TEXT DEFAULT NULL,
@@ -140,6 +147,7 @@ CREATE TABLE IF NOT EXISTS `students` (
     INDEX `idx_stud_temp_ref` (`temp_reference_no`),
     INDEX `idx_stud_email` (`email`),
     INDEX `idx_stud_prog_yr_status` (`program`, `year_level`, `status`),
+    INDEX `idx_stud_active_session` (`active_session_token`),
     INDEX `idx_stud_created` (`created_at`)
 ) ENGINE=InnoDB;
 

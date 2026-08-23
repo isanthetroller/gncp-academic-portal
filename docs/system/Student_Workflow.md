@@ -29,6 +29,22 @@ stateDiagram-v2
 * **Cashier Invariant**: Unverified or rejected applicants cannot pay (see [[Business_Rules|RULE-002]]).
 * **IT Promotion**: Transactionally moves staging records to permanent directory (see [[Database_Schema|Database Schema]]).
 
+## Admission Document Requirements & Undertaking Lifecycle
+```mermaid
+stateDiagram-v2
+    [*] --> NOT_SUBMITTED: Requirement Listed
+    NOT_SUBMITTED --> UNDER_REVIEW: Student Uploads Soft Copy
+    NOT_SUBMITTED --> UNDERTAKING: Student / Registrar Files Undertaking Waiver
+    UNDERTAKING --> UNDER_REVIEW: Student Submits Committed Document
+    UNDER_REVIEW --> VERIFIED: Registrar Validates & Clears
+    UNDER_REVIEW --> NOT_SUBMITTED: Registrar Requests Re-upload
+    VERIFIED --> [*]: Academic Clearance Complete
+```
+
+* **Student Portal Hub**: Authenticated students track and upload missing credentials under the *Documents & Undertakings Hub*.
+* **Applicant Tracker**: Pending applicants monitor clearance progress in `enrollment-system/tracker.html`.
+* **Automated Notifications**: Email alerts are dispatched via `EmailService::sendUndertakingReminder` when deadlines approach.
+
 ## Related Notes
 * [[Station_System|Station Subsystems]]
 * [[Business_Rules|System Business Rules]]

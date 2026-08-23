@@ -257,10 +257,77 @@ window.DataModel = {
 
     getAdmissionsData() {
         return {
-            requirements: [
-                { category: "Incoming Freshmen", items: ["High School Report Card (Form 138) / SF9", "Certificate of Good Moral Character", "Photocopy of PSA Birth Certificate", "2x2 ID Photo (4 copies, white background)", "Passing Score in the GNCP College Entrance Exam"] },
-                { category: "Transferees", items: ["Honorable Dismissal / Transfer Credentials", "Official Transcript of Records (Temporary/Copy)", "Certificate of Good Moral Character", "Photocopy of PSA Birth Certificate", "2x2 ID Photo (4 copies, white background)"] },
-                { category: "Returnees & Specials", items: ["Previously Issued Student ID Card", "Clearance of Accounts from Registrar/Cashier", "Letter of Re-admission Request", "Updated Personal Info Sheet"] }
+            classifications: [
+                {
+                    id: "freshmen",
+                    name: "Incoming Freshmen",
+                    badge: "SHS & High School Completers",
+                    icon: "fas fa-user-graduate",
+                    desc: "For senior high school graduates and high school completers enrolling in collegiate programs for the first time.",
+                    requirements: [
+                        { id: "f1", title: "Original Senior High School Report Card (Form 138 / SF9)", format: "ORIGINAL", type: "academic", icon: "fas fa-file-invoice", agency: "DepEd / SHS Principal", note: "Must have complete grades with eligibility for college admission signed by the principal." },
+                        { id: "f2", title: "PSA Authenticated Birth Certificate", format: "ORIGINAL + 2 PHOTOCOPIES", type: "legal", icon: "fas fa-certificate", agency: "Philippine Statistics Authority", note: "Clear copy with readable barcode and registry numbers on standard A4 paper." },
+                        { id: "f3", title: "Certificate of Good Moral Character", format: "ORIGINAL", type: "conduct", icon: "fas fa-shield-halved", agency: "SHS Guidance Office", note: "Dated within the current academic term with official school dry seal." },
+                        { id: "f4", title: "2x2 Colored ID Photos (4 Copies)", format: "PHYSICAL PHOTOS", type: "id", icon: "fas fa-id-badge", agency: "Official Studio", note: "White background, formal collared attire, with printed name tag (Last Name, First Name, M.I.)." },
+                        { id: "f5", title: "Passing GNCP Entrance & Aptitude Assessment", format: "INSTITUTIONAL", type: "exam", icon: "fas fa-pen-nib", agency: "GNCP Admissions Office", note: "Official entrance exam test result slip issued by the guidance and testing center." },
+                        { id: "f6", title: "Medical Clearance & Physical Fitness Certificate", format: "ORIGINAL", type: "medical", icon: "fas fa-heart-pulse", agency: "GNCP Campus Clinic", note: "Issued upon physical examination and vital signs verification by campus physician." }
+                    ]
+                },
+                {
+                    id: "transferees",
+                    name: "College Transferees",
+                    badge: "From Other Colleges / Universities",
+                    icon: "fas fa-arrow-right-arrow-left",
+                    desc: "For undergraduate students transferring from CHED-accredited higher education institutions.",
+                    requirements: [
+                        { id: "t1", title: "Honorable Dismissal / Certificate of Transfer Credential", format: "ORIGINAL", type: "academic", icon: "fas fa-file-contract", agency: "Previous Registrar Office", note: "Must be in official sealed envelope addressed to GNCP College Registrar." },
+                        { id: "t2", title: "Official Transcript of Records (TOR for Evaluation)", format: "COPY / INFORMATIVE", type: "academic", icon: "fas fa-graduation-cap", agency: "Previous Registrar Office", note: "Complete academic records showing all subjects taken and numeric grading scale." },
+                        { id: "t3", title: "Course Description / Syllabus (For Subject Crediting)", format: "COPY", type: "academic", icon: "fas fa-book-bookmark", agency: "Previous Academic Dept", note: "Detailed curriculum guide to credit pre-requisite and general education subjects." },
+                        { id: "t4", title: "Certificate of Good Moral Character", format: "ORIGINAL", type: "conduct", icon: "fas fa-shield-halved", agency: "Dean of Student Affairs", note: "Affirming good standing and absence of major disciplinary records." },
+                        { id: "t5", title: "PSA Authenticated Birth Certificate", format: "ORIGINAL + 2 PHOTOCOPIES", type: "legal", icon: "fas fa-certificate", agency: "PSA", note: "Standard A4 clear copy with barcode intact." },
+                        { id: "t6", title: "2x2 Colored ID Photos (4 Copies)", format: "PHYSICAL PHOTOS", type: "id", icon: "fas fa-id-badge", agency: "Official Studio", note: "White background, formal collared attire, with name tag." }
+                    ]
+                },
+                {
+                    id: "returnees",
+                    name: "Returnees & Continuing",
+                    badge: "Returning GNCP Patriots",
+                    icon: "fas fa-rotate-left",
+                    desc: "For previously enrolled GNCP students seeking re-admission after leave of absence or stopped terms.",
+                    requirements: [
+                        { id: "r1", title: "Approved Letter of Re-Admission Request", format: "ORIGINAL", type: "academic", icon: "fas fa-envelope-open-text", agency: "Office of the College Dean", note: "Stating reasons for interruption and intended course curriculum plan." },
+                        { id: "r2", title: "Accounting & Cashier Office Clearance", format: "ORIGINAL", type: "financial", icon: "fas fa-receipt", agency: "GNCP Treasury Office", note: "Certification of zero outstanding balance and financial account clearance." },
+                        { id: "r3", title: "Previous GNCP Student ID & Evaluation Slip", format: "PHYSICAL CARD", type: "id", icon: "fas fa-address-card", agency: "GNCP IT / Registrar", note: "Previous student identification card or affidavit of loss if misplaced." },
+                        { id: "r4", title: "Updated Student Record & Curriculum Sheet", format: "INSTITUTIONAL", type: "academic", icon: "fas fa-list-check", agency: "Registrar Station", note: "Audit of remaining units and curriculum alignment under active academic year." }
+                    ]
+                },
+                {
+                    id: "second_degree",
+                    name: "Second Degree & Special",
+                    badge: "Bachelor Degree Holders",
+                    icon: "fas fa-award",
+                    desc: "For college degree holders taking an additional bachelor program or specialized certificate track.",
+                    requirements: [
+                        { id: "s1", title: "Official Transcript of Records (TOR) with S.O. Number", format: "ORIGINAL", type: "academic", icon: "fas fa-file-shield", agency: "Graduating University", note: "Must show Special Order (S.O.) number or Board Resolution date of graduation." },
+                        { id: "s2", title: "Certified True Copy of College Diploma", format: "CERTIFIED COPY", type: "academic", icon: "fas fa-scroll", agency: "Graduating University", note: "Authenticated copy of conferred baccalaureate degree." },
+                        { id: "s3", title: "PSA Authenticated Birth Certificate", format: "ORIGINAL + 2 PHOTOCOPIES", type: "legal", icon: "fas fa-certificate", agency: "PSA", note: "Readable copy on A4 paper." },
+                        { id: "s4", title: "PSA Certificate of Marriage (If Applicable)", format: "ORIGINAL + PHOTOCOPY", type: "legal", icon: "fas fa-ring", agency: "PSA", note: "Required for married female applicants whose maiden name differs from records." },
+                        { id: "s5", title: "2x2 Colored ID Photos (4 Copies)", format: "PHYSICAL PHOTOS", type: "id", icon: "fas fa-id-badge", agency: "Official Studio", note: "White background, formal attire, with name tag." }
+                    ]
+                },
+                {
+                    id: "scholarship",
+                    name: "Scholarship & Grant Seekers",
+                    badge: "Academic & Institutional Grants",
+                    icon: "fas fa-hand-holding-dollar",
+                    desc: "Requirements for students applying for Academic Excellence, CHED UniFAST, or Barangay Grants.",
+                    requirements: [
+                        { id: "sc1", title: "Principal Certificate of Academic Honors (Valedictorian / Salutatorian / With Honors)", format: "ORIGINAL", type: "academic", icon: "fas fa-medal", agency: "Senior High School", note: "Specifying overall batch rank and certified graduation honors." },
+                        { id: "sc2", title: "Certificate of Low Income / Latest BIR Income Tax Return (ITR)", format: "COPY", type: "financial", icon: "fas fa-file-invoice-dollar", agency: "BIR / Barangay Hall", note: "Annual family gross income verification for financial grant eligibility." },
+                        { id: "sc3", title: "Certificate of Indigency / 4Ps Household Identification", format: "ORIGINAL", type: "social", icon: "fas fa-users", agency: "Barangay / DSWD", note: "Issued by the Barangay Chairman for social welfare grant applicants." },
+                        { id: "sc4", title: "Accomplished GNCP Scholarship Application Form", format: "INSTITUTIONAL", type: "application", icon: "fas fa-clipboard-question", agency: "Guidance & Scholarship Office", note: "Complete application packet with 2 recommendation letters." }
+                    ]
+                }
             ],
             tuition: {
                 ratePerUnit: 450,

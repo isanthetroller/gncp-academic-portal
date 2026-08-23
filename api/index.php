@@ -8,7 +8,16 @@ require_once __DIR__ . '/../shared/backend/utils/rate_limit.php';
 
 $reqId = getRequestId();
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+if (!empty($origin) && (str_contains($origin, $allowedHost) || str_contains($origin, 'localhost') || str_contains($origin, '127.0.0.1'))) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Access-Control-Allow-Credentials: true');
+} else {
+    header('Access-Control-Allow-Origin: *');
+}
+
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Request-ID');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('X-Request-ID: ' . $reqId);
@@ -24,6 +33,7 @@ require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/StudentController.php';
 require_once __DIR__ . '/controllers/StationController.php';
 require_once __DIR__ . '/controllers/AdminController.php';
+require_once __DIR__ . '/controllers/StudentPortalController.php';
 
 require_once __DIR__ . '/../shared/backend/services/CatalogService.php';
 require_once __DIR__ . '/../shared/backend/services/SectionService.php';
@@ -49,6 +59,17 @@ try {
         'auth/upload_avatar'      => fn($p) => (new AuthController($pdo))->uploadAvatar($p),
         'stations/upload_photo'   => fn($p) => (new AuthController($pdo))->uploadAvatar($p),
 
+        // Canonical Student Portal Routes
+        'student_portal/login'               => fn($p) => (new StudentPortalController($pdo))->login($p),
+        'student_portal/dashboard'           => fn($p) => (new StudentPortalController($pdo))->getDashboard($_GET),
+        'student_portal/update_profile'      => fn($p) => (new StudentPortalController($pdo))->updateProfile($p),
+        'student_portal/change_password'     => fn($p) => (new StudentPortalController($pdo))->changePassword($p),
+        'student_portal/request_password_reset' => fn($p) => (new StudentPortalController($pdo))->requestPasswordReset($p),
+        'student_portal/reset_password_with_code' => fn($p) => (new StudentPortalController($pdo))->resetPasswordWithCode($p),
+        'student_portal/documents'           => fn($p) => (new StudentPortalController($pdo))->getDocuments($_GET),
+        'student_portal/upload_document'     => fn($p) => (new StudentPortalController($pdo))->uploadDocument($p),
+        'student_portal/logout'              => fn($p) => (new StudentPortalController($pdo))->logout(),
+
         'student/register'        => function($p) use ($pdo) {
             // Rate limit: max 5 registration attempts per IP per 60 seconds
             checkRateLimit('student_register', 5, 60);
@@ -60,6 +81,9 @@ try {
             checkRateLimit('student_track', 20, 60);
             return (new StudentController($pdo))->track($_GET['ref'] ?? $_GET['referenceNumber'] ?? ($p['referenceNumber'] ?? ''));
         },
+        'student/documents'       => fn($p) => (new StudentController($pdo))->getDocuments($_GET['identifier'] ?? ($_GET['ref'] ?? ($_GET['studentId'] ?? ($p['identifier'] ?? ($p['studentId'] ?? ''))))),
+        'student/upload_document' => fn($p) => (new StudentController($pdo))->uploadDocument($p),
+        'registrar/verify_document'=> fn($p) => (new StudentController($pdo))->verifyDocument($p),
         'student/cleanup_test_records'=> fn($p) => (new StudentController($pdo))->cleanupTestRecords($p),
 
         'stations/update'         => fn($p) => (new StationController($pdo))->updateStudent($p),
@@ -90,8 +114,16 @@ try {
             return ['success' => true, 'data' => QueueService::fetchStudentAccounts($pdo)];
         },
 
-        'registrar/update_status' => fn($p) => RegistrarService::updateApplicationStatus($pdo, $p),
-        'registrar/update_step'   => fn($p) => RegistrarService::updateRoadmapStep($pdo, $p),
+        'registrar/update_status' => function($p) use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN']);
+            return RegistrarService::updateApplicationStatus($pdo, $p);
+        },
+        'registrar/update_step'   => function($p) use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN']);
+            return RegistrarService::updateRoadmapStep($pdo, $p);
+        },
         'registrar/sections'      => fn($p) => SectionService::getSectionsForProgram($pdo, $_GET['program'] ?? ($p['program'] ?? ''), $_GET['year_level'] ?? ($p['year_level'] ?? '1st Year'), $_GET['semester'] ?? ($p['semester'] ?? '1st Semester')),
 
         'admin/catalog'           => fn($p) => (new AdminController($pdo))->getCatalog(),
@@ -131,12 +163,14 @@ try {
             }
         },
         'payments/paymongo_simulate_paid' => function($p) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            $user = requireAuth(['CASHIER', 'ADMIN', 'SUPER_ADMIN']);
             require_once __DIR__ . '/../shared/backend/services/PayMongoService.php';
             $refNo   = trim($p['referenceNumber'] ?? '');
             $amount  = (float)($p['amount'] ?? 0);
             $channel = trim($p['channel'] ?? 'GCash');
             $txnRef  = trim($p['transactionRef'] ?? '');
-            $cashier = trim($p['cashier'] ?? 'PayMongo Gateway');
+            $cashier = trim($p['cashier'] ?? ($user['name'] ?? 'Cashier Officer'));
             $notes   = trim($p['notes'] ?? 'Online payment via PayMongo simulation');
 
             if (empty($refNo) || $amount <= 0) {

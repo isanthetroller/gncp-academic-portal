@@ -6,6 +6,27 @@
     <title>Student Portal Gateway — Go-on National College of the Philippines</title>
     <meta name="description" content="Official student and applicant portal gateway for Go-on National College of the Philippines.">
 
+    <!-- Synchronous Session Redirect Gating (Avoids UI Flashes) -->
+    <script>
+        (function() {
+            try {
+                localStorage.removeItem('gncp_portal_student');
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('clear') === 'true' || params.get('logout') === 'true') {
+                    sessionStorage.removeItem('gncp_portal_student');
+                    return;
+                }
+                const stored = sessionStorage.getItem('gncp_portal_student');
+                if (stored) {
+                    const student = JSON.parse(stored);
+                    if (student && (student.id || student.studentId)) {
+                        window.location.replace('index.html');
+                    }
+                }
+            } catch (e) {}
+        })();
+    </script>
+
     <!-- Google Fonts & Shared Libraries -->
     <link rel="stylesheet" href="../shared/libs/fonts/fonts.css">
     <link rel="stylesheet" href="../shared/libs/bootstrap.min.css">
@@ -64,7 +85,6 @@
             display: grid;
             grid-template-columns: 1fr 1.15fr;
             min-height: 580px;
-            transition: var(--transition-smooth);
         }
 
         @media (max-width: 900px) {

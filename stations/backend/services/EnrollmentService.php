@@ -116,6 +116,10 @@ class EnrollmentService {
         $pdo->beginTransaction();
 
         try {
+            // Row-level lock to prevent concurrent update race conditions
+            $lockStmt = $pdo->prepare("SELECT `id` FROM `pre_enrollments` WHERE `temp_student_id` = :lock_ref FOR UPDATE");
+            $lockStmt->execute(['lock_ref' => $refNo]);
+
             $sets = [];
             $params = ['ref' => $refNo];
 
@@ -238,7 +242,7 @@ class EnrollmentService {
                 $appDetails = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
                 if ($appDetails) {
-                    $itData = json_decode($enrollmentJson, true) ?: [];
+                    $itData = json_decode((string)($enrollmentJson ?? ''), true) ?: [];
                     $promoResult = promotePreEnrollmentToStudent($pdo, $appDetails, $refNo, $roadmapJson, $itData);
 
                     $wasAlreadyEnrolled = ($existingRecord && $existingRecord['status'] === 'ENROLLED');
@@ -274,6 +278,116 @@ class EnrollmentService {
                 'prev'     => json_encode($existingRecord['status'] ?? 'UNKNOWN'),
                 'new'      => json_encode($resData)
             ]);
+
+            // Synchronize Relational Financial & Clearance Ledgers
+            try {
+                if (isset($updateData['payment'])) {
+                    $pInfo = $updateData['payment'];
+                    $latestTxn = null;
+                    if (!empty($pInfo['history']) && is_array($pInfo['history'])) {
+                        $latestTxn = end($pInfo['history']);
+                    }
+                    $payAmt = (float)($latestTxn['amountPaid'] ?? ($latestTxn['amount'] ?? ($pInfo['amountPaid'] ?? 0.00)));
+                    $orNo = $pInfo['orNumber'] ?? ($pInfo['or_number'] ?? ($latestTxn['orNumber'] ?? null));
+                    $method = $pInfo['paymentMethod'] ?? ($latestTxn['paymentMethod'] ?? 'CASH');
+                    $channel = $pInfo['channel'] ?? ($latestTxn['channel'] ?? $method);
+                    $plan = $pInfo['plan'] ?? ($latestTxn['plan'] ?? 'DOWNPAYMENT');
+                    $cashierUser = $pInfo['processedBy'] ?? ($latestTxn['cashier'] ?? $sessionUser);
+                    $txRef = $latestTxn['reference'] ?? ($pInfo['transactionRef'] ?? ('OTC-' . date('Ymd') . '-' . substr(uniqid(), -5)));
+
+                    if ($payAmt > 0) {
+                        $insPayStmt = $pdo->prepare("
+                            INSERT INTO `payments` 
+                                (`student_reference`, `student_id`, `amount`, `payment_method`, `payment_type`, `channel`, `transaction_reference`, `official_receipt_number`, `status`, `cashier_username`, `notes`, `paid_at`)
+                            VALUES 
+                                (:ref, :sid, :amt, :method, :plan, :channel, :txref, :or_no, 'COMPLETED', :cashier, 'OTC Cashier Payment', NOW())
+                        ");
+                        $insPayStmt->execute([
+                            ':ref'     => $refNo,
+                            ':sid'     => $resData['permanentId'] ?? null,
+                            ':amt'     => $payAmt,
+                            ':method'  => $method,
+                            ':plan'    => $plan,
+                            ':channel' => $channel,
+                            ':txref'   => $txRef,
+                            ':or_no'   => $orNo,
+                            ':cashier' => $cashierUser
+                        ]);
+                        $newPayId = $pdo->lastInsertId();
+
+                        if ($orNo) {
+                            $studName = trim(($existingRecord['first_name'] ?? '') . ' ' . ($existingRecord['last_name'] ?? ''));
+                            $insOrStmt = $pdo->prepare("
+                                INSERT INTO `official_receipts` 
+                                    (`or_number`, `student_reference`, `student_name`, `amount`, `payment_id`, `cashier_username`, `issued_at`)
+                                VALUES 
+                                    (:or_no, :ref, :name, :amt, :pay_id, :cashier, NOW())
+                                ON DUPLICATE KEY UPDATE `amount` = VALUES(`amount`)
+                            ");
+                            $insOrStmt->execute([
+                                ':or_no'   => $orNo,
+                                ':ref'     => $refNo,
+                                ':name'    => $studName ?: 'Student ' . $refNo,
+                                ':amt'     => $payAmt,
+                                ':pay_id'  => $newPayId,
+                                ':cashier' => $cashierUser
+                            ]);
+                        }
+                    }
+
+                    // Cashier clearance
+                    $insClear = $pdo->prepare("
+                        INSERT INTO `student_clearances` (`student_reference`, `station_code`, `status`, `verified_by`, `cleared_at`)
+                        VALUES (:ref, 'CASHIER', 'COMPLETED', :vby, NOW())
+                        ON DUPLICATE KEY UPDATE `status` = 'COMPLETED', `verified_by` = VALUES(`verified_by`), `cleared_at` = NOW()
+                    ");
+                    $insClear->execute([':ref' => $refNo, ':vby' => $cashierUser]);
+                }
+
+                if (isset($updateData['medical'])) {
+                    $mInfo = $updateData['medical'];
+                    $vBy = $mInfo['verifiedBy'] ?? $sessionUser;
+                    $insClear = $pdo->prepare("
+                        INSERT INTO `student_clearances` (`student_reference`, `station_code`, `status`, `verified_by`, `clearance_data`, `cleared_at`)
+                        VALUES (:ref, 'MEDICAL', 'COMPLETED', :vby, :cdata, NOW())
+                        ON DUPLICATE KEY UPDATE `status` = 'COMPLETED', `verified_by` = VALUES(`verified_by`), `clearance_data` = VALUES(`clearance_data`), `cleared_at` = NOW()
+                    ");
+                    $insClear->execute([':ref' => $refNo, ':vby' => $vBy, ':cdata' => json_encode($mInfo)]);
+                }
+
+                if (isset($updateData['helpdesk'])) {
+                    $hInfo = $updateData['helpdesk'];
+                    $vBy = $hInfo['verifiedBy'] ?? $sessionUser;
+                    $insClear = $pdo->prepare("
+                        INSERT INTO `student_clearances` (`student_reference`, `station_code`, `status`, `verified_by`, `clearance_data`, `cleared_at`)
+                        VALUES (:ref, 'HELPDESK', 'COMPLETED', :vby, :cdata, NOW())
+                        ON DUPLICATE KEY UPDATE `status` = 'COMPLETED', `verified_by` = VALUES(`verified_by`), `clearance_data` = VALUES(`clearance_data`), `cleared_at` = NOW()
+                    ");
+                    $insClear->execute([':ref' => $refNo, ':vby' => $vBy, ':cdata' => json_encode($hInfo)]);
+                }
+
+                if (isset($updateData['requirements'])) {
+                    $rInfo = $updateData['requirements'];
+                    $vBy = $rInfo['verifiedBy'] ?? $sessionUser;
+                    $insClear = $pdo->prepare("
+                        INSERT INTO `student_clearances` (`student_reference`, `station_code`, `status`, `verified_by`, `clearance_data`, `cleared_at`)
+                        VALUES (:ref, 'REGISTRAR', 'COMPLETED', :vby, :cdata, NOW())
+                        ON DUPLICATE KEY UPDATE `status` = 'COMPLETED', `verified_by` = VALUES(`verified_by`), `clearance_data` = VALUES(`clearance_data`), `cleared_at` = NOW()
+                    ");
+                    $insClear->execute([':ref' => $refNo, ':vby' => $vBy, ':cdata' => json_encode($rInfo)]);
+                }
+
+                if ($overallStatus === 'ENROLLED') {
+                    $insClear = $pdo->prepare("
+                        INSERT INTO `student_clearances` (`student_reference`, `station_code`, `status`, `verified_by`, `cleared_at`)
+                        VALUES (:ref, 'IT_CENTER', 'COMPLETED', :vby, NOW())
+                        ON DUPLICATE KEY UPDATE `status` = 'COMPLETED', `verified_by` = VALUES(`verified_by`), `cleared_at` = NOW()
+                    ");
+                    $insClear->execute([':ref' => $refNo, ':vby' => $sessionUser]);
+                }
+            } catch (Exception $syncEx) {
+                error_log('[EnrollmentService::RelationalSync] ' . $syncEx->getMessage());
+            }
 
             // Commit atomic transaction
             $pdo->commit();

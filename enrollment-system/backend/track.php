@@ -103,8 +103,14 @@ try {
         $cleanLast = 'password123';
     }
 
+    require_once __DIR__ . '/../../api/models/StudentModel.php';
+    $studentModel = new StudentModel($pdo);
+    $reqData = $studentModel->getStudentRequirements($record['temp_student_id']);
+    $requirements = $reqData ? $reqData['requirements'] : [];
+
     sendResponse(true, [
         'tempStudentId' => $record['temp_student_id'],
+        'referenceNumber'=> $record['temp_student_id'],
         'tempPin'       => $record['temp_pin'],
         'status'        => $record['status'],
         'createdAt'     => $record['created_at'],
@@ -127,16 +133,17 @@ try {
             'shsTrack'              => $record['shs_track'],
             'honors'                => $record['honors'],
             'healthStatus'          => $record['health_status'],
-            'medicalConditions'     => explode(', ', $record['medical_conditions']),
-            'allergies'             => $record['allergies'],
-            'currentMedication'     => (bool)$record['current_medication'],
-            'medicationDetails'     => $record['medication_details'],
-            'fitnessParticipation'  => (bool)$record['fitness_participation'],
-            'emergencyContactName'  => $record['emergency_contact_name'],
-            'emergencyContactPhone' => $record['emergency_contact_phone'],
-            'paymentMode'           => $record['payment_mode'],
-            'scholarship'           => $record['scholarship']
+            'medicalConditions'     => !empty($record['medical_conditions']) ? explode(', ', (string)$record['medical_conditions']) : [],
+            'allergies'             => $record['allergies'] ?? '',
+            'currentMedication'     => (bool)($record['current_medication'] ?? false),
+            'medicationDetails'     => $record['medication_details'] ?? '',
+            'fitnessParticipation'  => (bool)($record['fitness_participation'] ?? true),
+            'emergencyContactName'  => $record['emergency_contact_name'] ?? '',
+            'emergencyContactPhone' => $record['emergency_contact_phone'] ?? '',
+            'paymentMode'           => $record['payment_mode'] ?? 'cash',
+            'scholarship'           => $record['scholarship'] ?? 'none'
         ],
+        'requirements'  => $requirements,
         'roadmap'       => $roadmap
     ]);
 

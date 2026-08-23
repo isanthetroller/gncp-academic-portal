@@ -52,7 +52,7 @@ class PayMongoService {
                 'currency'          => 'PHP',
                 'description'       => $description,
                 'paymentMethods'    => ['gcash', 'paymaya', 'card', 'qrph', 'grab_pay'],
-                'checkoutUrl'       => 'http://localhost/systemtest/stations/payment-processing/?session_id=' . $sessionId,
+                'checkoutUrl'       => '/systemtest/shared/paymongo/checkout.html?session_id=' . urlencode($sessionId) . '&ref=' . urlencode($refNo) . '&amount=' . urlencode((string)$amount) . '&desc=' . urlencode($description),
                 'qrPhPayload'       => "00020101021226580014ph.paymongo.qr0111{$sessionId}5204581253036085408{$amount}5802PH5910GNCP_COLLEGE6006MANILA62150111{$refNo}6304ABCD",
                 'createdAt'         => date('Y-m-d H:i:s'),
                 'expiresAt'         => date('Y-m-d H:i:s', time() + 3600)
@@ -127,98 +127,100 @@ class PayMongoService {
     public static function processPaymentSuccess(string $refNo, float $payAmount, string $channel = 'GCash', string $txnRef = '', string $cashier = 'PayMongo Gateway', string $notes = 'Online settlement via PayMongo'): array {
         $pdo = Database::getInstance();
 
-        // 1. Check student record in pre_enrollments first, then students
-        $stmt = $pdo->prepare("SELECT `id`, `temp_student_id` AS `reference_number`, `status`, `payment_data`, `roadmap`, `first_name`, `last_name` FROM `pre_enrollments` WHERE `temp_student_id` = :ref1 LIMIT 1");
-        $stmt->execute([':ref1' => $refNo]);
-        $student = $stmt->fetch(PDO::FETCH_ASSOC);
-        $table = 'pre_enrollments';
+        $pdo->beginTransaction();
+        try {
+            // 1. Check student record in pre_enrollments first, then students with row lock
+            $stmt = $pdo->prepare("SELECT `id`, `temp_student_id` AS `reference_number`, `status`, `payment_data`, `roadmap`, `first_name`, `last_name` FROM `pre_enrollments` WHERE `temp_student_id` = :ref1 LIMIT 1 FOR UPDATE");
+            $stmt->execute([':ref1' => $refNo]);
+            $student = $stmt->fetch(PDO::FETCH_ASSOC);
+            $table = 'pre_enrollments';
 
-        if (!$student) {
-            $stmt2 = $pdo->prepare("SELECT `id`, `temp_reference_no` AS `reference_number`, `status`, `payment_data`, `roadmap`, `name` FROM `students` WHERE `temp_reference_no` = :ref2 OR `id` = :sid LIMIT 1");
-            $stmt2->execute([':ref2' => $refNo, ':sid' => $refNo]);
-            $student = $stmt2->fetch(PDO::FETCH_ASSOC);
-            $table = 'students';
-        }
-
-        if (!$student) {
-            throw new RuntimeException("Student record not found for reference '{$refNo}'.");
-        }
-
-        // RULE-002: Cashier payments CANNOT be accepted for applicants with status PRE_REGISTERED or REJECTED
-        $currentStatus = strtoupper(trim($student['status'] ?? ''));
-        if ($currentStatus === 'PRE_REGISTERED' || $currentStatus === 'REJECTED') {
-            throw new RuntimeException("Payment rejected: Student status is {$currentStatus}. Must be verified and advised before payment.");
-        }
-
-        $paymentData = !empty($student['payment_data']) ? (is_array($student['payment_data']) ? $student['payment_data'] : json_decode($student['payment_data'], true)) : [];
-        $roadmap     = !empty($student['roadmap']) ? (is_array($student['roadmap']) ? $student['roadmap'] : json_decode($student['roadmap'], true)) : [];
-
-        $totalFee   = (float)($paymentData['totalFee'] ?? $paymentData['total_fee'] ?? 0.00);
-        $amountPaid = (float)($paymentData['amountPaid'] ?? $paymentData['amount_paid'] ?? 0.00);
-        $currentBal = isset($paymentData['balance']) ? (float)$paymentData['balance'] : max(0.00, $totalFee - $amountPaid);
-
-        $payAmount = round($payAmount, 2);
-        if ($payAmount <= 0) {
-            throw new InvalidArgumentException("Payment amount must be greater than zero.");
-        }
-
-        if (empty($txnRef)) {
-            $txnRef = 'PM-' . strtoupper($channel) . '-' . date('Ymd') . '-' . substr(uniqid(), -5);
-        }
-
-        $newAmountPaid = round($amountPaid + $payAmount, 2);
-        $newBalance    = max(0.00, round($currentBal - $payAmount, 2));
-        $newStatus     = ($newBalance <= 0.00) ? 'PAID' : 'PARTIAL';
-
-        // Update payment history ledger
-        if (!isset($paymentData['history']) || !is_array($paymentData['history'])) {
-            $paymentData['history'] = [];
-        }
-
-        $paymentData['history'][] = [
-            'date'        => date('c'),
-            'amount'      => $payAmount,
-            'reference'   => $txnRef,
-            'paymentType' => 'PayMongo (' . strtoupper($channel) . ')',
-            'cashier'     => $cashier,
-            'notes'       => $notes
-        ];
-
-        $paymentData['amountPaid']     = $newAmountPaid;
-        $paymentData['balance']        = $newBalance;
-        $paymentData['status']         = $newStatus;
-        $paymentData['paymentType']    = 'PayMongo (' . strtoupper($channel) . ')';
-        $paymentData['transactionRef'] = $txnRef;
-        $paymentData['dateVerified']   = date('Y-m-d H:i:s');
-        $paymentData['verifiedBy']     = $cashier;
-
-        // Advance Roadmap Step
-        if (is_array($roadmap)) {
-            $cashierIdx = -1;
-            foreach ($roadmap as $idx => $step) {
-                if (($step['stepId'] ?? '') === 'cashier_payment') {
-                    $cashierIdx = $idx;
-                    break;
-                }
+            if (!$student) {
+                $stmt2 = $pdo->prepare("SELECT `id`, `temp_reference_no` AS `reference_number`, `status`, `payment_data`, `roadmap`, `name` FROM `students` WHERE `temp_reference_no` = :ref2 OR `id` = :sid LIMIT 1 FOR UPDATE");
+                $stmt2->execute([':ref2' => $refNo, ':sid' => $refNo]);
+                $student = $stmt2->fetch(PDO::FETCH_ASSOC);
+                $table = 'students';
             }
 
-            if ($cashierIdx !== -1) {
-                $roadmap[$cashierIdx]['status'] = 'COMPLETED';
-                $roadmap[$cashierIdx]['updatedAt'] = date('c');
+            if (!$student) {
+                $pdo->rollBack();
+                throw new RuntimeException("Student record not found for reference '{$refNo}'.");
+            }
 
-                // Unlock IT Center Step
-                for ($i = $cashierIdx + 1; $i < count($roadmap); $i++) {
-                    if (($roadmap[$i]['status'] ?? '') === 'PENDING') {
-                        $roadmap[$i]['status'] = 'IN_PROGRESS';
+            // RULE-002: Cashier payments CANNOT be accepted for applicants with status PRE_REGISTERED or REJECTED
+            $currentStatus = strtoupper(trim($student['status'] ?? ''));
+            if ($currentStatus === 'PRE_REGISTERED' || $currentStatus === 'REJECTED') {
+                $pdo->rollBack();
+                throw new RuntimeException("Payment rejected: Student status is {$currentStatus}. Must be verified and advised before payment.");
+            }
+
+            $paymentData = !empty($student['payment_data']) ? (is_array($student['payment_data']) ? $student['payment_data'] : json_decode($student['payment_data'], true)) : [];
+            $roadmap     = !empty($student['roadmap']) ? (is_array($student['roadmap']) ? $student['roadmap'] : json_decode($student['roadmap'], true)) : [];
+
+            $totalFee   = (float)($paymentData['totalFee'] ?? $paymentData['total_fee'] ?? 0.00);
+            $amountPaid = (float)($paymentData['amountPaid'] ?? $paymentData['amount_paid'] ?? 0.00);
+            $currentBal = isset($paymentData['balance']) ? (float)$paymentData['balance'] : max(0.00, $totalFee - $amountPaid);
+
+            $payAmount = round($payAmount, 2);
+            if ($payAmount <= 0) {
+                $pdo->rollBack();
+                throw new InvalidArgumentException("Payment amount must be greater than zero.");
+            }
+
+            if (empty($txnRef)) {
+                $txnRef = 'PM-' . strtoupper($channel) . '-' . date('Ymd') . '-' . substr(uniqid(), -5);
+            }
+
+            $newAmountPaid = round($amountPaid + $payAmount, 2);
+            $newBalance    = max(0.00, round($currentBal - $payAmount, 2));
+            $newStatus     = ($newBalance <= 0.00) ? 'PAID' : 'PARTIAL';
+
+            // Update payment history ledger
+            if (!isset($paymentData['history']) || !is_array($paymentData['history'])) {
+                $paymentData['history'] = [];
+            }
+
+            $paymentData['history'][] = [
+                'date'        => date('c'),
+                'amount'      => $payAmount,
+                'reference'   => $txnRef,
+                'paymentType' => 'PayMongo (' . strtoupper($channel) . ')',
+                'cashier'     => $cashier,
+                'notes'       => $notes
+            ];
+
+            $paymentData['amountPaid']     = $newAmountPaid;
+            $paymentData['balance']        = $newBalance;
+            $paymentData['status']         = $newStatus;
+            $paymentData['paymentType']    = 'PayMongo (' . strtoupper($channel) . ')';
+            $paymentData['transactionRef'] = $txnRef;
+            $paymentData['dateVerified']   = date('Y-m-d H:i:s');
+            $paymentData['verifiedBy']     = $cashier;
+
+            // Advance Roadmap Step
+            if (is_array($roadmap)) {
+                $cashierIdx = -1;
+                foreach ($roadmap as $idx => $step) {
+                    if (($step['stepId'] ?? '') === 'cashier_payment') {
+                        $cashierIdx = $idx;
                         break;
                     }
                 }
-            }
-        }
 
-        // ACID Transaction Execution
-        $pdo->beginTransaction();
-        try {
+                if ($cashierIdx !== -1) {
+                    $roadmap[$cashierIdx]['status'] = 'COMPLETED';
+                    $roadmap[$cashierIdx]['updatedAt'] = date('c');
+
+                    // Unlock IT Center Step
+                    for ($i = $cashierIdx + 1; $i < count($roadmap); $i++) {
+                        if (($roadmap[$i]['status'] ?? '') === 'PENDING') {
+                            $roadmap[$i]['status'] = 'IN_PROGRESS';
+                            break;
+                        }
+                    }
+                }
+            }
+
             $upd = $pdo->prepare("UPDATE `{$table}` SET `payment_data` = :pdata, `roadmap` = :rmap, `status` = :st WHERE `id` = :id");
             $upd->execute([
                 ':pdata' => json_encode($paymentData),
@@ -227,9 +229,54 @@ class PayMongoService {
                 ':id'    => $student['id']
             ]);
 
+            // Synchronize into relational payments table
+            try {
+                $insPay = $pdo->prepare("
+                    INSERT INTO `payments` 
+                        (`student_reference`, `student_id`, `amount`, `payment_method`, `payment_type`, `channel`, `transaction_reference`, `official_receipt_number`, `status`, `cashier_username`, `notes`, `paid_at`)
+                    VALUES 
+                        (:student_reference, :student_id, :amount, :payment_method, :payment_type, :channel, :transaction_reference, :official_receipt_number, :status, :cashier_username, :notes, NOW())
+                ");
+                $insPay->execute([
+                    ':student_reference'       => $refNo,
+                    ':student_id'              => ($table === 'students') ? $student['id'] : null,
+                    ':amount'                  => $payAmount,
+                    ':payment_method'          => 'PAYMONGO',
+                    ':payment_type'            => 'ONLINE_SETTLEMENT',
+                    ':channel'                 => strtoupper($channel),
+                    ':transaction_reference'   => $txnRef,
+                    ':official_receipt_number' => null,
+                    ':status'                  => 'COMPLETED',
+                    ':cashier_username'        => $cashier,
+                    ':notes'                   => $notes
+                ]);
+
+                // Synchronize into relational student_clearances table
+                $insClearance = $pdo->prepare("
+                    INSERT INTO `student_clearances` 
+                        (`student_reference`, `station_code`, `status`, `verified_by`, `notes`, `cleared_at`)
+                    VALUES 
+                        (:ref, 'CASHIER', 'COMPLETED', :vby, :notes, NOW())
+                    ON DUPLICATE KEY UPDATE 
+                        `status` = 'COMPLETED',
+                        `verified_by` = VALUES(`verified_by`),
+                        `notes` = VALUES(`notes`),
+                        `cleared_at` = NOW()
+                ");
+                $insClearance->execute([
+                    ':ref'   => $refNo,
+                    ':vby'   => $cashier,
+                    ':notes' => 'PayMongo online settlement'
+                ]);
+            } catch (Exception $syncEx) {
+                error_log('[PayMongoService::RelationalSync] ' . $syncEx->getMessage());
+            }
+
             $pdo->commit();
         } catch (Exception $e) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             throw $e;
         }
 

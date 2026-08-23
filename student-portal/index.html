@@ -2067,6 +2067,11 @@
                         @click="activeTab = 'courses'; isMobileMenuOpen = false">
                         <i class="fa-solid fa-file-invoice"></i> My Enrolled Classes (COR)
                     </button>
+                    <button class="nav-item" :class="{ active: activeTab === 'documents' }"
+                        @click="activeTab = 'documents'; isMobileMenuOpen = false">
+                        <i class="fa-solid fa-folder-open text-info"></i> Documents &amp; Undertakings
+                        <span v-if="missingDocsCount > 0" class="badge bg-danger rounded-pill ms-auto px-2 py-1" style="font-size: 0.68rem;">{{ missingDocsCount }}</span>
+                    </button>
 
                     <div class="nav-cat mt-3">Account Security</div>
                     <button class="nav-item" :class="{ active: activeTab === 'profile' }"
@@ -2667,6 +2672,206 @@
                         </div>
                     </template>
 
+                    <!-- ══ TAB: DOCUMENTS & UNDERTAKINGS HUB ══════════════════════ -->
+                    <template v-if="activeTab === 'documents'">
+                        <div class="documents-hub-layout">
+
+                            <!-- Header Strip -->
+                            <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+                                <div>
+                                    <h4 class="fw-bold text-dark mb-1" style="font-size: 1.35rem;">Academic Requirements &amp; Undertakings</h4>
+                                    <p class="text-muted fs-7 mb-0">Track official submission status, download uploaded soft copies, and manage conditional undertaking commitments.</p>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-semibold shadow-sm"
+                                        @click="loadStudentDocuments" :disabled="documentsData.loading">
+                                        <i class="fa-solid fa-rotate me-1" :class="{ 'fa-spin': documentsData.loading }"></i> Refresh
+                                    </button>
+                                    <button type="button" class="btn btn-sm px-3 fw-bold text-white shadow-sm"
+                                        style="background: var(--primary-green, #006A4E); border-color: var(--primary-green, #006A4E);"
+                                        @click="openUploadDocModal()">
+                                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> Submit Document
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Compliance Overview Metrics Grid -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-6 col-md-3">
+                                    <div class="card border-0 shadow-sm rounded-3 p-3 h-100" style="border-left: 4px solid #006A4E !important; background: #ffffff;">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span class="fs-8 fw-bold text-uppercase text-muted">Required Docs</span>
+                                            <i class="fa-solid fa-list-check text-muted"></i>
+                                        </div>
+                                        <div class="fs-3 fw-bold text-dark mt-2">{{ documentsData.stats ? documentsData.stats.totalRequired : 5 }}</div>
+                                        <div class="fs-8 text-muted mt-1">Institutional catalog</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="card border-0 shadow-sm rounded-3 p-3 h-100" style="border-left: 4px solid #10b981 !important; background: #ffffff;">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span class="fs-8 fw-bold text-uppercase text-success">Verified &amp; Cleared</span>
+                                            <i class="fa-solid fa-circle-check text-success"></i>
+                                        </div>
+                                        <div class="fs-3 fw-bold text-success mt-2">{{ documentsData.stats ? documentsData.stats.verifiedCount : 0 }}</div>
+                                        <div class="fs-8 text-muted mt-1">Registrar authenticated</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="card border-0 shadow-sm rounded-3 p-3 h-100" style="border-left: 4px solid #3b82f6 !important; background: #ffffff;">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span class="fs-8 fw-bold text-uppercase text-primary">Under Review</span>
+                                            <i class="fa-solid fa-clock text-primary"></i>
+                                        </div>
+                                        <div class="fs-3 fw-bold text-primary mt-2">{{ documentsData.stats ? documentsData.stats.pendingReviewCount : 0 }}</div>
+                                        <div class="fs-8 text-muted mt-1">Awaiting evaluation</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="card border-0 shadow-sm rounded-3 p-3 h-100" style="border-left: 4px solid #f59e0b !important; background: #ffffff;">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span class="fs-8 fw-bold text-uppercase text-warning-emphasis">Missing / Waivers</span>
+                                            <i class="fa-solid fa-triangle-exclamation text-warning"></i>
+                                        </div>
+                                        <div class="fs-3 fw-bold text-warning-emphasis mt-2">{{ (documentsData.stats ? documentsData.stats.missingCount : 0) + (documentsData.stats ? documentsData.stats.undertakingCount : 0) }}</div>
+                                        <div class="fs-8 text-muted mt-1">Action required</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Compliance Notification Banner -->
+                            <div v-if="documentsData.stats && documentsData.stats.isFullyCompliant"
+                                class="alert alert-success border-0 shadow-sm rounded-3 py-3 px-4 mb-4 d-flex align-items-center gap-3">
+                                <i class="fa-solid fa-circle-check fs-3 text-success"></i>
+                                <div>
+                                    <h6 class="fw-bold text-success mb-1">Complete Document Clearance</h6>
+                                    <p class="mb-0 fs-7 text-dark">All mandatory admission requirements have been verified and officially approved by the Office of the College Registrar.</p>
+                                </div>
+                            </div>
+
+                            <div v-else-if="documentsData.stats && documentsData.stats.undertakingCount > 0"
+                                class="alert alert-warning border-0 shadow-sm rounded-3 py-3 px-4 mb-4 d-flex align-items-start gap-3"
+                                style="background: rgba(245, 158, 11, 0.12);">
+                                <i class="fa-solid fa-triangle-exclamation fs-3 text-warning mt-1"></i>
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-1">Conditional Enrollment Notice (Active Undertaking)</h6>
+                                    <p class="mb-1 fs-7 text-dark">You have requirement(s) currently under a conditional undertaking agreement. Please ensure you upload the official soft copies before the committed deadline to maintain full academic clearance.</p>
+                                    <button type="button" class="btn btn-warning btn-sm fw-bold px-3 mt-1 shadow-sm"
+                                        @click="openUploadDocModal()">
+                                        <i class="fa-solid fa-upload me-1"></i> Fulfill Missing Documents
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-else-if="documentsData.stats && documentsData.stats.missingCount > 0"
+                                class="alert alert-danger border-0 shadow-sm rounded-3 py-3 px-4 mb-4 d-flex align-items-start gap-3"
+                                style="background: rgba(239, 68, 68, 0.1);">
+                                <i class="fa-solid fa-circle-exclamation fs-3 text-danger mt-1"></i>
+                                <div>
+                                    <h6 class="fw-bold text-danger mb-1">Unsubmitted Admission Documents</h6>
+                                    <p class="mb-1 fs-7 text-dark">Please upload clear digital scans of your missing credentials to complete your official student portfolio.</p>
+                                    <button type="button" class="btn btn-danger btn-sm fw-bold px-3 mt-1 shadow-sm"
+                                        @click="openUploadDocModal()">
+                                        <i class="fa-solid fa-upload me-1"></i> Upload Required Scans
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Requirements List Cards -->
+                            <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+                                <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between">
+                                    <h6 class="fw-bold text-dark mb-0"><i class="fa-solid fa-folder-tree me-2 text-primary"></i>Required Academic Documents Matrix</h6>
+                                    <span class="badge bg-light text-secondary border fs-8">{{ documentsData.requirements.length }} Requirements</span>
+                                </div>
+
+                                <div class="list-group list-group-flush">
+                                    <div v-for="doc in documentsData.requirements" :key="doc.key"
+                                        class="list-group-item p-4 border-bottom">
+                                        <div class="row align-items-center g-3">
+                                            <div class="col-12 col-md-5">
+                                                <div class="d-flex align-items-start gap-3">
+                                                    <div class="rounded-3 p-3 text-center flex-shrink-0"
+                                                        :style="doc.status === 'VERIFIED' ? 'background: rgba(16,185,129,0.1); color: #059669;' : (doc.status === 'UNDER_REVIEW' ? 'background: rgba(59,130,246,0.1); color: #2563eb;' : (doc.status === 'UNDERTAKING' ? 'background: rgba(245,158,11,0.1); color: #d97706;' : 'background: rgba(239,68,68,0.1); color: #dc2626;'))"
+                                                        style="width: 50px; height: 50px; display: grid; place-items: center;">
+                                                        <i class="fa-solid" :class="doc.status === 'VERIFIED' ? 'fa-file-circle-check fs-5' : (doc.status === 'UNDER_REVIEW' ? 'fa-file-lines fs-5' : (doc.status === 'UNDERTAKING' ? 'fa-file-signature fs-5' : 'fa-file-circle-xmark fs-5'))"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                            <h6 class="fw-bold text-dark mb-0">{{ doc.title }}</h6>
+                                                            <span v-if="doc.required" class="badge bg-danger-subtle text-danger border border-danger-subtle fs-9">Mandatory</span>
+                                                            <span v-else class="badge bg-secondary-subtle text-secondary border fs-9">Optional / Waiver</span>
+                                                        </div>
+                                                        <p class="text-muted fs-7 mb-0 mt-1">{{ doc.description }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12 col-md-4">
+                                                <!-- Status Badge & Meta -->
+                                                <div class="d-flex flex-column gap-1">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span v-if="doc.status === 'VERIFIED'" class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                                            <i class="fa-solid fa-circle-check me-1"></i> Verified &amp; Approved
+                                                        </span>
+                                                        <span v-else-if="doc.status === 'UNDER_REVIEW'" class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                                            <i class="fa-solid fa-clock me-1"></i> Under Review
+                                                        </span>
+                                                        <span v-else-if="doc.status === 'UNDERTAKING'" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
+                                                            <i class="fa-solid fa-triangle-exclamation me-1"></i> Conditional Undertaking
+                                                        </span>
+                                                        <span v-else class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                                            <i class="fa-solid fa-circle-xmark me-1"></i> Not Submitted / Missing
+                                                        </span>
+                                                    </div>
+
+                                                    <!-- File Attachment Info -->
+                                                    <div v-if="doc.softCopyUrl" class="fs-8 text-secondary mt-1">
+                                                        <i class="fa-solid fa-paperclip me-1"></i>
+                                                        <span class="fw-semibold">{{ doc.fileName || 'Uploaded Scan' }}</span>
+                                                        <span v-if="doc.submittedAt" class="text-muted ms-1">({{ doc.submittedAt }})</span>
+                                                    </div>
+
+                                                    <!-- Undertaking details -->
+                                                    <div v-if="doc.isUndertaking && doc.undertakingReason" class="fs-8 text-warning-emphasis bg-warning bg-opacity-10 p-2 rounded-2 mt-1">
+                                                        <strong>Waiver Reason:</strong> {{ doc.undertakingReason }}
+                                                        <div v-if="doc.undertakingDeadline" class="text-danger fw-bold mt-1">
+                                                            <i class="fa-regular fa-calendar-check me-1"></i>Due by: {{ doc.undertakingDeadline }}
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Registrar Remarks -->
+                                                    <div v-if="doc.registrarRemarks" class="fs-8 text-dark bg-light p-2 rounded-2 mt-1 border">
+                                                        <strong class="text-secondary"><i class="fa-solid fa-comment-dots me-1"></i>Registrar:</strong> {{ doc.registrarRemarks }}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12 col-md-3 text-md-end">
+                                                <div class="d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
+                                                    <button v-if="doc.softCopyUrl" type="button" class="btn btn-outline-secondary btn-sm px-2 fw-semibold"
+                                                        @click="openDocPreview(doc)" title="Preview Document">
+                                                        <i class="fa-solid fa-eye me-1"></i> Preview
+                                                    </button>
+                                                    <button v-if="doc.softCopyUrl" type="button" class="btn btn-outline-secondary btn-sm px-2"
+                                                        @click="downloadDoc(doc)" title="Download Soft Copy">
+                                                        <i class="fa-solid fa-download"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm px-3 fw-bold text-white shadow-sm"
+                                                        :style="doc.status === 'VERIFIED' ? 'background: #475569;' : 'background: var(--primary-green, #006A4E);'"
+                                                        @click="openUploadDocModal(doc)">
+                                                        <i class="fa-solid" :class="doc.softCopyUrl ? 'fa-arrow-rotate-right me-1' : 'fa-upload me-1'"></i>
+                                                        {{ doc.softCopyUrl ? 'Replace' : 'Upload' }}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </template>
+
                     <!-- ══ TAB 3: MY STUDENT PROFILE ═════════════════════════════ -->
                     <template v-if="activeTab === 'profile'">
                         <input type="file" ref="photoInput" @change="handlePhotoSelect" accept="image/*"
@@ -2946,6 +3151,167 @@
                         </form>
 
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ MODAL: UPLOAD / SUBMIT DOCUMENT & UNDERTAKING ═══════════════ -->
+        <div v-if="showUploadDocModal" class="modal fade show d-block" tabindex="-1"
+            style="background: rgba(0,0,0,0.65); z-index: 1060; position: fixed; inset: 0; display: flex !important; align-items: center; justify-content: center; padding: 16px;" role="dialog">
+            <div class="modal-dialog modal-dialog-centered modal-lg" style="width: 100%; max-width: 780px; margin: auto;">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header text-white px-4 py-3" style="background: linear-gradient(135deg, #006A4E 0%, #003D2B 100%);">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up fs-5"></i>
+                            <h5 class="modal-title fw-bold mb-0">Upload Academic Requirement</h5>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" @click="closeUploadDocModal" aria-label="Close" :disabled="isUploadingDoc"></button>
+                    </div>
+
+                    <form @submit.prevent="submitDocumentUpload">
+                        <div class="modal-body p-4">
+                            <!-- Alert message -->
+                            <div v-if="uploadDocError" class="alert alert-danger border-0 py-2 px-3 fs-7 mb-3 rounded-3 d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-circle-exclamation text-danger"></i>
+                                <span>{{ uploadDocError }}</span>
+                            </div>
+                            <div v-if="uploadDocSuccess" class="alert alert-success border-0 py-2 px-3 fs-7 mb-3 rounded-3 d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-circle-check text-success"></i>
+                                <span>{{ uploadDocSuccess }}</span>
+                            </div>
+
+                            <!-- Document Requirement Selector -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold fs-7 text-dark">Requirement Document Type <span class="text-danger">*</span></label>
+                                <select class="form-select form-select-sm rounded-3 py-2 fs-7" v-model="docUploadForm.docKey" required :disabled="isUploadingDoc">
+                                    <option value="" disabled>-- Select Requirement --</option>
+                                    <option v-for="req in documentsData.requirements" :key="req.key" :value="req.key">
+                                        {{ req.title }} ({{ req.required ? 'Mandatory' : 'Optional / Waiver' }})
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- File Upload Area -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold fs-7 text-dark">Document Soft Copy File (PDF, JPG, PNG, DOCX - Max 10MB)</label>
+                                <input type="file" ref="docFileInput" @change="handleDocFileSelect" accept=".pdf,image/png,image/jpeg,image/webp,.docx" style="display:none">
+                                
+                                <div class="border border-2 border-dashed rounded-4 p-4 text-center cursor-pointer transition-all"
+                                    style="background: #f8fafc; border-color: #cbd5e1 !important;"
+                                    @click="triggerDocFileSelect">
+                                    <div v-if="!docUploadForm.fileName">
+                                        <i class="fa-solid fa-file-arrow-up fs-2 text-secondary mb-2"></i>
+                                        <h6 class="fw-bold text-dark mb-1">Click to select file from device</h6>
+                                        <p class="text-muted fs-8 mb-0">Supported formats: PDF, JPEG, PNG, WEBP, DOCX (Max 10MB)</p>
+                                    </div>
+                                    <div v-else class="d-flex align-items-center justify-content-center gap-3">
+                                        <i class="fa-solid fa-file-check fs-2 text-success"></i>
+                                        <div class="text-start">
+                                            <h6 class="fw-bold text-dark mb-0">{{ docUploadForm.fileName }}</h6>
+                                            <span class="text-muted fs-8">{{ (docUploadForm.fileSize / 1024).toFixed(1) }} KB &bull; Click to change</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Conditional Undertaking Toggle Box -->
+                            <div class="p-3 rounded-3 mb-3" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25);">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="undertakingCheck" v-model="docUploadForm.isUndertaking" :disabled="isUploadingDoc">
+                                    <label class="form-check-label fw-bold fs-7 text-dark cursor-pointer" for="undertakingCheck">
+                                        Submit under Conditional Enrollment Undertaking
+                                    </label>
+                                </div>
+                                <p class="text-muted fs-8 mb-2">Check this option if you currently do not possess the official hardcopy and are committing to fulfill it by a specific date.</p>
+
+                                <div v-if="docUploadForm.isUndertaking" class="row g-2 mt-1">
+                                    <div class="col-12 col-md-7">
+                                        <label class="form-label fs-8 fw-semibold text-secondary">Reason for Pending Submission <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control form-control-sm rounded-2" v-model="docUploadForm.undertakingReason"
+                                            placeholder="e.g. Processing clearance from previous school" :required="docUploadForm.isUndertaking" :disabled="isUploadingDoc">
+                                    </div>
+                                    <div class="col-12 col-md-5">
+                                        <label class="form-label fs-8 fw-semibold text-secondary">Promised Completion Deadline <span class="text-danger">*</span></label>
+                                        <input type="date" class="form-control form-control-sm rounded-2" v-model="docUploadForm.undertakingDeadline"
+                                            :required="docUploadForm.isUndertaking" :disabled="isUploadingDoc">
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="modal-footer bg-light px-4 py-3 border-top d-flex align-items-center justify-content-between">
+                            <button type="button" class="btn btn-light btn-sm fw-semibold px-3" @click="closeUploadDocModal" :disabled="isUploadingDoc">
+                                Cancel
+                            </button>
+                            <button type="submit" class="btn btn-success btn-sm fw-bold px-4 shadow-sm"
+                                style="background: var(--primary-green, #006A4E); border-color: var(--primary-green, #006A4E);"
+                                :disabled="isUploadingDoc || (!docUploadForm.fileData && !docUploadForm.isUndertaking)">
+                                <span v-if="isUploadingDoc"><i class="fa-solid fa-spinner fa-spin me-1"></i> Uploading...</span>
+                                <span v-else><i class="fa-solid fa-cloud-arrow-up me-1"></i> Submit Requirement</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ MODAL: UNIVERSAL DOCUMENT PREVIEWER ═════════════════════════════ -->
+        <div v-if="previewDocModal.show" class="modal fade show d-block" tabindex="-1"
+            style="background: rgba(0,0,0,0.85); z-index: 1070; position: fixed; inset: 0; display: flex !important; align-items: center; justify-content: center; padding: 16px;" role="dialog">
+            <div class="modal-dialog modal-dialog-centered modal-xl" style="width: 100%; max-width: 92vw; height: 90vh; margin: auto;">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden h-100 d-flex flex-column bg-dark text-white">
+                    
+                    <!-- Previewer Toolbar -->
+                    <div class="modal-header bg-black bg-opacity-75 px-4 py-2 border-bottom border-secondary d-flex align-items-center justify-content-between flex-shrink-0">
+                        <div class="d-flex align-items-center gap-3">
+                            <i class="fa-solid fa-file-lines text-info fs-5"></i>
+                            <div>
+                                <h6 class="fw-bold mb-0 text-white">{{ previewDocModal.title }}</h6>
+                                <span class="fs-8 text-secondary">{{ previewDocModal.fileName }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Viewer Action Tools -->
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="btn-group btn-group-sm bg-dark border border-secondary rounded-2">
+                                <button type="button" class="btn btn-outline-light btn-sm" @click="zoomOutDoc" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                                <span class="px-2 py-1 fs-8 text-white-50 d-flex align-items-center">{{ previewDocModal.zoom }}%</span>
+                                <button type="button" class="btn btn-outline-light btn-sm" @click="zoomInDoc" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                                <button type="button" class="btn btn-outline-light btn-sm" @click="resetDocZoom" title="Reset"><i class="fa-solid fa-arrows-rotate"></i></button>
+                            </div>
+                            <button type="button" class="btn btn-outline-light btn-sm" @click="rotateDoc" title="Rotate 90 Degrees">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                            <a :href="previewDocModal.url" download class="btn btn-success btn-sm fw-semibold shadow-sm"
+                                style="background: var(--primary-green, #006A4E); border-color: var(--primary-green, #006A4E);" title="Download File">
+                                <i class="fa-solid fa-download me-1"></i> Download
+                            </a>
+                            <button type="button" class="btn-close btn-close-white ms-2" @click="closeDocPreview" aria-label="Close"></button>
+                        </div>
+                    </div>
+
+                    <!-- Viewer Canvas Body -->
+                    <div class="modal-body p-0 flex-grow-1 overflow-auto d-flex align-items-center justify-content-center bg-dark" style="position: relative;">
+                        <!-- PDF Embed -->
+                        <iframe v-if="previewDocModal.url && (previewDocModal.url.toLowerCase().endsWith('.pdf') || previewDocModal.fileType === 'application/pdf')"
+                            :src="previewDocModal.url" class="w-100 h-100 border-0"
+                            style="background: #ffffff;"
+                            title="PDF Document Viewer">
+                        </iframe>
+
+                        <!-- Image Viewer -->
+                        <div v-else class="p-3 text-center w-100 h-100 d-flex align-items-center justify-content-center overflow-auto">
+                            <img :src="previewDocModal.url" alt="Document Preview"
+                                class="img-fluid rounded shadow"
+                                :style="{
+                                    maxWidth: previewDocModal.zoom + '%',
+                                    transform: 'rotate(' + previewDocModal.rotation + 'deg)',
+                                    transition: 'transform 0.2s ease, max-width 0.2s ease'
+                                }">
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>

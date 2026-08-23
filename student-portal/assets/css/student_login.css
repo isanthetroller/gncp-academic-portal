@@ -49,19 +49,8 @@
     grid-template-columns: 1.1fr 1fr;
     overflow: hidden;
     border: 1px solid rgba(212, 175, 55, 0.3);
-    animation: studentLoginFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes studentLoginFadeUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.98);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
 
 /* ── Left Hero Pane ── */
 .student-hero-pane {

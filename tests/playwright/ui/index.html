@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GNCP — Playwright Automated System Testing Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Self-Hosted Local FontAwesome & Vue 3 with resilient fallback -->
+    <link rel="stylesheet" href="../../../shared/libs/font-awesome/css/all.min.css" onerror="this.onerror=null;this.href='/shared/libs/font-awesome/css/all.min.css';">
+    <script src="../../../shared/libs/vue.global.js"></script>
+    <script>
+      if (typeof Vue === 'undefined') {
+        document.write('<script src="/shared/libs/vue.global.js"><\/script>');
+      }
+    </script>
+    <style>
+        :root {
+            --bg:             #f4f6f8;
+            --topbar-bg:      linear-gradient(135deg, #00553e 0%, #003d2b 100%);
+            --primary:        #006A4E;
+            --primary-hover:  #00533C;
+            --gold:           #D4AF37;
+            --gold-dark:      #b89320;
+            --gold-light:     rgba(212, 175, 55, 0.12);
+            --green:          #10b981;
+            --amber:          #d97706;
+            --red:            #ef4444;
+            --sky:            #0284c7;
+            --text:           #0f172a;
+            --muted:          #64748b;
+            --border:         #e2e8f0;
+            --card-bg:        #ffffff;
+            --radius:         12px;
+            --radius-sm:      8px;
+            --t:              0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        [v-cloak] { display: none !important; }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding: 20px 24px 32px;
+            gap: 16px;
+        }
+
+        /* ── HEADER TOOLBAR ── */
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--topbar-bg);
+            border-bottom: 3px solid var(--gold);
+            border-radius: var(--radius);
+            padding: 16px 24px;
+            color: #ffffff;
+            box-shadow: 0 8px 24px rgba(0, 61, 43, 0.25);
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .brand-block { display: flex; align-items: center; gap: 14px; }
+        .brand-logo { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.35)); flex-shrink: 0; }
+        .brand-titles h1 { font-family: 'Outfit', sans-serif; font-size: 1.2rem; font-weight: 800; color: #ffffff; letter-spacing: -0.2px; line-height: 1.25; margin: 0; }
+        .brand-titles p { font-size: 0.72rem; color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
+
+        .server-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.70rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .server-online { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .server-offline { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+        .topbar-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+        .mode-pills { display: flex; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; overflow: hidden; padding: 2px; }
+        .mode-pills button { background: none; border: none; color: rgba(255,255,255,0.75); padding: 6px 14px; font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: var(--t); font-family: inherit; border-radius: 6px; }
+        .mode-pills button.active { background: var(--gold); color: #002217; font-weight: 800; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .mode-pills button:hover:not(.active) { color: #ffffff; background: rgba(255,255,255,0.1); }
+
+        .target-stop-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            border-radius: 8px;
+            padding: 4px 10px;
+            transition: var(--t);
+        }
+        .target-stop-wrap:hover {
+            border-color: var(--gold);
+            background: rgba(0, 0, 0, 0.45);
+        }
+        .target-stop-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--gold);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+        .target-stop-select {
+            background: transparent;
+            color: #ffffff;
+            border: none;
+            outline: none;
+            font-size: 0.78rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            padding: 2px 4px;
+        }
+        .target-stop-select option {
+            background: #002e20;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: rgba(255,255,255,0.85); cursor: pointer; user-select: none; font-weight: 600; }
+        .toggle-box { width: 34px; height: 18px; border-radius: 10px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); position: relative; transition: background .2s; }
+        .toggle-box.on { background: var(--gold); border-color: var(--gold); }
+        .toggle-box::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left .2s; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+        .toggle-box.on::after { left: 18px; }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #d4af37 0%, #b89320 100%);
+            color: #002217;
+            border: none;
+            border-radius: 8px;
+            padding: 9px 20px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: var(--t);
+            box-shadow: 0 4px 14px rgba(212,175,55,0.4);
+            white-space: nowrap;
+        }
+        .btn-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(212,175,55,0.6); }
+        .btn-action:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important; color: #fff !important; box-shadow: 0 4px 14px rgba(239,68,68,0.4) !important; }
+
+        /* ── SUMMARY METRICS BAR ── */
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+        .metric-card { background: var(--card-bg); border: 1px solid var(--border); border-left: 4px solid var(--primary); border-radius: var(--radius-sm); padding: 14px 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+        .metric-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 4px; }
+        .metric-val { font-family: 'Outfit', sans-serif; font-size: 1.4rem; font-weight: 800; line-height: 1.2; color: var(--text); }
+
+        .progress-bar-wrap { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 6px; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary) 0%, var(--gold) 100%); transition: width 0.3s ease; }
+
+        /* ── MAIN WORKSPACE 3-COL GRID ── */
+        .workspace-grid { display: grid; grid-template-columns: 1fr 1fr 420px; gap: 16px; flex: 1; }
+
+        .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,0.05); overflow: hidden; display: flex; flex-direction: column; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--border); background: #f8fafc; }
+        .panel-title { font-family: 'Outfit', sans-serif; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+        .panel-body { padding: 16px; flex: 1; overflow-y: auto; }
+
+        /* Custom Scrollbars */
+        .panel-body::-webkit-scrollbar,
+        .terminal::-webkit-scrollbar { width: 6px; }
+        .panel-body::-webkit-scrollbar-track,
+        .terminal::-webkit-scrollbar-track { background: transparent; }
+        .panel-body::-webkit-scrollbar-thumb,
+        .terminal::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .panel-body::-webkit-scrollbar-thumb:hover,
+        .terminal::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+        /* PIPELINE CARDS */
+        .pipeline-list { display: flex; flex-direction: column; gap: 8px; }
+        .step-card { border: 1px solid var(--border); border-radius: var(--radius-sm); background: #f8fafc; transition: var(--t); overflow: hidden; }
+        .step-card.active { border-color: var(--primary); background: rgba(0, 106, 78, 0.05); box-shadow: 0 0 12px rgba(0, 106, 78, 0.15); border-left: 4px solid var(--primary); }
+        .step-card.passed { border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.04); border-left: 4px solid var(--green); }
+        .step-card.failed { border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.04); border-left: 4px solid var(--red); }
+
+        .step-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; cursor: pointer; }
+        .step-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .step-icon { width: 30px; height: 30px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.80rem; color: var(--muted); flex-shrink: 0; transition: var(--t); }
+        .step-card.active .step-icon { background: var(--primary); color: #fff; font-weight: 800; }
+        .step-card.passed .step-icon { background: var(--green); color: #fff; }
+        .step-card.failed .step-icon { background: var(--red); color: #fff; }
+        .step-text { min-width: 0; }
+        .step-title { font-size: 0.85rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .step-sub { font-size: 0.70rem; color: var(--muted); }
+
+        .step-badge { font-size: 0.65rem; font-weight: 800; padding: 3px 8px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+        .badge-idle { background: #e2e8f0; color: var(--muted); }
+        .badge-running { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+        .badge-passed { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .badge-failed { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .badge-skipped { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+        .step-card.step-card-excluded { opacity: 0.5; border-left-color: #cbd5e1 !important; }
+        .step-card.step-card-excluded .step-icon { background: #f1f5f9; color: #94a3b8; }
+
+        .step-traceback { padding: 10px 14px; background: #0f172a; border-top: 2px solid var(--red); font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #fca5a5; line-height: 1.45; word-break: break-all; border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+
+        /* LIVE FRAME & SCREENSHOTS */
+        .preview-box { aspect-ratio: 16/9; background: #0f172a; border-radius: var(--radius-sm); border: 2px solid var(--border); overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
+        .preview-img { width: 100%; height: 100%; object-fit: contain; cursor: pointer; transition: transform 0.2s ease; }
+        .preview-img:hover { transform: scale(1.01); }
+
+        .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+        .gallery-thumb { aspect-ratio: 16/9; background: #e2e8f0; border-radius: 6px; border: 1px solid var(--border); overflow: hidden; cursor: pointer; position: relative; transition: var(--t); }
+        .gallery-thumb:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,106,78,0.15); }
+        .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .gallery-thumb label { position: absolute; bottom: 0; inset-x: 0; background: rgba(15, 23, 42, 0.85); color: #ffffff; font-size: 0.60rem; font-weight: 700; padding: 2px 4px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* CREDENTIALS INSPECTOR */
+        .cred-card { background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.35); border-left: 4px solid var(--gold); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 12px; }
+        .cred-head { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #92400e; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .cred-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; padding: 5px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+        .cred-item:last-child { border-bottom: none; }
+        .cred-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #003d2b; background: #ffffff; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; border: 1px solid var(--border); }
+
+        /* LOG TERMINAL */
+        .log-filter-bar { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+        .log-filter-btn { background: #f1f5f9; border: 1px solid var(--border); color: var(--muted); font-size: 0.68rem; font-weight: 700; padding: 3px 9px; border-radius: 5px; cursor: pointer; transition: var(--t); }
+        .log-filter-btn.active { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+
+        .log-search { width: 100%; background: #ffffff; border: 1px solid var(--border); color: var(--text); font-size: 0.75rem; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; outline: none; transition: border-color 0.2s; }
+        .log-search:focus { border-color: var(--primary); }
+
+        .terminal { background: #0f172a; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; line-height: 1.45; }
+        .t-line { display: flex; gap: 8px; word-break: break-all; }
+        .t-ts { color: #64748b; flex-shrink: 0; font-size: 0.65rem; }
+        .t-info { color: #cbd5e1; }
+        .t-success { color: #4ade80; font-weight: 700; }
+        .t-warn { color: #fbbf24; }
+        .t-error { color: #f87171; font-weight: 700; }
+        .t-step { color: var(--gold); font-weight: 800; }
+
+        /* LIGHTBOX MODAL */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .modal-img { max-width: 92vw; max-height: 92vh; border-radius: var(--radius); border: 2px solid var(--gold); box-shadow: 0 25px 60px rgba(0,0,0,0.5); }
+        .modal-close { position: absolute; top: 20px; right: 24px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: var(--t); }
+        .modal-close:hover { background: rgba(239,68,68,0.8); }
+
+        @media (max-width: 1200px) { .workspace-grid { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 768px) { .workspace-grid { grid-template-columns: 1fr; } .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+<div id="app" class="app" v-cloak>
+
+    <!-- HEADER TOOLBAR -->
+    <header class="topbar">
+        <div class="brand-block">
+            <img src="../../../school-website/assets/images/logo-removebg-preview.png" alt="GNCP Seal" class="brand-logo" onError="this.onerror=null;this.src='/school-website/assets/images/logo-removebg-preview.png';">
+            <div class="brand-titles">
+                <h1>Go-on National College</h1>
+                <p>Playwright Test Runner</p>
+            </div>
+            <span class="server-status-pill" :class="isServerOnline ? 'server-online' : 'server-offline'">
+                <i class="fa-solid fa-circle" style="font-size:0.45rem;"></i> {{ isServerOnline ? 'Server Online' : 'Server Offline' }}
+            </span>
+        </div>
+
+        <div class="topbar-controls">
+            <div class="mode-pills">
+                <button :class="{ active: mode === 'all' }" @click="mode = 'all'"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:4px"></i> Full System Test</button>
+                <button :class="{ active: mode === 'pipeline' }" @click="mode = 'pipeline'"><i class="fa-solid fa-diagram-project" style="margin-right:4px"></i> Enrollment Flow Only</button>
+                <button :class="{ active: mode === 'admin' }" @click="mode = 'admin'"><i class="fa-solid fa-sliders" style="margin-right:4px"></i> Admin Portal Suite</button>
+                <button :class="{ active: mode === 'paymongo' }" @click="mode = 'paymongo'"><i class="fa-solid fa-qrcode" style="margin-right:4px"></i> PayMongo Gateway</button>
+            </div>
+
+            <!-- TARGET STOP MODULE DROPDOWN -->
+            <div v-if="mode === 'all' || mode === 'pipeline'" class="target-stop-wrap" title="Select checkpoint to stop test execution early">
+                <span class="target-stop-label"><i class="fa-solid fa-flag-checkered"></i> Stop After:</span>
+                <select v-model="stopAfter" class="target-stop-select">
+                    <option value="all">🏁 Complete Pipeline (All Steps)</option>
+                    <option value="section">1️⃣ Step 1: Admin Section Creation</option>
+                    <option value="catalog">2️⃣ Step 2: Catalog Lockdown</option>
+                    <option value="operators">3️⃣ Step 3: Staff Operator Provisioning</option>
+                    <option value="registration">4️⃣ Step 4: Online Pre-Registration</option>
+                    <option value="tracker">5️⃣ Step 5: Public Application Tracker</option>
+                    <option value="registrar">6️⃣ Step 6: Registrar Verification</option>
+                    <option value="helpdesk">7️⃣ Step 7: TLC Helpdesk Advising</option>
+                    <option value="medical">8️⃣ Step 8: Medical Clinic Clearance</option>
+                    <option value="cashier">9️⃣ Step 9: Cashier Payment & OR</option>
+                    <option value="it_center">🔟 Step 10: IT Center Promotion</option>
+                    <option value="student_portal">1️⃣1️⃣ Step 11: Student Portal Login</option>
+                    <option value="milestones">1️⃣2️⃣ Step 12: Academic Milestones & Feed</option>
+                    <option value="fees">1️⃣3️⃣ Step 13: Tuition Fee Matrix Audit</option>
+                    <option value="admin_accounts">1️⃣4️⃣ Step 14: Admin Student Directory</option>
+                    <option value="profile">1️⃣5️⃣ Step 15: Staff Profile & Audit Logs</option>
+                    <option value="analytics">1️⃣6️⃣ Step 16: Registrations Analytics</option>
+                    <option value="logout">1️⃣7️⃣ Step 17: Interactive Logout</option>
+                </select>
+            </div>
+
+            <label class="toggle-wrap" title="Toggle between background headless execution and visible Chrome browser">
+                <div class="toggle-box" :class="{ on: headless }" @click="headless = !headless"></div>
+                <span>Headless Mode</span>
+            </label>
+
+            <button v-if="!isRunning" class="btn-action" @click="runTest" :disabled="!isServerOnline">
+                <i class="fa-solid fa-play"></i> Execute Suite
+            </button>
+            <button v-else class="btn-action btn-danger" @click="stopTest">
+                <i class="fa-solid fa-stop"></i> Abort Run
+            </button>
+        </div>
+    </header>
+
+    <!-- SERVER OFFLINE HELPER BANNER -->
+    <div v-if="!isServerOnline" style="background:#fee2e2; border:1px solid #fecaca; border-radius:var(--radius-sm); padding:12px 18px; color:#b91c1c; font-size:0.84rem; display:flex; align-items:center; justify-content:space-between; font-weight:600;">
+        <div>
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+            Selenium Python Test Server is currently offline. Please run <code>run_selenium_ui.bat</code> in your project directory to start the test backend.
+        </div>
+        <button @click="pollStatus" class="log-filter-btn" style="background:#b91c1c; color:#fff; border:none; padding:5px 12px; cursor:pointer;">
+            <i class="fa-solid fa-rotate me-1"></i> Retry Connection
+        </button>
+    </div>
+
+    <!-- SUMMARY METRICS BAR -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-label">Execution Status</div>
+            <div class="metric-val" :style="{ color: statusColorCode }">{{ status }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Step Progress</div>
+            <div class="metric-val" style="color:var(--primary);">{{ passedCount }} / {{ allSteps.length }}</div>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" :style="{ width: progressPct + '%' }"></div>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Elapsed Clock</div>
+            <div class="metric-val" style="color:var(--sky);">{{ duration }}s</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Pipeline Pass Rate</div>
+            <div class="metric-val" :style="{ color: failedCount > 0 ? 'var(--red)' : 'var(--green)' }">{{ progressPct }}%</div>
+        </div>
+    </div>
+
+    <!-- MAIN WORKSPACE 3-COLUMN GRID -->
+    <div class="workspace-grid">
+
+        <!-- COLUMN 1: TEST PIPELINE STEPS -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title"><i class="fa-solid fa-diagram-project"></i> Sequential Test Pipeline</span>
+                <span class="step-badge" :class="status === 'RUNNING' ? 'badge-running' : (status === 'PASSED' ? 'badge-passed' : 'badge-idle')">
+                    {{ isRunning ? 'Executing' : 'Standby' }}
+                </span>
+            </div>
+            <div class="panel-body">
+                <div class="pipeline-list">
+                    <div v-for="s in allSteps" :key="s.key" class="step-card" :class="getStepClass(s.key, s)">
+                        <div class="step-header" @click="toggleTraceback(s.key)">
+                            <div class="step-info">
+                                <div class="step-icon"><i :class="'fa-solid ' + s.icon"></i></div>
+                                <div class="step-text">
+                                    <div class="step-title">{{ s.label }}</div>
+                                    <div class="step-sub">{{ s.sub }}</div>
+                                </div>
+                            </div>
+                            <span class="step-badge" :class="getStepBadge(s.key, s)">{{ getStepStatus(s.key, s) }}</span>
+                        </div>
+                        <div v-if="expandedSteps[s.key] || (findResult(s.key) && findResult(s.key).status === 'FAILED')" class="step-traceback">
+                            <strong><i class="fa-solid fa-bug"></i> Traceback / Execution Details:</strong><br>
+                            {{ getStepDetail(s.key) || 'Step completed successfully with 0 assertions failed.' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMN 2: LIVE BROWSER FRAME & SCREENSHOTS -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title"><i class="fa-solid fa-display"></i> Live Browser Frame</span>
+                <span style="font-size:0.68rem; color:var(--muted);" v-if="latestScreenshot">Click to enlarge</span>
+            </div>
+            <div class="panel-body">
+                <div class="preview-box">
+                    <img v-if="latestScreenshot" :src="getImageUrl(latestScreenshot)" class="preview-img" @click="openModal(getImageUrl(latestScreenshot))" @error="handleFrameError" alt="Live Frame">
+                    <div v-else style="text-align:center; color:var(--muted);">
+                        <i class="fa-solid fa-camera" style="font-size:2rem; opacity:0.4; margin-bottom:8px; display:block;"></i>
+                        <span style="font-size:0.78rem;">No active frame captured</span>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; margin-bottom:8px;">
+                    <div class="panel-title" style="font-size:0.78rem; color:var(--primary);">
+                        <i class="fa-solid fa-images"></i> Historical Step Frame Gallery
+                    </div>
+                    <button @click="clearScreenshots" class="log-filter-btn" style="background:rgba(239,68,68,0.1); color:var(--red); border-color:rgba(239,68,68,0.3);" title="Delete all step frame captures">
+                        <i class="fa-solid fa-trash"></i> Clear Captures
+                    </button>
+                </div>
+
+                <div class="gallery-grid">
+                    <div v-for="thumb in galleryThumbs" :key="thumb.file" class="gallery-thumb" @click="openModal(getImageUrl(thumb.file))">
+                        <img :src="getImageUrl(thumb.file)" :alt="thumb.label" onError="this.parentElement.style.display='none'">
+                        <label>{{ thumb.label }}</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMN 3: CREDENTIALS & TERMINAL LOGS -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title"><i class="fa-solid fa-terminal"></i> Console &amp; Account State</span>
+                <button @click="copyLogs" class="log-filter-btn" style="background:var(--primary); color:#fff;"><i class="fa-solid fa-copy"></i> Copy Logs</button>
+            </div>
+            <div class="panel-body">
+
+                <!-- PROVISIONED CREDENTIALS INSPECTOR -->
+                <div class="cred-card" v-if="credentials.student_id">
+                    <div class="cred-head"><i class="fa-solid fa-id-card"></i> Provisioned Student Account</div>
+                    <div class="cred-item">
+                        <span style="color:var(--muted);">Student Name:</span>
+                        <span class="cred-val">{{ credentials.full_name }}</span>
+                    </div>
+                    <div class="cred-item">
+                        <span style="color:var(--muted);">Permanent ID:</span>
+                        <span class="cred-val">{{ credentials.student_id }}</span>
+                    </div>
+                    <div class="cred-item">
+                        <span style="color:var(--muted);">Institutional Email:</span>
+                        <span class="cred-val">{{ credentials.institutional_email }}</span>
+                    </div>
+                    <div class="cred-item">
+                        <span style="color:var(--muted);">Portal Password:</span>
+                        <span class="cred-val">{{ credentials.password }}</span>
+                    </div>
+                </div>
+
+                <!-- LOG FILTER BAR -->
+                <div class="log-filter-bar">
+                    <button v-for="f in ['ALL', 'SUCCESS', 'STEPS', 'WARN', 'ERROR']" :key="f" class="log-filter-btn" :class="{ active: logFilter === f }" @click="logFilter = f">
+                        {{ f }}
+                    </button>
+                </div>
+
+                <input type="text" v-model="logSearch" placeholder="Search terminal output..." class="log-search">
+
+                <!-- TERMINAL CONSOLE -->
+                <div class="terminal" ref="term">
+                    <div v-for="(log, i) in filteredLogs" :key="i" class="t-line">
+                        <span class="t-ts">[{{ log.timestamp }}]</span>
+                        <span :class="'t-' + (log.level || 'info').toLowerCase()">{{ log.message }}</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- LIGHTBOX MODAL -->
+    <div v-if="modalSrc" class="modal-backdrop" @click.self="modalSrc = null">
+        <button class="modal-close" @click="modalSrc = null">✕</button>
+        <img :src="modalSrc" class="modal-img" alt="Step Screenshot" @error="modalSrc = null">
+    </div>
+
+</div>
+
+<script>
+const { createApp } = Vue;
+createApp({
+    data() {
+        return {
+            testServer: (window.location.port === '8090' ? '' : 'http://localhost:8090'),
+            isServerOnline: true,
+            headless: false,
+            mode: 'all',
+            stopAfter: 'all',
+            status: 'IDLE',
+            duration: 0,
+            logs: [],
+            results: [],
+            latestScreenshot: null,
+            lastUpdate: Date.now(),
+            modalSrc: null,
+            credentials: {},
+            isRunning: false,
+            logFilter: 'ALL',
+            logSearch: '',
+            expandedSteps: {},
+            galleryThumbs: [
+                { file: 'step01_registration.png',              label: '1. Pre-Registration' },
+                { file: 'step02_registrar.png',                 label: '2. Registrar' },
+                { file: 'step03_helpdesk.png',                  label: '3. Helpdesk' },
+                { file: 'step04_medical.png',                   label: '4. Medical' },
+                { file: 'step05_cashier.png',                   label: '5. Cashier' },
+                { file: 'step06_it_center.png',                 label: '6. IT Center' },
+                { file: 'step07_student_portal_dashboard.png',  label: '7. Student Portal' },
+                { file: 'step10b_analytics_by_course.png',      label: '8. Analytics (By Course)' },
+                { file: 'step10b_analytics_breakdown.png',      label: '9. Admissions Funnel' },
+                { file: 'step10b_operators_verified.png',       label: '10. Operator Actions' },
+                { file: 'step11_logout02_confirm_modal.png',    label: '11. Logout Modal' }
+            ]
+        };
+    },
+    computed: {
+        targetStepLimit() {
+            if (this.stopAfter === 'all') return 999;
+            const map = {
+                'cleanup': 0,
+                'section': 1,
+                'catalog': 2,
+                'operators': 3,
+                'registration': 4,
+                'tracker': 5,
+                'registrar': 6,
+                'helpdesk': 7,
+                'medical': 8,
+                'cashier': 9,
+                'it_center': 10,
+                'student_portal': 11,
+                'milestones': 12,
+                'fees': 13,
+                'admin_accounts': 14,
+                'profile': 15,
+                'analytics': 16,
+                'logout': 17
+            };
+            return map[this.stopAfter] !== undefined ? map[this.stopAfter] : 999;
+        },
+        allSteps() {
+            if (this.mode === 'paymongo') {
+                return [
+                    { num: '1', key: '1. PayMongo Configuration',           label: '1. Central Configuration Check',   sub: 'Credentials & Currency Setting', icon: 'fa-gear' },
+                    { num: '2', key: '2. Dynamic QR & Centavos',            label: '2. Dynamic QR & Centavo Math',    sub: 'Session Creation & Centavos',    icon: 'fa-qrcode' },
+                    { num: '3', key: '3. Rule-002 Eligibility',             label: '3. Rule-002 Payment Safeguards',  sub: 'Unverified Applicant Protection', icon: 'fa-shield-halved' },
+                    { num: '4', key: '4. Partial Downpayment Settlement',   label: '4. GCash / Maya Simulation',      sub: 'Downpayment & OR Recording',     icon: 'fa-mobile-screen-button' },
+                    { num: '5', key: '5. Full Balance Settlement',          label: '5. Full Balance Settlement',      sub: 'Zero Remaining Balance State',   icon: 'fa-money-bill-transfer' },
+                    { num: '6', key: '6. ACID Transaction & Promotion',     label: '6. Transaction Ledger Audit',     sub: 'Audit Trail & IT Unlocking',     icon: 'fa-database' }
+                ];
+            }
+            if (this.mode === 'admin') {
+                return [
+                    { num: '1', key: 'Feature 1: Section Creation UI',       label: '1. Admin Section Creation UI',     sub: 'Course & Section DB Creation',   icon: 'fa-layer-group' },
+                    { num: '2', key: 'Feature 2: Fee Configuration UI',     label: '2. Tuition & Fee Rate Config',    sub: 'Real-time Fee Schedule Rates',   icon: 'fa-receipt' },
+                    { num: '3', key: 'Feature 3: Account Profile Edit UI',  label: '3. Admin Account Profile Update', sub: 'Staff Details & Phone/Email',    icon: 'fa-user-pen' },
+                    { num: '4', key: 'Feature 5: Registrations Analytics & Operator Activation', label: '4. Analytics & Operator Actions', sub: 'Grouped Columns & Deactivate Buttons', icon: 'fa-chart-column' },
+                    { num: '5', key: 'Feature 4: Interactive Super Admin Logout', label: '5. Interactive Modal Logout', sub: 'Session Invalidation & Redirect', icon: 'fa-right-from-bracket' }
+                ];
+            }
+            if (this.mode === 'pipeline') {
+                return [
+                    { num: '0',  key: '0. Cleanup',                           label: '0. Purge Stale Test Records',      sub: 'Database Purge & Reset',          icon: 'fa-database' },
+                    { num: '1',  key: '1. Admin Section Creation',            label: '1. Admin Section Creation',       sub: 'Course & Section Allocation',     icon: 'fa-layer-group' },
+                    { num: '2',  key: '4. Student Pre-Registration',          label: '2. Online Application Form',      sub: 'Applicant Pre-Registration',      icon: 'fa-user-pen' },
+                    { num: '3',  key: '3. Registrar Verification',            label: '3. Registrar Document Check',     sub: 'Document Approval State',         icon: 'fa-clipboard-check' },
+                    { num: '4',  key: '4. Academic Advising',                 label: '4. Helpdesk Unit Sectioning',     sub: 'Course & Section Allocation',     icon: 'fa-graduation-cap' },
+                    { num: '5',  key: '5. Medical Clearance',                 label: '5. Medical Clinic Clearance',     sub: 'Doctor Fitness Certificate',      icon: 'fa-stethoscope' },
+                    { num: '6',  key: '6. Cashier Payment',                   label: '6. Cashier Fee Payment & OR',     sub: 'Downpayment & OR Issuance',       icon: 'fa-wallet' },
+                    { num: '7',  key: '7. IT Center Promotion',               label: '7. IT Center Account Promotion',  sub: 'Permanent Student ID Gen',        icon: 'fa-id-card' },
+                    { num: '8',  key: '8. Student Portal Verification',       label: '8. Student Portal Live Login',    sub: 'Portal Credential Verification',  icon: 'fa-desktop' }
+                ];
+            }
+            return [
+                { num: '0',  key: '0. Cleanup',                           label: '0. Purge Stale Test Records',      sub: 'Database Purge & Reset',          icon: 'fa-database' },
+                { num: '1',  key: '1. Admin Section Creation',            label: '1. Admin Section Creation',       sub: 'Class Offering Timetable',        icon: 'fa-layer-group' },
+                { num: '2',  key: '2. Master Catalog & Department Lockdown', label: '2. Master Catalog Lockdown',   sub: 'Department & Program Lock',       icon: 'fa-shield-halved' },
+                { num: '3',  key: '3. Staff Operator Provisioning',       label: '3. Staff Operator Provisioning',  sub: '5 Workstation Operator Accounts', icon: 'fa-users-gear' },
+                { num: '4',  key: '4. Student Pre-Registration',          label: '4. Online Pre-Registration',      sub: 'Multi-Step Student Application',  icon: 'fa-user-pen' },
+                { num: '5',  key: '5. Self-Service Tracker Verification', label: '5. Public Self-Service Tracker',   sub: 'PIN Lookup & Status Roadmap',     icon: 'fa-magnifying-glass' },
+                { num: '6',  key: '3. Registrar Verification',            label: '6. Registrar Document Check',     sub: 'Document Approval State',         icon: 'fa-clipboard-check' },
+                { num: '7',  key: '4. Academic Advising',                 label: '7. Helpdesk Unit Sectioning',     sub: 'NSTP & Block Allocation',         icon: 'fa-graduation-cap' },
+                { num: '8',  key: '5. Medical Clearance',                 label: '8. Medical Clinic Clearance',     sub: 'Doctor Fitness Certificate',      icon: 'fa-stethoscope' },
+                { num: '9',  key: '6. Cashier Payment',                   label: '9. Cashier Fee Payment & OR',     sub: 'GCash / Cash & OR Issuance',      icon: 'fa-wallet' },
+                { num: '10', key: '7. IT Center Promotion',               label: '10. IT Center Account Promotion', sub: 'Permanent Student ID Gen',        icon: 'fa-id-card' },
+                { num: '11', key: '8. Student Portal Verification',       label: '11. Student Portal Live Login',   sub: 'COR & Schedule Verification',     icon: 'fa-desktop' },
+                { num: '12', key: '12. Academic Milestones & Campus Feed', label: '12. Milestones & Feed Live Sync', sub: 'Campus Bulletin & Announcements', icon: 'fa-bullhorn' },
+                { num: '13', key: '13. Tuition Fee Matrix & Assessment Audit', label: '13. Tuition Fee Matrix Audit', sub: 'Per-Unit & Lab Fee Calculations', icon: 'fa-calculator' },
+                { num: '14', key: '9. Admin Student Accounts Check',      label: '14. Admin Directory Audit',       sub: 'Permanent Student Directory',     icon: 'fa-address-book' },
+                { num: '15', key: '10. Profile UI & Audit Logs Verification', label: '15. Staff Profile & Audit Logs', sub: 'Audit Trail Verification',     icon: 'fa-user-gear' },
+                { num: '16', key: '16. Registrations Analytics & Operator Activation', label: '16. Analytics & Operator Actions', sub: 'Grouped Columns & Deactivate Buttons', icon: 'fa-chart-column' },
+                { num: '17', key: '11. Super Admin Sign Out / Logout',    label: '17. Interactive Logout Audit',   sub: 'Session Destruction & Redirect',    icon: 'fa-right-from-bracket' }
+            ];
+        },
+        activeSteps() {
+            if (this.mode !== 'all' && this.mode !== 'pipeline') return this.allSteps;
+            const limit = this.targetStepLimit;
+            return this.allSteps.filter(s => {
+                const n = parseInt(s.num, 10);
+                return isNaN(n) || n <= limit;
+            });
+        },
+        passedCount() { return this.results.filter(r => r.status === 'PASSED').length; },
+        failedCount()  { return this.results.filter(r => r.status === 'FAILED').length; },
+        statusColorCode() {
+            if (this.status === 'PASSED')  return 'var(--green)';
+            if (this.status === 'FAILED')  return 'var(--red)';
+            if (this.status === 'RUNNING') return 'var(--amber)';
+            return 'var(--muted)';
+        },
+        progressPct() {
+            const total = this.activeSteps.length;
+            return total ? Math.min(100, Math.round((this.passedCount / total) * 100)) : 0;
+        },
+        filteredLogs() {
+            return this.logs.filter(l => {
+                const matchFilter = this.logFilter === 'ALL' || (l.level && l.level.toUpperCase() === this.logFilter);
+                const matchSearch = !this.logSearch || (l.message && l.message.toLowerCase().includes(this.logSearch.toLowerCase()));
+                return matchFilter && matchSearch;
+            });
+        }
+    },
+    methods: {
+        async runTest() {
+            this.isRunning = true;
+            this.logs = []; this.results = []; this.credentials = {};
+            this.latestScreenshot = null; this.status = 'RUNNING';
+            try {
+                const res = await fetch(this.testServer + '/api/run-test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ headless: this.headless, mode: this.mode, stop_after: this.stopAfter })
+                });
+                const data = await res.json();
+                if (data.success) { this.pollStatus(); }
+                else {
+                    this.status = 'FAILED'; this.isRunning = false;
+                    this.logs.push({ timestamp: new Date().toTimeString().slice(0,8), level: 'ERROR', message: data.message || 'Failed to start test.' });
+                }
+            } catch (err) {
+                this.status = 'FAILED'; this.isRunning = false;
+                this.isServerOnline = false;
+                this.logs.push({ timestamp: new Date().toTimeString().slice(0,8), level: 'ERROR', message: 'Cannot connect to Selenium server at http://localhost:8090. Please launch: run_selenium_suite.bat or python tests/selenium/server.py' });
+            }
+        },
+        async stopTest() {
+            try {
+                await fetch(this.testServer + '/api/stop-test', { method: 'POST' });
+                this.status = 'CANCELLED';
+                this.isRunning = false;
+            } catch (err) {}
+        },
+        async pollStatus() {
+            try {
+                const res = await fetch(this.testServer + '/api/status');
+                const data = await res.json();
+                this.isServerOnline = true;
+                this.status   = data.status   || 'IDLE';
+                this.duration = data.duration || 0;
+                this.logs     = data.logs     || [];
+                this.results  = data.results  || [];
+                if (data.latest_screenshot) {
+                    this.latestScreenshot = data.latest_screenshot;
+                    this.lastUpdate = Date.now();
+                } else if (this.status === 'RUNNING' || this.logs.length > 0) {
+                    this.latestScreenshot = 'latest.png';
+                    this.lastUpdate = Date.now();
+                }
+
+                // Extract credentials
+                const credLog = this.logs.find(l => l.level === 'SUCCESS' && l.message && l.message.startsWith('CREATED STUDENT'));
+                if (credLog && !this.credentials.student_id) {
+                    const m = credLog.message.match(/ID: ([\w-]+) \| Email: ([\w.@]+) \| Password: (\S+)/);
+                    if (m) {
+                        const refLog = this.logs.find(l => l.message && l.message.includes('Reference Number:'));
+                        const profLog = this.logs.find(l => l.message && l.message.includes('Generated Profile:'));
+                        this.credentials = {
+                            student_id: m[1], institutional_email: m[2], password: m[3],
+                            full_name: profLog ? (profLog.message.match(/Generated Profile: ([^|]+)/)||[])[1]||'' : '',
+                            reference_number: refLog ? (refLog.message.match(/(REF-[\w-]+)/)||[])[1]||'' : ''
+                        };
+                    }
+                }
+
+                this.$nextTick(() => { if (this.$refs.term) this.$refs.term.scrollTop = this.$refs.term.scrollHeight; });
+                if (this.status === 'RUNNING') { setTimeout(() => this.pollStatus(), 700); }
+                else { this.isRunning = false; }
+            } catch {
+                this.isServerOnline = false;
+                this.isRunning = false;
+            }
+        },
+        findResult(key) {
+            const rawK = (key || '').toLowerCase();
+            const cleanK = rawK.replace(/^(feature\s*\d+:|\d+\.)\s*/, '').trim();
+            return this.results.find(r => {
+                const rawS = (r.step || r.feature || r.name || '').toLowerCase();
+                const cleanS = rawS.replace(/^(feature\s*\d+:|\d+\.)\s*/, '').trim();
+                return rawS === rawK || rawS.includes(rawK) || rawK.includes(rawS) || cleanS === cleanK || cleanS.includes(cleanK) || cleanK.includes(cleanS);
+            });
+        },
+        getStepClass(key, s) {
+            const stepNum = s && s.num !== undefined ? parseInt(s.num, 10) : null;
+            if (stepNum !== null && !isNaN(stepNum) && stepNum > this.targetStepLimit) {
+                return 'step-card-excluded';
+            }
+            const r = this.findResult(key);
+            if (!r && this.isRunning) return '';
+            if (!r) return '';
+            if (r.status === 'PASSED') return 'passed';
+            if (r.status === 'FAILED') return 'failed';
+            return 'active';
+        },
+        getStepBadge(key, s) {
+            const stepNum = s && s.num !== undefined ? parseInt(s.num, 10) : null;
+            if (stepNum !== null && !isNaN(stepNum) && stepNum > this.targetStepLimit) {
+                return 'badge-skipped';
+            }
+            const r = this.findResult(key);
+            if (!r && this.isRunning) return 'badge-idle';
+            if (!r) return 'badge-idle';
+            if (r.status === 'PASSED') return 'badge-passed';
+            if (r.status === 'FAILED') return 'badge-failed';
+            return 'badge-running';
+        },
+        getStepStatus(key, s) {
+            const r = this.findResult(key);
+            if (r) return r.status;
+            const stepNum = s && s.num !== undefined ? parseInt(s.num, 10) : null;
+            if (stepNum !== null && !isNaN(stepNum) && stepNum > this.targetStepLimit) {
+                return 'Excluded';
+            }
+            if (!this.isRunning) return 'Ready';
+            return 'Pending';
+        },
+        getStepDetail(key) {
+            const r = this.findResult(key);
+            if (r && r.details) return r.details;
+            return '';
+        },
+        toggleTraceback(key) {
+            this.expandedSteps[key] = !this.expandedSteps[key];
+        },
+        copyLogs() {
+            const text = this.logs.map(l => `[${l.timestamp}] [${l.level}] ${l.message}`).join('\n');
+            navigator.clipboard.writeText(text);
+            alert('Terminal log report copied to clipboard!');
+        },
+        handleFrameError() {
+            setTimeout(() => {
+                this.lastUpdate = Date.now();
+            }, 500);
+        },
+        getImageUrl(file) {
+            if (!file) return '';
+            const filename = file.split(/[/\\]/).pop();
+            return `${this.testServer}/screenshots/${filename}?t=${this.lastUpdate}`;
+        },
+        async clearScreenshots() {
+            if (!confirm('Are you sure you want to delete all historical step screenshots?')) return;
+            try {
+                const res = await fetch(this.testServer + '/api/clear-screenshots', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    this.latestScreenshot = null;
+                    this.lastUpdate = Date.now();
+                    alert(data.message || 'Gallery captures cleared!');
+                }
+            } catch (err) {
+                alert('Failed to clear screenshots.');
+            }
+        },
+        openModal(src) { 
+            if (src && !src.includes('null') && !src.includes('undefined')) {
+                this.modalSrc = src; 
+            }
+        },
+        sendHeartbeat() {
+            fetch((this.testServer || '') + '/api/heartbeat', { method: 'POST' })
+                .then(() => { this.isServerOnline = true; })
+                .catch(() => {});
+        }
+    },
+    mounted() {
+        this.pollStatus();
+        this.sendHeartbeat();
+
+        // Send heartbeat every 3s to keep test server alive
+        this.heartbeatInterval = setInterval(() => {
+            this.sendHeartbeat();
+        }, 3000);
+
+        this._onFocus = () => { this.sendHeartbeat(); this.pollStatus(); };
+        this._onVisibility = () => {
+            if (document.visibilityState === 'visible') {
+                this.sendHeartbeat();
+                this.pollStatus();
+            }
+        };
+        window.addEventListener('focus', this._onFocus);
+        document.addEventListener('visibilitychange', this._onVisibility);
+    },
+    beforeUnmount() {
+        if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+        if (this._onFocus) window.removeEventListener('focus', this._onFocus);
+        if (this._onVisibility) document.removeEventListener('visibilitychange', this._onVisibility);
+    }
+}).mount('#app');
+</script>
+</body>
+</html>

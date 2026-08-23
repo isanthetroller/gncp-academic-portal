@@ -160,9 +160,6 @@ class SeleniumTestRunner:
     def get_api_session(self, username="admin", password="admin12345"):
         """Creates an authenticated requests.Session for API operations."""
         s = requests.Session()
-        if self.driver:
-            for cookie in self.driver.get_cookies():
-                s.cookies.set(cookie['name'], cookie['value'])
         try:
             s.post(f"{config.BASE_URL}/shared/backend/login.php", json={"username": username, "password": password})
         except Exception:
@@ -712,14 +709,16 @@ class SeleniumTestRunner:
 
         # Click Approve & Verify button inside modal or trigger via controller
         self.driver.execute_script("""
-            if (window.app && window.app.updateApplicationStatus) {
-                window.app.updateApplicationStatus('Approved');
+            const appElem = document.querySelector('#app') || document.querySelector('#registrar-app');
+            const vm = (appElem && appElem.__vue_app__) ? appElem.__vue_app__._instance.proxy : window.app;
+            if (vm && vm.updateApplicationStatus) {
+                vm.updateApplicationStatus('Approved');
             } else {
                 var btn = document.querySelector("#applicationModal button.btn-pill-green");
                 if (btn) btn.click();
             }
         """)
-        time.sleep(1.0)
+        time.sleep(1.5)
 
         # Handle SweetAlert2 confirmation modal if present
         try:
@@ -953,7 +952,7 @@ class SeleniumTestRunner:
                 ]
             }
         }
-        resp = requests.post(f"{config.BASE_URL}/api/index.php?action=stations/update", json=update_payload)
+        resp = self.get_api_session().post(f"{config.BASE_URL}/api/index.php?action=stations/update", json=update_payload)
         data = resp.json()
 
         if not data.get("success"):
@@ -1156,9 +1155,10 @@ class SeleniumTestRunner:
     # ─────────────────────────────────────────────────────────────
     def step_10_user_profile_and_audit_check(self):
         self.log("Executing Step 10: User Profile UI & Audit Logs Assertion...")
+        self._do_station_login("ADMIN", "ADMIN")
         self.driver.get(config.PAGES["ADMIN"])
         time.sleep(2.0)
-        self.driver.execute_script("if (window.app) window.app.setView('profile');")
+        self.driver.execute_script("if (window.app && window.app.setView) window.app.setView('profile');")
         time.sleep(1.5)
         ss1 = self.save_screenshot("step10_user_profile_loaded")
 

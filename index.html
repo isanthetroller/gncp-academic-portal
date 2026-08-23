@@ -10,32 +10,38 @@
     <script>
         (function() {
             try {
+                // Ensure session authentication is never persisted across tabs or browsers in localStorage
+                localStorage.removeItem('gncp_admin_user');
+                localStorage.removeItem('gncp_station_user');
+
                 const urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.has('clear') || urlParams.has('logout')) {
+                if (urlParams.has('clear') || urlParams.has('logout') || urlParams.has('session_expired')) {
                     sessionStorage.removeItem('gncp_admin_user');
                     sessionStorage.removeItem('gncp_station_user');
-                    localStorage.removeItem('gncp_admin_user');
-                    localStorage.removeItem('gncp_station_user');
                     return;
                 }
-                const admin = sessionStorage.getItem('gncp_admin_user') || localStorage.getItem('gncp_admin_user');
-                const station = sessionStorage.getItem('gncp_station_user') || localStorage.getItem('gncp_station_user');
+
+                // If user has active session, start navigation immediately before page paint
+                const adminSession = sessionStorage.getItem('gncp_admin_user');
+                const stationSession = sessionStorage.getItem('gncp_station_user');
                 let user = null;
-                if (admin) { user = JSON.parse(admin); }
-                else if (station) { user = JSON.parse(station); }
+                if (adminSession) {
+                    user = JSON.parse(adminSession);
+                } else if (stationSession) {
+                    user = JSON.parse(stationSession);
+                }
 
                 if (user && user.role && !user.must_change_password) {
-                    const getRoleRedirectUrl = (role) => {
-                        if (role === 'SUPER_ADMIN' || role === 'ADMIN') return 'admin/index.html';
-                        if (role === 'REGISTRAR') return 'registrar/index.html';
-                        if (role === 'HELPDESK') return 'stations/tlc-helpdesk/index.html';
-                        if (role === 'MEDICAL') return 'stations/medical-checkup/index.html';
-                        if (role === 'CASHIER') return 'stations/payment-processing/index.html';
-                        if (role === 'IT_CENTER') return 'stations/it-center/index.html';
-                        return '';
+                    const roleRedirects = {
+                        'SUPER_ADMIN': 'admin/index.html',
+                        'ADMIN': 'admin/index.html',
+                        'REGISTRAR': 'registrar/index.html',
+                        'HELPDESK': 'stations/tlc-helpdesk/index.html',
+                        'MEDICAL': 'stations/medical-checkup/index.html',
+                        'CASHIER': 'stations/payment-processing/index.html',
+                        'IT_CENTER': 'stations/it-center/index.html'
                     };
-                    const redirectParam = urlParams.get('redirect');
-                    const target = redirectParam ? decodeURIComponent(redirectParam) : getRoleRedirectUrl(user.role);
+                    const target = roleRedirects[user.role];
                     if (target) {
                         window.location.replace(target);
                     }
@@ -366,6 +372,37 @@
             box-shadow: none;
         }
 
+        .session-expired-banner {
+            background: #FEF3C7;
+            border: 1px solid #FCD34D;
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            color: #92400E;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .btn-close-notice {
+            background: none;
+            border: none;
+            color: #92400E;
+            font-size: 1.1rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 4px;
+            opacity: 0.7;
+            transition: opacity 0.15s ease;
+        }
+
+        .btn-close-notice:hover {
+            opacity: 1;
+        }
+
         .error-banner {
             background: #FEE2E2;
             border: 1px solid #FCA5A5;
@@ -658,6 +695,15 @@
                     <p class="login-subtitle">Please enter your staff or operator credentials</p>
                 </div>
 
+                <!-- Session Expired Notice Banner -->
+                <transition name="fade-slide">
+                    <div v-if="sessionExpiredNotice" class="session-expired-banner">
+                        <i class="fa-solid fa-clock-rotate-left" style="font-size: 1.1rem; color: #D97706;"></i>
+                        <div class="flex-grow-1">Your previous session has timed out or expired. Please sign in again with your credentials to continue.</div>
+                        <button type="button" class="btn-close-notice" @click="sessionExpiredNotice = false" aria-label="Dismiss">&times;</button>
+                    </div>
+                </transition>
+
                 <!-- Smooth Error Banner with Transition & Shake -->
                 <transition name="fade-slide">
                     <div v-if="loginError" :key="errorKey" class="error-banner">
@@ -738,12 +784,55 @@
 
         createApp({
             setup() {
-                const currentUser = ref(null);
+                const urlParams = new URLSearchParams(window.location.search);
+
+                // Synchronously initialize currentUser if a valid session exists in sessionStorage
+                let initialUser = null;
+                if (!urlParams.has('clear') && !urlParams.has('logout') && !urlParams.has('session_expired')) {
+                    const adminSession = sessionStorage.getItem('gncp_admin_user');
+                    const stationSession = sessionStorage.getItem('gncp_station_user');
+                    try {
+                        if (adminSession) {
+                            initialUser = JSON.parse(adminSession);
+                        } else if (stationSession) {
+                            initialUser = JSON.parse(stationSession);
+                        }
+                    } catch (e) {}
+                }
+
+                const currentUser = ref(initialUser);
                 const loginError = ref('');
                 const errorKey = ref(0);
                 const isLoggingIn = ref(false);
                 const showPassword = ref(false);
                 
+                const hadPriorSession = !!(
+                    sessionStorage.getItem('gncp_was_logged_in') ||
+                    sessionStorage.getItem('gncp_station_user') ||
+                    sessionStorage.getItem('gncp_admin_user') ||
+                    localStorage.getItem('gncp_was_logged_in')
+                );
+                const hasExpiredQuery = (
+                    urlParams.get('session_expired') === '1' ||
+                    urlParams.get('expired') === '1' ||
+                    urlParams.get('reason') === 'expired'
+                );
+                // Only show expiration notice if this browser actually had a previous session
+                const sessionExpiredNotice = ref(hasExpiredQuery && hadPriorSession);
+
+                // Clean the URL query params so copying the link or refreshing doesn't keep the expired flag
+                if (hasExpiredQuery) {
+                    try {
+                        const cleanParams = new URLSearchParams(window.location.search);
+                        cleanParams.delete('session_expired');
+                        cleanParams.delete('expired');
+                        cleanParams.delete('reason');
+                        const newQuery = cleanParams.toString();
+                        const newUrl = window.location.pathname + (newQuery ? '?' + newQuery : '');
+                        window.history.replaceState({}, document.title, newUrl);
+                    } catch (e) {}
+                }
+
                 const loginForm = reactive({
                     username: '',
                     password: ''
@@ -805,6 +894,31 @@
                     return '';
                 };
 
+                const roleAllowedWorkstations = {
+                    'SUPER_ADMIN': ['admin/index.html', 'registrar/index.html', 'stations/tlc-helpdesk/index.html', 'stations/medical-checkup/index.html', 'stations/payment-processing/index.html', 'stations/it-center/index.html'],
+                    'ADMIN':       ['admin/index.html', 'registrar/index.html', 'stations/tlc-helpdesk/index.html', 'stations/medical-checkup/index.html', 'stations/payment-processing/index.html', 'stations/it-center/index.html'],
+                    'REGISTRAR':   ['registrar/index.html'],
+                    'HELPDESK':    ['stations/tlc-helpdesk/index.html'],
+                    'MEDICAL':     ['stations/medical-checkup/index.html'],
+                    'CASHIER':     ['stations/payment-processing/index.html'],
+                    'IT_CENTER':   ['stations/it-center/index.html']
+                };
+
+                const resolveTarget = (role, redirectParam) => {
+                    const defaultUrl = getRoleRedirectUrl(role);
+                    if (!redirectParam) return defaultUrl;
+                    let clean = decodeURIComponent(redirectParam).trim();
+                    clean = clean.replace(/^https?:\/\/[^\/]+/i, '');
+                    clean = clean.replace(/^\/?systemtest\//i, '');
+                    clean = clean.replace(/^\/+/, '');
+                    const cleanPath = clean.split('?')[0];
+                    const allowed = roleAllowedWorkstations[role] || [];
+                    if (allowed.some(p => cleanPath.toLowerCase().endsWith(p.toLowerCase()))) {
+                        return clean;
+                    }
+                    return defaultUrl;
+                };
+
                 const checkActiveSession = () => {
                     const urlParams = new URLSearchParams(window.location.search);
                     if (urlParams.has('clear') || urlParams.has('logout')) {
@@ -833,15 +947,12 @@
 
                     if (user && user.role) {
                         currentUser.value = user;
+                        const target = resolveTarget(user.role, urlParams.get('redirect'));
                         if (user.must_change_password) {
                             PasswordChangeGuard.checkAndPrompt(user, function() {
-                                const redirectParam = urlParams.get('redirect');
-                                const target = redirectParam ? decodeURIComponent(redirectParam) : getRoleRedirectUrl(user.role);
                                 if (target) window.location.replace(target);
                             });
                         } else {
-                            const redirectParam = urlParams.get('redirect');
-                            const target = redirectParam ? decodeURIComponent(redirectParam) : getRoleRedirectUrl(user.role);
                             if (target) {
                                 window.location.replace(target);
                             }
@@ -883,18 +994,18 @@
                                 must_change_password: !!result.data.must_change_password
                             };
 
-                            // Save to session & local storage corresponding to system role
+                            // Store session in sessionStorage only (tab-scoped) and clear any local storage
+                            localStorage.removeItem('gncp_admin_user');
+                            localStorage.removeItem('gncp_station_user');
+                            sessionStorage.setItem('gncp_was_logged_in', '1');
                             if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
                                 sessionStorage.setItem('gncp_admin_user', JSON.stringify(user));
-                                localStorage.setItem('gncp_admin_user', JSON.stringify(user));
                             } else {
                                 sessionStorage.setItem('gncp_station_user', JSON.stringify(user));
-                                localStorage.setItem('gncp_station_user', JSON.stringify(user));
                             }
 
                             const urlParams = new URLSearchParams(window.location.search);
-                            const redirectUrl = urlParams.get('redirect');
-                            const target = redirectUrl ? decodeURIComponent(redirectUrl) : (result.data.redirectUrl || getRoleRedirectUrl(user.role));
+                            const target = resolveTarget(user.role, urlParams.get('redirect'));
 
                             if (user.must_change_password) {
                                 PasswordChangeGuard.checkAndPrompt(user, function() {
@@ -929,6 +1040,7 @@
                 return {
                     loginForm,
                     loginError,
+                    sessionExpiredNotice,
                     errorKey,
                     isLoggingIn,
                     showPassword,

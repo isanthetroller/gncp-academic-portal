@@ -21,7 +21,21 @@
         },
         setup() {
             // ── Auth State ────────────────────────────────────────────────
-            const currentUser = ref(null);
+            const getStoredUser = () => {
+                try {
+                    const raw = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user');
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed && ['REGISTRAR', 'SUPER_ADMIN', 'ADMIN'].includes(parsed.role)) {
+                            return parsed;
+                        }
+                    }
+                } catch (e) {}
+                return null;
+            };
+
+            const currentUser = ref(getStoredUser());
+            const isCheckingSession = ref(!currentUser.value);
             const isLoggingIn = ref(false);
             const loginError = ref('');
             const loginForm = reactive({ username: '', password: '' });
@@ -150,62 +164,69 @@
 
             // ── Auth & Live Profile Handling ─────────────────────────────
             const checkSession = async () => {
-                const stored = sessionStorage.getItem('gncp_station_user') 
-                            || sessionStorage.getItem('gncp_admin_user')
-                            || localStorage.getItem('gncp_station_user')
-                            || localStorage.getItem('gncp_admin_user');
-                if (!stored) {
-                    currentUser.value = null;
-                    return;
-                }
+                localStorage.removeItem('gncp_station_user');
+                localStorage.removeItem('gncp_admin_user');
 
-                let user = null;
                 try {
-                    user = JSON.parse(stored);
-                } catch (e) {
-                    currentUser.value = null;
-                    return;
-                }
+                    const res = await fetch('../api/index.php?action=auth/check', { credentials: 'same-origin' });
+                    if (res.ok) {
+                        const result = await res.json();
+                        const allowedRoles = ['REGISTRAR', 'SUPER_ADMIN', 'ADMIN'];
+                        if (result.success && result.data && allowedRoles.includes(result.data.role)) {
+                            currentUser.value = result.data;
+                            isCheckingSession.value = false;
+                            const sessionKey = (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
+                            sessionStorage.setItem(sessionKey, JSON.stringify(result.data));
 
-                const allowedRoles = ['REGISTRAR', 'SUPER_ADMIN', 'ADMIN'];
-                if (!user || !user.role || !allowedRoles.includes(user.role)) {
-                    currentUser.value = null;
-                    return;
-                }
+                            // Sync live profile
+                            try {
+                                const profRes = await RegistrarApiService.fetchUserProfile(result.data.username);
+                                if (profRes && profRes.success && profRes.data) {
+                                    const updatedUser = {
+                                        ...result.data,
+                                        name: profRes.data.name || result.data.name,
+                                        email: profRes.data.email || result.data.email,
+                                        avatar: profRes.data.avatar || result.data.avatar
+                                    };
+                                    currentUser.value = updatedUser;
+                                    sessionStorage.setItem(sessionKey, JSON.stringify(updatedUser));
+                                }
+                            } catch (err) {
+                                console.warn('Profile sync warning:', err);
+                            }
 
-                currentUser.value = user;
-
-                // Sync live user profile from backend (Avatar, Name, Email)
-                try {
-                    const profRes = await RegistrarApiService.fetchUserProfile(user.username);
-                    if (profRes && profRes.success && profRes.data) {
-                        const updatedUser = {
-                            ...user,
-                            name: profRes.data.name || user.name,
-                            email: profRes.data.email || user.email,
-                            avatar: profRes.data.avatar || user.avatar
-                        };
-                        currentUser.value = updatedUser;
-                        const sessionKey = (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
-                        sessionStorage.setItem(sessionKey, JSON.stringify(updatedUser));
+                            // Password change guard check
+                            if (result.data.must_change_password && typeof global.PasswordChangeGuard !== 'undefined') {
+                                global.PasswordChangeGuard.checkAndPrompt(result.data, function () {
+                                    const updatedUser = { ...currentUser.value, must_change_password: false };
+                                    currentUser.value = updatedUser;
+                                    sessionStorage.setItem(sessionKey, JSON.stringify(updatedUser));
+                                    loadData();
+                                    startLiveSync();
+                                });
+                            } else {
+                                loadData();
+                                startLiveSync();
+                            }
+                            return;
+                        }
                     }
                 } catch (err) {
-                    console.warn('Profile sync warning:', err);
+                    console.warn('[Registrar] Live session check error:', err);
                 }
 
-                // Password change guard check
-                if (user.must_change_password && typeof global.PasswordChangeGuard !== 'undefined') {
-                    global.PasswordChangeGuard.checkAndPrompt(user, function () {
-                        const updatedUser = { ...currentUser.value, must_change_password: false };
-                        currentUser.value = updatedUser;
-                        const sessionKey = (updatedUser.role === 'SUPER_ADMIN' || updatedUser.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
-                        sessionStorage.setItem(sessionKey, JSON.stringify(updatedUser));
-                        loadData();
-                        startLiveSync();
+                isCheckingSession.value = false;
+                currentUser.value = null;
+                if (typeof global.SessionExpirationGuard !== 'undefined') {
+                    global.SessionExpirationGuard.handleExpiredSession({
+                        title: 'Session Expired',
+                        message: 'Your registrar workstation session has expired. Please sign in again to continue student evaluations.',
+                        reason: 'expired'
                     });
                 } else {
-                    loadData();
-                    startLiveSync();
+                    sessionStorage.removeItem('gncp_station_user');
+                    sessionStorage.removeItem('gncp_admin_user');
+                    window.location.href = '../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
                 }
             };
 
@@ -359,6 +380,18 @@
                 }
                 if (selectedApplication.value) {
                     selectedApplication.value.roadmap = ensureRoadmapNormalized(selectedApplication.value.roadmap, selectedApplication.value.status);
+                    if (!selectedApplication.value.requirements || selectedApplication.value.requirements.length === 0) {
+                        if (selectedApplication.value.requirementsData && selectedApplication.value.requirementsData.requirements) {
+                            selectedApplication.value.requirements = selectedApplication.value.requirementsData.requirements;
+                        } else {
+                            selectedApplication.value.requirements = [
+                                'Form 138 (Original Senior High School Report Card)',
+                                'Original Certificate of Good Moral Character (with dry seal)',
+                                'PSA Birth Certificate (Photocopy)',
+                                '2 pieces recent 2x2 color pictures (white background with name tag)'
+                            ];
+                        }
+                    }
                 }
                 requirementsError.value = '';
                 showRequirementsValidation.value = false;
@@ -1101,12 +1134,6 @@
                                 p.avatar = newFilename;
                                 sessionStorage.setItem('gncp_station_user', JSON.stringify(p));
                             }
-                            const rawLoc = localStorage.getItem('gncp_station_user');
-                            if (rawLoc) {
-                                const p = JSON.parse(rawLoc);
-                                p.avatar = newFilename;
-                                localStorage.setItem('gncp_station_user', JSON.stringify(p));
-                            }
                             Swal.fire('Success', 'Profile picture updated successfully.', 'success');
                         } else { Swal.fire('Upload Failed', data.message || 'Unable to update profile picture.', 'error'); }
                     } catch (err) { Swal.fire('Error', 'Unable to process image upload.', 'error'); }
@@ -1143,14 +1170,6 @@
                             p.avatar = avatarFilename;
                             sessionStorage.setItem('gncp_station_user', JSON.stringify(p));
                         }
-                        const rawLoc = localStorage.getItem('gncp_station_user');
-                        if (rawLoc) {
-                            const p = JSON.parse(rawLoc);
-                            p.name = user.value.name;
-                            p.email = user.value.email;
-                            p.avatar = avatarFilename;
-                            localStorage.setItem('gncp_station_user', JSON.stringify(p));
-                        }
                         Swal.fire('Success', 'Personal details updated successfully.', 'success');
                     } else { Swal.fire('Update Failed', data.message || 'Unable to update profile.', 'error'); }
                 } catch (e) { Swal.fire('Error', 'Server error while saving profile.', 'error'); }
@@ -1185,6 +1204,7 @@
 
             return {
                 currentUser,
+                isCheckingSession,
                 isLoggingIn,
                 loginError,
                 loginForm,
@@ -1239,6 +1259,7 @@
                 requirementsError,
                 showRequirementsValidation,
                 selectedApplication,
+                openApplicationModal,
                 selectedStudent,
                 openStudentModal,
                 availableSectionsForApplication,

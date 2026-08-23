@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="../../shared/libs/fonts/fonts.css">
     <link href="../../shared/libs/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../shared/libs/font-awesome/css/all.min.css">
-    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="./assets/css/style.css?v=20260822_v3">
     <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=20260822_swal">
     <link rel="stylesheet" href="../../shared/css/sidebar.css?v=10">
     <link rel="stylesheet" href="../../shared/libs/login.css">
@@ -40,7 +40,7 @@
              width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: #FFF; border: 2px solid #E5E8EC; color: #9CA3AF; z-index: 1; transition: all 0.2s ease; flex-shrink: 0;
          }
          .is-completed .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; }
-         .is-active .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; box-shadow: 0 0 0 4px rgba(0, 106, 78, 0.15); }
+         .is-active .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; box-shadow: none !important; }
          .vertical-step-content { display: flex; flex-direction: column; text-align: left; }
          .vertical-step-title { font-size: 0.78rem; font-weight: 700; margin: 0; color: var(--text-dark); line-height: 1.2; }
          .is-completed .vertical-step-title { color: var(--dark-green); }
@@ -60,7 +60,6 @@
                     {
                         title: 'Clinic Operations',
                         items: [
-                            { id: 'dashboard', label: 'Dashboard Overview', icon: 'fa-gauge' },
                             { id: 'queue', label: 'Student Queue', icon: 'fa-users-line', badge: pendingCount > 0 ? pendingCount : null },
                             { id: 'completed', label: 'Completed Clearances', icon: 'fa-user-check', badge: completedCount > 0 ? completedCount : null }
                         ]
@@ -77,7 +76,7 @@
             <div class="top-bar">
                 <div class="top-bar-left">
                     <span class="eyebrow">School Clinic</span>
-                    <h2>{{ currentView === 'dashboard' ? 'Medical Check-up Dashboard' : (currentView === 'completed' ? 'Completed Medical Clearances' : 'Student Clinic Queue') }}</h2>
+                    <h2>{{ currentView === 'completed' ? 'Completed Medical Clearances' : 'Student Clinic Queue' }}</h2>
                 </div>
                 <div class="top-bar-actions">
                     <input class="search-pill" type="text" v-model="searchQuery" placeholder="Search queue...">
@@ -159,44 +158,15 @@
                 </div>
             </div>
 
-            <!-- Dashboard specific header stuff (stats & context-bar) -->
-            <div v-if="currentView === 'dashboard'" class="view-section-header">
+            <div v-if="currentView === 'queue'" class="view-section">
+                <!-- Greeting Banner -->
                 <div class="greeting-banner mb-3 p-3 rounded text-white" style="background: linear-gradient(135deg, #00553e 0%, #003d2b 100%); border-left: 4px solid var(--gold, #d4af37);">
                     <h3 class="m-0 font-weight-bold" style="color: #ffffff; font-size: 1.15rem;">
                         Hello {{ currentUser ? (currentUser.name || currentUser.username) : 'Medical Staff' }}! {{ timeGreeting }}
                     </h3>
                     <p class="m-0 small text-white-50" style="font-size: 0.82rem; margin-top: 2px;">Welcome to Medical Check-up &amp; Clinic Clearance Workstation.</p>
                 </div>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-label">Total Pending Queue</div>
-                        <div class="stat-value">{{ pendingCount }}</div>
-                        <div class="stat-meta">Needs medical review</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Completed Clearances</div>
-                        <div class="stat-value" style="color: var(--primary-green);">{{ completedCount }}</div>
-                        <div class="stat-meta" style="color: var(--primary-green);">Examined &amp; cleared</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Date &amp; Time (PST)</div>
-                        <div class="stat-value" style="font-size: 1.05rem; line-height: 1.25; margin-top: 8px; font-weight: 700; color: var(--primary-green);">{{ currentDateTime }}</div>
-                        <div class="stat-meta" style="color: var(--primary-gold)">Philippine Standard Time</div>
-                    </div>
-                </div>
 
-                <div class="context-bar">
-                    <div class="context-bar-left">
-                        <h3>School Clinic Verification Summary</h3>
-                        <p>Monitor student physical fitness, NSTP readiness, and clinic clearance statuses.</p>
-                    </div>
-                    <div class="context-bar-right">
-                        <button class="btn-pill btn-pill-outline btn-pill-sm" @click="setView('queue')"><i class="fa-solid fa-users-line me-1"></i> Open Queue</button>
-                    </div>
-                </div>
-            </div>
-
-            <div v-else-if="currentView === 'queue'" class="view-section">
                 <!-- Quick-Stat Cards matching Registrar style -->
                 <div class="row g-3 mb-3">
                     <div class="col-6 col-md-4">
@@ -258,6 +228,7 @@
                         </span>
                         <div class="d-flex align-items-center gap-2">
                             <select class="form-select form-select-sm py-1" style="max-width:180px;font-size:0.8rem;border-radius:6px;" v-model="sortBy">
+                                <option value="arrivedAt">Arrival Time</option>
                                 <option value="referenceNumber">Reference ID</option>
                                 <option value="name">Applicant Name</option>
                                 <option value="program">Program Choice</option>
@@ -278,7 +249,7 @@
                     <div class="panel-header d-flex justify-content-between align-items-center">
                         <div>
                             <h3>Student Clinic Queue</h3>
-                            <p>Verify physical and NSTP/PE fitness statuses — click column headers to sort</p>
+                            <p>First-Come, First-Served physical and NSTP/PE fitness examination — click headers to sort</p>
                         </div>
                         <span class="badge rounded-pill fw-bold font-monospace px-3 py-2"
                               :class="filteredStudents.length > 0 ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'">
@@ -289,6 +260,7 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
+                                    <th style="width:110px;">Queue Ticket</th>
                                     <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
                                         Ref No. <i :class="getSortIcon('referenceNumber')"></i>
                                     </th>
@@ -301,11 +273,18 @@
                                     <th class="cursor-pointer select-none" @click="toggleSort('status')">
                                         Clearance Status <i :class="getSortIcon('status')"></i>
                                     </th>
-                                    <th>Action</th>
+                                    <th style="width:120px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="student in filteredStudents" :key="student.referenceNumber" @click="openReview(student)" style="cursor: pointer;">
+                                <tr v-for="student in filteredStudents" :key="student.referenceNumber">
+                                     <!-- Queue Ticket -->
+                                     <td>
+                                         <span class="queue-ticket-badge" :class="getQueueRank(student) === 1 ? 'ticket-next' : 'ticket-default'">
+                                             <span v-if="getQueueRank(student) === 1" class="ticket-indicator"></span>
+                                             {{ student.queueTicket || ('MED-' + student.id) }}
+                                         </span>
+                                     </td>
                                      <td><code>{{ student.referenceNumber }}</code></td>
                                      <td>
                                          <strong>{{ student.name }}</strong>
@@ -324,12 +303,14 @@
                                     </td>
                                     <td>
                                         <div class="action-buttons">
-                                            <button class="btn-pill btn-pill-green btn-pill-sm" @click="openReview(student)">{{ getMedicalStepStatus(student) === 'COMPLETED' ? 'View' : 'Review' }}</button>
+                                            <button class="btn-pill btn-pill-green btn-pill-sm w-100" @click="openReview(student)">
+                                                <i class="fa-solid fa-stethoscope me-1"></i>{{ getMedicalStepStatus(student) === 'COMPLETED' ? 'View' : 'Examine' }}
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
                                 <tr v-if="filteredStudents.length === 0">
-                                    <td colspan="5" class="empty-state py-5 text-center text-muted">
+                                    <td colspan="6" class="empty-state py-5 text-center text-muted">
                                         <i class="fa-solid fa-inbox fs-2 mb-2 d-block text-secondary"></i>
                                         <p class="mb-0">No students matching the criteria found in the clinic queue.</p>
                                     </td>
@@ -405,7 +386,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="student in completedStudents" :key="student.referenceNumber" @click="openReview(student)" style="cursor: pointer;">
+                                <tr v-for="student in completedStudents" :key="student.referenceNumber">
                                     <td><code>{{ student.referenceNumber }}</code></td>
                                     <td><strong>{{ student.name }}</strong></td>
                                     <td><span class="badge bg-secondary-subtle text-secondary">{{ student.program }}</span></td>
@@ -447,25 +428,46 @@
                     <div class="row g-4">
                         <!-- Column 1: Student Info + Medical Assessment Forms -->
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <div class="form-label text-muted small uppercase">Full Name</div>
-                                <div class="fw-bold text-dark fs-6">{{ selectedStudent.name }}</div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="form-label text-muted small uppercase">Reference Number</div>
-                                <div class="font-monospace text-secondary fw-semibold">{{ selectedStudent.referenceNumber }}</div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="form-label text-muted small uppercase">Program / Course</div>
-                                <div class="fw-bold text-dark">{{ selectedStudent.program }}</div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="form-label text-muted small uppercase">Student Type</div>
-                                <div class="badge bg-success-subtle text-success px-2 py-1 rounded">{{ selectedStudent.studentType }}</div>
+                            <!-- Patient Identity & Emergency Contact Card -->
+                            <div class="card border-0 shadow-sm rounded-3 p-3 mb-3" style="background:#f8fafc; border-left: 4px solid var(--primary-green) !important;">
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <div class="text-muted small fw-bold text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">Full Name</div>
+                                        <div class="fw-bold text-dark fs-6">{{ selectedStudent.name }}</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="text-muted small fw-bold text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">Reference Number</div>
+                                        <div class="font-monospace text-success fw-bold">{{ selectedStudent.referenceNumber }}</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="text-muted small fw-bold text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">Program &amp; Student Type</div>
+                                        <div class="fw-semibold text-dark small">
+                                            {{ selectedStudent.program }}
+                                            <span class="badge bg-success-subtle text-success ms-1">{{ selectedStudent.studentType }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="text-muted small fw-bold text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">Age / Gender / NSTP Track</div>
+                                        <div class="small fw-semibold text-dark">
+                                            <span v-if="selectedStudent.birthDate">{{ calculateAge(selectedStudent.birthDate) }} yrs • </span>
+                                            <span>{{ selectedStudent.gender || 'Not specified' }}</span>
+                                            <span class="badge bg-primary-subtle text-primary ms-1" v-if="selectedStudent.nstp">{{ selectedStudent.nstp }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mt-1 border-top pt-2" v-if="selectedStudent.emergencyContactName || selectedStudent.emergencyContactPhone">
+                                        <div class="text-muted small fw-bold text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">
+                                            <i class="fa-solid fa-phone text-danger me-1"></i>Emergency Contact
+                                        </div>
+                                        <div class="small text-dark fw-semibold">
+                                            {{ selectedStudent.emergencyContactName || 'N/A' }}
+                                            <span class="text-muted" v-if="selectedStudent.emergencyContactPhone"> — {{ selectedStudent.emergencyContactPhone }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Student-Declared Medical History -->
-                            <div class="medical-declared-card">
+                            <div class="medical-declared-card mb-3">
                                 <h6 class="mb-2" style="color: #92400E; font-weight: 700;"><i class="fa-solid fa-clipboard-list me-2"></i>Student-Declared Medical History</h6>
                                 <div class="row g-2 small">
                                     <div class="col-12">
@@ -497,55 +499,109 @@
                                             {{ selectedStudent.medicationDetails }}
                                         </div>
                                     </div>
+                                    <div class="col-12 mt-1 border-top pt-1" v-if="selectedStudent.fitnessParticipation !== undefined">
+                                        <strong>PE / Physical Drill:</strong>
+                                        <span class="badge bg-success-subtle text-success ms-1" v-if="selectedStudent.fitnessParticipation"><i class="fa-solid fa-person-running me-1"></i>Fit for Standard Drills</span>
+                                        <span class="badge bg-warning-subtle text-warning-emphasis ms-1" v-else><i class="fa-solid fa-triangle-exclamation me-1"></i>Has Declared Physical Limitations</span>
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Clinic Assessment Fields -->
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <label class="form-label fw-semibold text-uppercase small text-muted">Physical Exam</label>
-                                    <select class="form-select" v-model="selectedStudent.physicalExam" :disabled="isMedicalStepCompleted(selectedStudent)">
-                                        <option value="not-assessed">not-assessed</option>
-                                        <option value="fit">fit</option>
-                                        <option value="conditional">conditional</option>
-                                        <option value="unfit">unfit</option>
-                                    </select>
+                            <div class="card border border-light-subtle rounded-3 p-3" style="background:#ffffff;">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="fw-bold text-dark text-uppercase small" style="letter-spacing:.05em;">
+                                        <i class="fa-solid fa-stethoscope text-success me-1"></i>Clinical Evaluation
+                                    </span>
+                                    <span class="badge bg-danger-subtle text-danger" style="font-size:0.65rem;">* All Dropdowns Required</span>
                                 </div>
-                                <div class="col-6">
-                                    <label class="form-label fw-semibold text-uppercase small text-muted">Medical Interview</label>
-                                    <select class="form-select" v-model="selectedStudent.medicalInterview" :disabled="isMedicalStepCompleted(selectedStudent)">
-                                        <option value="not-assessed">not-assessed</option>
-                                        <option value="fit">fit</option>
-                                        <option value="conditional">conditional</option>
-                                        <option value="unfit">unfit</option>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label fw-semibold text-uppercase small text-muted">PE Fitness</label>
-                                    <select class="form-select" v-model="selectedStudent.peFitness" :disabled="isMedicalStepCompleted(selectedStudent)">
-                                        <option value="not-assessed">not-assessed</option>
-                                        <option value="fit">fit</option>
-                                        <option value="conditional">conditional</option>
-                                        <option value="unfit">unfit</option>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label fw-semibold text-uppercase small text-muted">NSTP Fitness</label>
-                                    <select class="form-select" v-model="selectedStudent.nstpFitness" :disabled="isMedicalStepCompleted(selectedStudent)">
-                                        <option value="not-assessed">not-assessed</option>
-                                        <option value="fit">fit</option>
-                                        <option value="conditional">conditional</option>
-                                        <option value="unfit">unfit</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 mt-1">
-                                    <label class="form-label fw-semibold text-uppercase small text-muted">Overall Medical Status</label>
-                                    <select class="form-select" v-model="selectedStudent.status" :disabled="isMedicalStepCompleted(selectedStudent)">
-                                        <option value="pending">pending</option>
-                                        <option value="fit">fit</option>
-                                        <option value="conditional">conditional</option>
-                                        <option value="unfit">unfit</option>
-                                    </select>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-uppercase small text-dark mb-1" style="font-size:0.72rem;">
+                                            Physical Exam <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select form-select-sm" 
+                                                :class="{ 'is-invalid': hasSubmitted && (selectedStudent.physicalExam === 'not-assessed' || !selectedStudent.physicalExam) }"
+                                                v-model="selectedStudent.physicalExam" 
+                                                :disabled="isMedicalStepCompleted(selectedStudent)">
+                                            <option value="not-assessed" disabled>-- Select Assessment --</option>
+                                            <option value="fit">fit</option>
+                                            <option value="conditional">conditional</option>
+                                            <option value="unfit">unfit</option>
+                                        </select>
+                                        <div class="invalid-feedback" style="font-size:0.68rem;" v-if="hasSubmitted && (selectedStudent.physicalExam === 'not-assessed' || !selectedStudent.physicalExam)">
+                                            Required field
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-uppercase small text-dark mb-1" style="font-size:0.72rem;">
+                                            Medical Interview <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select form-select-sm" 
+                                                :class="{ 'is-invalid': hasSubmitted && (selectedStudent.medicalInterview === 'not-assessed' || !selectedStudent.medicalInterview) }"
+                                                v-model="selectedStudent.medicalInterview" 
+                                                :disabled="isMedicalStepCompleted(selectedStudent)">
+                                            <option value="not-assessed" disabled>-- Select Assessment --</option>
+                                            <option value="fit">fit</option>
+                                            <option value="conditional">conditional</option>
+                                            <option value="unfit">unfit</option>
+                                        </select>
+                                        <div class="invalid-feedback" style="font-size:0.68rem;" v-if="hasSubmitted && (selectedStudent.medicalInterview === 'not-assessed' || !selectedStudent.medicalInterview)">
+                                            Required field
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-uppercase small text-dark mb-1" style="font-size:0.72rem;">
+                                            PE Fitness <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select form-select-sm" 
+                                                :class="{ 'is-invalid': hasSubmitted && (selectedStudent.peFitness === 'not-assessed' || !selectedStudent.peFitness) }"
+                                                v-model="selectedStudent.peFitness" 
+                                                :disabled="isMedicalStepCompleted(selectedStudent)">
+                                            <option value="not-assessed" disabled>-- Select Assessment --</option>
+                                            <option value="fit">fit</option>
+                                            <option value="conditional">conditional</option>
+                                            <option value="unfit">unfit</option>
+                                        </select>
+                                        <div class="invalid-feedback" style="font-size:0.68rem;" v-if="hasSubmitted && (selectedStudent.peFitness === 'not-assessed' || !selectedStudent.peFitness)">
+                                            Required field
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-uppercase small text-dark mb-1" style="font-size:0.72rem;">
+                                            NSTP Fitness <span class="text-danger">*</span>
+                                            <span class="text-muted fw-normal" style="font-size:0.68rem;" v-if="selectedStudent.nstp">({{ selectedStudent.nstp }})</span>
+                                        </label>
+                                        <select class="form-select form-select-sm" 
+                                                :class="{ 'is-invalid': hasSubmitted && (selectedStudent.nstpFitness === 'not-assessed' || !selectedStudent.nstpFitness) }"
+                                                v-model="selectedStudent.nstpFitness" 
+                                                :disabled="isMedicalStepCompleted(selectedStudent)">
+                                            <option value="not-assessed" disabled>-- Select Assessment --</option>
+                                            <option value="fit">fit</option>
+                                            <option value="conditional">conditional</option>
+                                            <option value="unfit">unfit</option>
+                                        </select>
+                                        <div class="invalid-feedback" style="font-size:0.68rem;" v-if="hasSubmitted && (selectedStudent.nstpFitness === 'not-assessed' || !selectedStudent.nstpFitness)">
+                                            Required field
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mt-1">
+                                        <label class="form-label fw-bold text-uppercase small text-dark mb-1" style="font-size:0.72rem;">
+                                            Overall Medical Status <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select form-select-sm" 
+                                                :class="{ 'is-invalid': hasSubmitted && (selectedStudent.status === 'pending' || !selectedStudent.status) }"
+                                                v-model="selectedStudent.status" 
+                                                :disabled="isMedicalStepCompleted(selectedStudent)">
+                                            <option value="pending" disabled>-- Select Overall Clearance Status --</option>
+                                            <option value="fit">fit (Cleared for Enrollment)</option>
+                                            <option value="conditional">conditional (Cleared with Restrictions)</option>
+                                            <option value="unfit">unfit (Flagged / Requires Follow-up)</option>
+                                        </select>
+                                        <div class="invalid-feedback" style="font-size:0.68rem;" v-if="hasSubmitted && (selectedStudent.status === 'pending' || !selectedStudent.status)">
+                                            Overall clearance status is required before saving.
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -616,8 +672,11 @@
 
     <script src="../../shared/libs/bootstrap.bundle.min.js"></script>
     <script src="../../shared/libs/vue.global.js"></script>
+    <script src="../../shared/libs/sweetalert2.all.min.js"></script>
+    <script src="../../shared/js/SessionExpirationGuard.js?v=20260823"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js?v=20260823"></script>
     <script src="../../shared/js/components/EmployeeSidebar.js?v=10"></script>
     <script src="../assets/js/DataBus.js?v=2.3"></script>
-    <script src="./assets/js/app.js?v=20260822_swal"></script>
+    <script src="./assets/js/app.js?v=20260822_v4"></script>
 </body>
 </html>

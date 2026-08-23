@@ -211,7 +211,8 @@
                 nextPendingStep,
                 getStudentTypeLabel,
                 formatDate,
-                copyToClipboard
+                copyToClipboard,
+                currentUrl: window.location.href
             };
         }
     }).mount('#tracker-app');

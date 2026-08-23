@@ -53,19 +53,21 @@ register_shutdown_function(function() {
 function sendResponse($success, $data = null, $error = null, $statusCode = 200) {
     // CORS headers - dynamically reflect request origin if present
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-    header("Access-Control-Allow-Origin: {$origin}");
-    header('Access-Control-Allow-Credentials: true');
-    header('Access-Control-Allow-Headers: Content-Type, X-Request-ID');
-    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+    if (!headers_sent()) {
+        header("Access-Control-Allow-Origin: {$origin}");
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Headers: Content-Type, X-Request-ID');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        http_response_code($statusCode);
+    }
     
     if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
         exit(0);
     }
-    
-    http_response_code($statusCode);
     echo json_encode([
         'success'   => (bool)$success,
         'data'      => $data,
+        'message'   => $error !== null ? (string)$error : null,
         'error'     => $error !== null ? (string)$error : null,
         'timestamp' => date('c')
     ]);

@@ -21,6 +21,9 @@ tags:
 * **`RULE-007`**: Returning students already active in the current term cannot submit duplicate re-enrollment applications.
 * **`RULE-008`**: Student password reset OTP codes expire in 30 minutes.
 * **`RULE-009`**: All API operations must propagate `X-Request-ID` correlation headers.
+* **`RULE-010`**: PayMongo online transactions require valid reference ID matching and status validation before issuing Official Receipts (OR).
+* **`RULE-011`**: Students admitted under conditional undertaking waivers must fulfill official documents by the pledged date. Failure flags the student portfolio with an action requirement badge.
+* **`RULE-012`**: All soft copy document uploads must be sanitized, restricted to supported MIME types (PDF, PNG, JPG, WEBP, DOCX), capped at 10MB, and stored securely under `uploads/documents/`.
 
 ## Related Notes
 * [[Student_Workflow|Student Workflow State Machine]]

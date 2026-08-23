@@ -361,7 +361,7 @@
         data() {
             return {
                 sortBy: 'dateSubmitted',
-                sortDesc: true,
+                sortDesc: false, // FIFO: Earliest submissions served first (First In, First Out)
                 filterStatus: 'ALL',
                 filterProgram: 'ALL',
                 filterAdmType: 'ALL',
@@ -377,12 +377,17 @@
                     this.sortDesc = !this.sortDesc;
                 } else {
                     this.sortBy = field;
-                    this.sortDesc = field === 'dateSubmitted';
+                    this.sortDesc = false;
                 }
             },
             getSortIcon(field) {
                 if (this.sortBy !== field) return 'fa-solid fa-sort text-muted ms-1';
                 return this.sortDesc ? 'fa-solid fa-sort-down text-success ms-1' : 'fa-solid fa-sort-up text-success ms-1';
+            },
+            getQueueRank(app) {
+                const pendingList = this.filteredApplications.filter(a => a.status === 'PRE_REGISTERED');
+                const idx = pendingList.findIndex(a => a.referenceNumber === app.referenceNumber);
+                return idx >= 0 ? idx + 1 : null;
             },
             getSectionsForProgram(programCode, yearLevel, semester) {
                 if (!this.sections || this.sections.length === 0) return [];
@@ -484,7 +489,8 @@
                     list = list.filter(a =>
                         (a.referenceNumber && a.referenceNumber.toLowerCase().includes(query)) ||
                         (a.applicantName && a.applicantName.toLowerCase().includes(query)) ||
-                        (a.program && a.program.toLowerCase().includes(query))
+                        (a.program && a.program.toLowerCase().includes(query)) ||
+                        (a.queueTicket && a.queueTicket.toLowerCase().includes(query))
                     );
                 }
                 if (this.filterStatus !== 'ALL') list = list.filter(a => a.status === this.filterStatus);
@@ -504,9 +510,9 @@
                 return [...list].sort((a, b) => {
                     let vA = a[this.sortBy] || '';
                     let vB = b[this.sortBy] || '';
-                    if (this.sortBy === 'dateSubmitted') {
-                        vA = vA ? new Date(vA).getTime() : 0;
-                        vB = vB ? new Date(vB).getTime() : 0;
+                    if (this.sortBy === 'dateSubmitted' || this.sortBy === 'createdAt') {
+                        vA = vA ? new Date(vA).getTime() : (a.id || 0);
+                        vB = vB ? new Date(vB).getTime() : (b.id || 0);
                         return this.sortDesc ? vB - vA : vA - vB;
                     }
                     vA = String(vA).toLowerCase();
@@ -515,6 +521,9 @@
                     if (vA > vB) return this.sortDesc ? -1 : 1;
                     return 0;
                 });
+            },
+            nextInQueue() {
+                return this.filteredApplications.find(a => a.status === 'PRE_REGISTERED') || this.filteredApplications[0] || null;
             }
         },
 
@@ -531,139 +540,62 @@
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #3b82f6!important;">
-                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">In Progress</div>
-                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#3b82f6;line-height:1.1;">{{ inProgressCount }}</div>
-                            <div style="font-size:0.7rem;color:#9ca3af;">at campus stations</div>
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #10b981!important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Verified / Cleared</div>
+                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#059669;line-height:1.1;">{{ inProgressCount + approvedCount }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">passed registrar</div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #22c55e!important;">
-                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Approved</div>
-                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#16a34a;line-height:1.1;">{{ approvedCount }}</div>
-                            <div style="font-size:0.7rem;color:#9ca3af;">registrar-cleared</div>
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #3b82f6!important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Total in Queue</div>
+                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#2563eb;line-height:1.1;">{{ activeApplications.length }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">active applicants</div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #ef4444!important;">
                             <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Rejected</div>
                             <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#dc2626;line-height:1.1;">{{ rejectedCount }}</div>
-                            <div style="font-size:0.7rem;color:#9ca3af;">incomplete documents</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">disapproved</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ── Filters Toolbar ──────────────────────────────────────────── -->
-                <div class="card border border-light-subtle rounded-3 shadow-sm mb-3 p-3" style="background:#fafafa;">
-
-                    <!-- Status pills row -->
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                        <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
-                            <i class="fa-solid fa-layer-group text-success me-1"></i>Status:
-                        </span>
-                        <button class="btn-pill btn-pill-sm py-1"
-                                :class="filterStatus === 'ALL' ? 'btn-pill-green' : 'btn-pill-outline'"
-                                @click="filterStatus = 'ALL'">
-                            All <span class="ms-1 badge rounded-pill" style="background:rgba(0,0,0,0.07);color:#555;font-size:0.65rem;">{{ activeApplications.length }}</span>
-                        </button>
-                        <button v-for="s in ['PRE_REGISTERED','APPROVED','IN_PROGRESS','REJECTED','CANCELLED']" :key="s"
-                                class="btn-pill btn-pill-sm py-1"
-                                :class="filterStatus === s ? 'btn-pill-green' : 'btn-pill-outline'"
-                                @click="filterStatus = s">
-                            {{ s.replace(/_/g,' ') }}
-                            <span v-if="countByStatus[s]" class="ms-1 badge rounded-pill" style="background:rgba(0,0,0,0.07);color:#555;font-size:0.65rem;">{{ countByStatus[s] }}</span>
-                        </button>
-                    </div>
-
-                    <!-- Program + Type + Date row -->
-                    <div class="d-flex flex-wrap align-items-start gap-3">
-                        <!-- Program filter -->
-                        <div class="d-flex flex-wrap align-items-center gap-1" v-if="uniquePrograms.length > 0">
-                            <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
-                                <i class="fa-solid fa-graduation-cap text-success me-1"></i>Program:
-                            </span>
-                            <button class="btn-pill btn-pill-sm py-1"
-                                    :class="filterProgram === 'ALL' ? 'btn-pill-green' : 'btn-pill-outline'"
-                                    @click="filterProgram = 'ALL'">All</button>
-                            <button v-for="p in uniquePrograms" :key="p"
-                                    class="btn-pill btn-pill-sm py-1"
-                                    :class="filterProgram === p ? 'btn-pill-green' : 'btn-pill-outline'"
-                                    @click="filterProgram = p">{{ p }}</button>
+                <!-- ── Filter & Search Toolbar ────────────────────────────────────── -->
+                <div class="card border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <button v-for="st in ['ALL', 'PRE_REGISTERED', 'VERIFIED', 'APPROVED', 'REJECTED']"
+                                    :key="st"
+                                    class="btn-pill btn-pill-sm py-1 font-monospace"
+                                    :class="filterStatus === st ? 'btn-pill-green' : 'btn-pill-outline'"
+                                    @click="filterStatus = st">
+                                {{ st === 'ALL' ? 'All Status' : (st === 'PRE_REGISTERED' ? 'Pending' : st) }}
+                            </button>
                         </div>
-
-                        <!-- Admission type filter -->
-                        <div class="d-flex flex-wrap align-items-center gap-1" v-if="uniqueAdmTypes.length > 1">
-                            <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
-                                <i class="fa-solid fa-user-tag text-success me-1"></i>Type:
-                            </span>
-                            <button class="btn-pill btn-pill-sm py-1"
-                                    :class="filterAdmType === 'ALL' ? 'btn-pill-green' : 'btn-pill-outline'"
-                                    @click="filterAdmType = 'ALL'">All</button>
-                            <button v-for="t in uniqueAdmTypes" :key="t"
-                                    class="btn-pill btn-pill-sm py-1"
-                                    :class="filterAdmType === t ? 'btn-pill-green' : 'btn-pill-outline'"
-                                    @click="filterAdmType = t">{{ t }}</button>
-                        </div>
-
-                        <!-- Right side: date range + clear -->
-                        <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
-                            <button class="btn-pill btn-pill-sm py-1"
-                                    :class="showDateRange ? 'btn-pill-green' : 'btn-pill-outline'"
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn-pill btn-pill-outline btn-pill-sm py-1"
                                     @click="showDateRange = !showDateRange">
                                 <i class="fa-solid fa-calendar-days me-1"></i>Date Range
-                                <span v-if="filterDateFrom || filterDateTo" style="display:inline-block;width:6px;height:6px;background:#22c55e;border-radius:50%;margin-left:4px;vertical-align:middle;"></span>
                             </button>
                             <button v-if="activeFilterCount > 0"
-                                    class="btn-pill btn-pill-sm btn-pill-danger py-1"
+                                    class="btn-pill btn-pill-danger btn-pill-sm py-1"
                                     @click="clearFilters">
-                                <i class="fa-solid fa-xmark me-1"></i>Clear ({{ activeFilterCount }})
+                                <i class="fa-solid fa-xmark me-1"></i>Reset Filters ({{ activeFilterCount }})
                             </button>
                         </div>
                     </div>
 
-                    <!-- Sort Controls -->
-                    <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-3 border-top border-light-subtle">
-                        <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
-                            <i class="fa-solid fa-arrow-down-a-z text-success me-1"></i>Sort By:
-                        </span>
-                        <div class="d-flex align-items-center gap-2">
-                            <select class="form-select form-select-sm py-1" style="max-width:180px;font-size:0.8rem;border-radius:6px;" v-model="sortBy">
-                                <option value="dateSubmitted">Date Submitted</option>
-                                <option value="referenceNumber">Reference ID</option>
-                                <option value="applicantName">Applicant Name</option>
-                                <option value="program">Program Choice</option>
-                                <option value="studentType">Admission Type</option>
-                                <option value="status">Status</option>
-                            </select>
-                            <button class="btn-pill btn-pill-sm py-1 px-2.5"
-                                    :class="sortDesc ? 'btn-pill-green' : 'btn-pill-outline'"
-                                    @click="sortDesc = !sortDesc"
-                                    title="Toggle Sort Order"
-                                    style="height:32px;">
-                                <i :class="sortDesc ? 'fa-solid fa-sort-down' : 'fa-solid fa-sort-up'"></i>
-                                {{ sortDesc ? 'Descending' : 'Ascending' }}
-                            </button>
+                    <div v-if="showDateRange" class="row g-2 mt-2 pt-2 border-top">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small text-muted mb-1">From Date</label>
+                            <input type="date" class="form-control form-control-sm" v-model="filterDateFrom">
                         </div>
-                    </div>
-
-                    <!-- Date range inputs -->
-                    <div v-if="showDateRange" class="mt-3 pt-3 border-top border-light-subtle d-flex align-items-end gap-3 flex-wrap">
-                        <span class="fw-bold text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;">
-                            <i class="fa-solid fa-calendar-range text-success me-1"></i>Submitted between:
-                        </span>
-                        <div>
-                            <div style="font-size:0.7rem;color:#9ca3af;margin-bottom:3px;">From</div>
-                            <input type="date" class="form-control form-control-sm" style="max-width:155px;font-size:0.82rem;" v-model="filterDateFrom">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small text-muted mb-1">To Date</label>
+                            <input type="date" class="form-control form-control-sm" v-model="filterDateTo">
                         </div>
-                        <div>
-                            <div style="font-size:0.7rem;color:#9ca3af;margin-bottom:3px;">To</div>
-                            <input type="date" class="form-control form-control-sm" style="max-width:155px;font-size:0.82rem;" v-model="filterDateTo">
-                        </div>
-                        <button v-if="filterDateFrom || filterDateTo"
-                                class="btn-pill btn-pill-outline btn-pill-sm py-1"
-                                @click="filterDateFrom = ''; filterDateTo = ''">
-                            <i class="fa-solid fa-xmark me-1"></i>Clear
-                        </button>
                     </div>
                 </div>
 
@@ -671,12 +603,12 @@
                 <div class="panel">
                     <div class="panel-header d-flex justify-content-between align-items-center">
                         <div>
-                            <h3>Pending Applications</h3>
-                            <p>Review and verify pre-registered student applications — click column headers to sort</p>
+                            <h3>Registrar Review Queue</h3>
+                            <p>First-Come, First-Served application review and document audit — click headers to re-sort</p>
                         </div>
                         <span class="badge rounded-pill fw-bold font-monospace px-3 py-2"
                               :class="filteredApplications.length > 0 ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'">
-                            {{ filteredApplications.length }} / {{ activeApplications.length }}
+                            {{ filteredApplications.length }} / {{ activeApplications.length }} Records
                         </span>
                     </div>
 
@@ -684,6 +616,7 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
+                                    <th style="width:110px;">Queue Ticket</th>
                                     <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')" style="white-space:nowrap;">
                                         Reference ID <i :class="getSortIcon('referenceNumber')"></i>
                                     </th>
@@ -697,17 +630,23 @@
                                         Type <i :class="getSortIcon('studentType')"></i>
                                     </th>
                                     <th class="cursor-pointer select-none" @click="toggleSort('dateSubmitted')" style="white-space:nowrap;">
-                                        Date Submitted <i :class="getSortIcon('dateSubmitted')"></i>
+                                        Arrival / Date <i :class="getSortIcon('dateSubmitted')"></i>
                                     </th>
-                                    <th>Block Section</th>
                                     <th class="cursor-pointer select-none" @click="toggleSort('status')" style="white-space:nowrap;">
                                         Status <i :class="getSortIcon('status')"></i>
                                     </th>
-                                    <th>Actions</th>
+                                    <th style="width:120px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-for="app in filteredApplications" :key="app.referenceNumber">
+                                    <!-- Queue Ticket -->
+                                    <td>
+                                        <span class="queue-ticket-badge" :class="getQueueRank(app) === 1 ? 'ticket-next' : 'ticket-default'">
+                                            <span v-if="getQueueRank(app) === 1" class="ticket-indicator"></span>
+                                            {{ app.queueTicket || ('REG-' + (app.id || '001')) }}
+                                        </span>
+                                    </td>
                                     <!-- Reference -->
                                     <td>
                                         <strong class="font-monospace text-success" style="font-size:0.82rem;">{{ app.referenceNumber }}</strong>
@@ -738,13 +677,6 @@
                                         <div style="font-size:0.82rem;font-weight:500;">{{ fmtDate(app.dateSubmitted) }}</div>
                                         <div style="font-size:0.7rem;color:#9ca3af;">{{ fmtTime(app.dateSubmitted) }}</div>
                                     </td>
-                                    <!-- Block section -->
-                                     <td>
-                                         <span v-if="app.sectionCode" class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 font-monospace px-2.5 py-1" style="font-size:0.75rem;">
-                                             <i class="fa-solid fa-layer-group me-1"></i>{{ app.sectionCode }}
-                                         </span>
-                                         <span v-else class="text-muted small fst-italic">Unassigned</span>
-                                     </td>
                                     <!-- Status + section badge stacked -->
                                     <td>
                                         <span class="status-badge d-block mb-1" :class="statusClass(app.status)">{{ app.status }}</span>

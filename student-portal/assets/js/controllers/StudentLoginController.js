@@ -20,14 +20,15 @@ window.StudentLoginController = {
             password: ''
         });
 
-        // Saved Credentials Storage Handler
+        // Saved Credentials Storage Handler (Sanitized: Stores Student ID ONLY — never plaintext passwords)
         const loadSavedCredentials = () => {
             try {
-                const saved = localStorage.getItem('gncp_saved_student_credentials');
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    if (parsed.studentId) loginForm.studentId = parsed.studentId;
-                    if (parsed.password) loginForm.password = parsed.password;
+                // Purge any legacy unencrypted password storage
+                localStorage.removeItem('gncp_saved_student_credentials');
+
+                const savedId = localStorage.getItem('gncp_saved_student_id');
+                if (savedId) {
+                    loginForm.studentId = savedId;
                     hasSavedCredentials.value = true;
                     rememberMe.value = true;
                 }
@@ -39,6 +40,7 @@ window.StudentLoginController = {
         const clearSavedCredentials = () => {
             loginForm.studentId = '';
             loginForm.password = '';
+            localStorage.removeItem('gncp_saved_student_id');
             localStorage.removeItem('gncp_saved_student_credentials');
             hasSavedCredentials.value = false;
         };
@@ -59,17 +61,17 @@ window.StudentLoginController = {
                 }
             }
 
-            const stored = sessionStorage.getItem('gncp_portal_student') || localStorage.getItem('gncp_portal_student');
+            localStorage.removeItem('gncp_portal_student');
+            const stored = sessionStorage.getItem('gncp_portal_student');
             if (stored) {
                 try {
                     const student = JSON.parse(stored);
                     if (student && (student.id || student.studentId)) {
-                        console.log('[StudentLogin::Auth] Active session found. Redirecting to index.html...');
+                        console.log('[StudentLogin::Auth] Active session found in tab. Redirecting to index.html...');
                         window.location.href = 'index.html';
                     }
                 } catch (e) {
                     sessionStorage.removeItem('gncp_portal_student');
-                    localStorage.removeItem('gncp_portal_student');
                 }
             }
         };
@@ -93,13 +95,10 @@ window.StudentLoginController = {
                 sessionStorage.setItem('gncp_portal_student', JSON.stringify(res.data));
 
                 if (rememberMe.value) {
-                    localStorage.setItem('gncp_saved_student_credentials', JSON.stringify({
-                        studentId: loginForm.studentId,
-                        password: loginForm.password
-                    }));
+                    localStorage.setItem('gncp_saved_student_id', loginForm.studentId);
                     hasSavedCredentials.value = true;
                 } else {
-                    localStorage.removeItem('gncp_saved_student_credentials');
+                    localStorage.removeItem('gncp_saved_student_id');
                     hasSavedCredentials.value = false;
                 }
 
@@ -109,9 +108,12 @@ window.StudentLoginController = {
             }
         };
 
+        // Initialize state synchronously to avoid visual pop-in
+        checkActiveSession();
+        loadSavedCredentials();
+
         onMounted(() => {
-            checkActiveSession();
-            loadSavedCredentials();
+            // Keep onMounted clean
         });
 
         return {

@@ -6,11 +6,11 @@
 
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/utils/response.php';
+require_once __DIR__ . '/utils/rate_limit.php';
 
 if (($_GET['action'] ?? '') === 'logout') {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    require_once __DIR__ . '/utils/session_guard.php';
+    initSession();
     $_SESSION = [];
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();
@@ -44,6 +44,9 @@ if (!$username || !$password) {
     sendResponse(false, null, 'Username and password are required.', 400);
 }
 
+// Enforce brute-force rate limit on login attempts (10 failed requests per 5 minutes)
+checkLoginRateLimit('employee_login', $username, 10, 300);
+
 try {
     $pdo = Database::getInstance();
 
@@ -53,48 +56,30 @@ try {
     $user = $stmt->fetch();
 
     if (!$user) {
+        recordLoginFailure('employee_login', $username, 10, 300);
         sendResponse(false, null, 'Invalid username or password.', 401);
     }
 
-    // Password verification — bcrypt with bootstrap fallback
+    // Password verification — bcrypt
     $isValidPassword = password_verify($password, $user['password']);
 
-    // Bootstrap fallback for default accounts (admin, kriz, tristan, ethan, cashier, it_officer)
-    if (!$isValidPassword) {
-        $allowedFallbacks = [
-            'admin'      => ['admin12345', 'admin123', 'admin'],
-            'kriz'       => ['kriz123', 'password123'],
-            'tristan'    => ['tristan123', 'password123'],
-            'ethan'      => ['ethan123', 'password123'],
-            'cashier'    => ['cashier123', 'password123'],
-            'it_officer' => ['itpassword', 'password123'],
-        ];
-
-        $canonicalUser = strtolower(trim($user['username']));
-        if (isset($allowedFallbacks[$canonicalUser]) && in_array($password, $allowedFallbacks[$canonicalUser], true)) {
-            $isValidPassword = true;
-            // Auto-rehash to bcrypt in DB so subsequent logins use standard bcrypt
-            try {
-                $newHash = password_hash($password, PASSWORD_DEFAULT);
-                $updateStmt = $pdo->prepare("UPDATE `station_users` SET `password` = :p WHERE `id` = :id");
-                $updateStmt->execute(['p' => $newHash, 'id' => $user['id']]);
-            } catch (Exception $e) {
-                // Non-blocking rehash error
-            }
-        } elseif (!empty($user['password']) && substr($user['password'], 0, 4) !== '$2y$' && $password === $user['password']) {
-            // Legacy plaintext fallback
-            $isValidPassword = true;
-            try {
-                $newHash = password_hash($password, PASSWORD_DEFAULT);
-                $updateStmt = $pdo->prepare("UPDATE `station_users` SET `password` = :p WHERE `id` = :id");
-                $updateStmt->execute(['p' => $newHash, 'id' => $user['id']]);
-            } catch (Exception $e) {}
-        }
+    // One-time legacy migration for unhashed passwords
+    if (!$isValidPassword && !empty($user['password']) && substr($user['password'], 0, 4) !== '$2y$' && $password === $user['password']) {
+        $isValidPassword = true;
+        try {
+            $newHash = password_hash($password, PASSWORD_DEFAULT);
+            $updateStmt = $pdo->prepare("UPDATE `station_users` SET `password` = :p WHERE `id` = :id");
+            $updateStmt->execute(['p' => $newHash, 'id' => $user['id']]);
+        } catch (Exception $e) {}
     }
 
     if (!$isValidPassword) {
+        recordLoginFailure('employee_login', $username, 10, 300);
         sendResponse(false, null, 'Invalid username or password.', 401);
     }
+
+    // Clear failed attempts counter on successful credential match
+    clearLoginFailures('employee_login', $username);
 
     // Check account status with case-insensitive normalization
     $userStatus = strtoupper(trim($user['status'] ?? 'ACTIVE')) ?: 'ACTIVE';
@@ -130,10 +115,24 @@ try {
             sendResponse(false, null, 'Unknown employee role: ' . $role, 403);
     }
 
-    // Initialize session and store credentials for printable verification pages
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+    // ── Single-Active Session Token Generation ──
+    $activeSessionToken = bin2hex(random_bytes(32));
+    $clientIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $clientIp = trim(explode(',', $clientIp)[0]);
+
+    // Update database with latest session token, timestamp, and IP
+    try {
+        $tokenStmt = $pdo->prepare("UPDATE `station_users` SET `active_session_token` = :token, `last_login_at` = NOW(), `last_login_ip` = :ip WHERE `id` = :id");
+        $tokenStmt->execute(['token' => $activeSessionToken, 'ip' => $clientIp, 'id' => $user['id']]);
+    } catch (Exception $e) {
+        error_log('[Login::SessionTokenUpdate] Failed: ' . $e->getMessage());
     }
+
+    // Initialize hardened session and regenerate ID (Session Fixation Prevention)
+    require_once __DIR__ . '/utils/session_guard.php';
+    initSession();
+    session_regenerate_id(true);
+
     $_SESSION = [];
     $mustChangePassword = (bool)($user['must_change_password'] ?? false);
     $userAvatar = $user['avatar'] ?? $user['photo'] ?? null;
@@ -143,8 +142,11 @@ try {
         'email'                => $user['email'] ?? '',
         'role'                 => $role,
         'avatar'               => $userAvatar,
+        'session_token'        => $activeSessionToken,
         'must_change_password' => $mustChangePassword
     ];
+
+    $_SESSION['last_activity'] = time();
 
     if ($role === 'SUPER_ADMIN' || $role === 'ADMIN') {
         $_SESSION['gncp_admin_user'] = $sessionUser;

@@ -76,7 +76,30 @@ class StationDataBus {
                 headers['If-None-Match'] = this._lastEtag;
             }
 
-            const response = await fetch(this.getApiUrl('stations/queue'), { headers });
+            const response = await fetch(this.getApiUrl('stations/queue'), { headers, credentials: 'same-origin' });
+
+            if (response.status === 401) {
+                // Session expired or superseded by another login
+                StationDataBus.stopPolling();
+                const result = await response.json().catch(() => ({}));
+                console.warn('[DataBus] 401 Session Terminated:', result.message || 'Unauthorized');
+                if (typeof window.SessionExpirationGuard !== 'undefined') {
+                    window.SessionExpirationGuard.handleExpiredSession({
+                        title: 'Session Expired',
+                        message: result.message || 'Your workstation session has expired. Please sign in again to continue.',
+                        reason: 'expired',
+                        forceAlert: true
+                    });
+                } else {
+                    const isStation = window.location.pathname.includes('/stations/');
+                    const isRegistrar = window.location.pathname.includes('/registrar/');
+                    const redirectTarget = (isStation ? '../../index.html' : (isRegistrar ? '../index.html' : 'index.html')) + '?session_expired=1';
+                    if (!window.location.href.includes('session_expired=1') && !window.location.pathname.endsWith('index.html')) {
+                        window.location.href = redirectTarget;
+                    }
+                }
+                return;
+            }
 
             if (response.status === 304) {
                 // Queue has not changed — skip JSON decoding and localStorage write
@@ -143,6 +166,7 @@ class StationDataBus {
             const response = await fetch(this.getApiUrl('stations/update'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     referenceNumber: refNo,
                     updateData: updateData

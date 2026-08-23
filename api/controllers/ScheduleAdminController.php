@@ -3,6 +3,7 @@
  * Schedule Admin Controller — Handles section scheduling and academic period terms management
  */
 require_once __DIR__ . '/../models/SectionModel.php';
+require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
 
 class ScheduleAdminController {
     private $sectionModel;
@@ -20,6 +21,7 @@ class ScheduleAdminController {
     }
 
     public function saveSection(array $payload): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
         $sec = isset($payload['section']) ? $payload['section'] : $payload;
         $code = strtoupper(trim($sec['code'] ?? ''));
         $prog = trim($sec['program'] ?? '');
@@ -36,6 +38,7 @@ class ScheduleAdminController {
     }
 
     public function saveTerm(array $payload): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
         $term = $payload['term'] ?? [];
         $name = trim($term['name'] ?? '');
         $ay = trim($term['academicYear'] ?? '');

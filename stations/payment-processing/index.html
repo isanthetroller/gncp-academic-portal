@@ -8,8 +8,8 @@
     <link href="../../shared/libs/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../shared/libs/font-awesome/css/all.min.css">
     <link rel="stylesheet" href="../../shared/libs/fonts/fonts.css">
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=20260822_swal">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260823_v4">
+    <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=20260823_swal">
     <link rel="stylesheet" href="../../shared/css/sidebar.css?v=10">
     <link rel="stylesheet" href="../../shared/libs/login.css">
     <script src="../../shared/libs/sweetalert2.all.min.js"></script>
@@ -45,7 +45,7 @@
              width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: #FFF; border: 2px solid #E5E8EC; color: #9CA3AF; z-index: 1; transition: all 0.2s ease;
          }
          .is-completed .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; }
-         .is-active .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; box-shadow: 0 0 0 4px rgba(0, 106, 78, 0.15); }
+         .is-active .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; box-shadow: none !important; }
          .vertical-step-content { display: flex; flex-direction: column; text-align: left; }
          .vertical-step-title { font-size: 0.78rem; font-weight: 700; margin: 0; color: var(--text-dark); line-height: 1.2; }
          .is-completed .vertical-step-title { color: var(--dark-green); }
@@ -53,6 +53,31 @@
          .vertical-step-status { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #9CA3AF; margin-top: 1px; }
          .is-completed .vertical-step-status { color: var(--primary-green); }
          .is-active .vertical-step-status { color: var(--primary-green); }
+
+         /* -- Direct Payment Plan Component Architecture (Clean Flat Design, Zero Glow) -- */
+         .payment-plan-grid { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; width: 100% !important; }
+         @media (max-width: 576px) { .payment-plan-grid { grid-template-columns: 1fr !important; } }
+         .plan-card { position: relative !important; border: 2px solid #E2E8F0 !important; border-radius: 12px !important; background: #FFFFFF !important; padding: 12px 14px !important; cursor: pointer !important; transition: border-color 0.2s ease, background-color 0.2s ease !important; display: flex !important; flex-direction: column !important; justify-content: space-between !important; min-height: 96px !important; user-select: none !important; box-shadow: none !important; }
+         .plan-card:hover { border-color: #006A4E !important; transform: none !important; box-shadow: none !important; }
+         .plan-card.is-selected { border-color: #006A4E !important; background: #F0FDF4 !important; box-shadow: none !important; }
+         .plan-card .plan-radio-indicator { width: 18px !important; height: 18px !important; border-radius: 50% !important; border: 2px solid #CBD5E1 !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s ease !important; flex-shrink: 0 !important; background: #FFFFFF !important; box-shadow: none !important; }
+         .plan-card.is-selected .plan-radio-indicator { border-color: #006A4E !important; background: #006A4E !important; }
+         .plan-card.is-selected .plan-radio-indicator::after { content: '' !important; width: 6px !important; height: 6px !important; border-radius: 50% !important; background: #FFFFFF !important; }
+         .plan-card-title { font-size: 0.82rem !important; font-weight: 700 !important; color: #1E293B !important; margin-bottom: 4px !important; display: flex !important; align-items: center !important; gap: 6px !important; line-height: 1.2 !important; }
+         .plan-card.is-selected .plan-card-title { color: #006A4E !important; }
+         .plan-card-amount { font-size: 1.05rem !important; font-weight: 800 !important; color: #006A4E !important; letter-spacing: -0.02em !important; line-height: 1.2 !important; margin: 4px 0 !important; }
+         .plan-card.is-selected .plan-card-amount { color: #004D38 !important; }
+         .plan-card-badge { font-size: 0.68rem !important; font-weight: 700 !important; padding: 3px 8px !important; border-radius: 6px !important; background: #F1F5F9 !important; color: #475569 !important; display: inline-block !important; width: fit-content !important; line-height: 1.2 !important; }
+         .plan-card.is-selected .plan-card-badge { background: #DCFCE7 !important; color: #15803D !important; }
+         .payment-input-group { display: flex !important; align-items: stretch !important; border: 1.5px solid #E2E8F0 !important; border-radius: 10px !important; background: #FFFFFF !important; transition: border-color 0.2s ease !important; overflow: hidden !important; min-height: 42px !important; width: 100% !important; box-shadow: none !important; }
+         .payment-input-group:focus-within { border-color: #006A4E !important; box-shadow: none !important; }
+         .payment-input-group.is-readonly { background: #F8FAFC !important; border-color: #E2E8F0 !important; }
+         .payment-input-addon { background: #F1F5F9 !important; color: #334155 !important; font-weight: 800 !important; font-size: 0.92rem !important; padding: 0 14px !important; display: flex !important; align-items: center !important; justify-content: center !important; border-right: 1.5px solid #E2E8F0 !important; flex-shrink: 0 !important; }
+         .payment-input-control { border: none !important; outline: none !important; box-shadow: none !important; font-size: 0.98rem !important; font-weight: 700 !important; color: #0F172A !important; padding: 8px 12px !important; width: 100% !important; flex: 1 !important; background: transparent !important; display: flex !important; align-items: center !important; }
+         .payment-input-control:disabled, .payment-input-control[readonly] { color: #334155 !important; background: transparent !important; cursor: default !important; }
+         .payment-ledger-card { background: #FFFFFF !important; border: 1.5px solid #E2E8F0 !important; border-radius: 12px !important; padding: 14px 16px !important; box-shadow: none !important; }
+         .ledger-row { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 6px 0 !important; font-size: 0.85rem !important; }
+         .ledger-row.total-row { border-top: 1.5px dashed #CBD5E1 !important; padding-top: 10px !important; margin-top: 6px !important; }
      </style>
 </head>
 <body>
@@ -319,6 +344,7 @@
                         </span>
                         <div class="d-flex align-items-center gap-2">
                             <select class="form-select form-select-sm py-1" style="max-width:180px;font-size:0.8rem;border-radius:6px;" v-model="sortBy">
+                                <option value="arrivedAt">Arrival Time</option>
                                 <option value="referenceNumber">Reference ID</option>
                                 <option value="studentName">Student Name</option>
                                 <option value="program">Program Choice</option>
@@ -339,7 +365,7 @@
                     <div class="panel-header d-flex justify-content-between align-items-center">
                         <div>
                             <h3>Treasury Student Queue</h3>
-                            <p>Manage fee payments, installment ledger balances, and official receipts — click column headers to sort</p>
+                            <p>First-Come, First-Served fee settlements, installment downpayments, and OR issuance — click headers to sort</p>
                         </div>
                         <span class="badge rounded-pill fw-bold font-monospace px-3 py-2"
                               :class="filteredStudents.length > 0 ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'">
@@ -350,6 +376,7 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
+                                    <th style="width:110px;">Queue Ticket</th>
                                     <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
                                         Ref No. <i :class="getSortIcon('referenceNumber')"></i>
                                     </th>
@@ -359,22 +386,39 @@
                                     <th class="cursor-pointer select-none" @click="toggleSort('program')">
                                         Program <i :class="getSortIcon('program')"></i>
                                     </th>
-                                    <th>Payment Mode</th>
+                                    <th>Chosen Plan / Mode</th>
                                     <th>Total Assessment</th>
                                     <th>Amount Paid</th>
                                     <th>Balance</th>
                                     <th class="cursor-pointer select-none" @click="toggleSort('status')">
                                         Status <i :class="getSortIcon('status')"></i>
                                     </th>
-                                    <th>Action</th>
+                                    <th style="width:120px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-for="student in filteredStudents" :key="student.referenceNumber">
+                                     <!-- Queue Ticket -->
+                                     <td>
+                                         <span class="queue-ticket-badge" :class="getQueueRank(student) === 1 ? 'ticket-next' : 'ticket-default'">
+                                             <span v-if="getQueueRank(student) === 1" class="ticket-indicator"></span>
+                                             {{ student.queueTicket || ('CSH-' + student.id) }}
+                                         </span>
+                                     </td>
                                      <td><code class="text-dark fw-bold font-monospace">{{ student.referenceNumber }}</code></td>
                                      <td><strong>{{ student.studentName }}</strong></td>
                                      <td><span class="badge bg-secondary-subtle text-secondary font-monospace">{{ student.program }}</span></td>
-                                     <td><span class="badge bg-light text-dark border border-light-subtle">{{ student.payment.paymentType || 'Cash' }}</span></td>
+                                     <td>
+                                         <div class="d-flex flex-column gap-1">
+                                             <span class="badge" :class="student.paymentMode === 'CASH' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle'" style="font-size: 0.72rem; width: fit-content;">
+                                                 <i class="fa-solid" :class="student.paymentMode === 'CASH' ? 'fa-money-bill-wave me-1' : 'fa-layer-group me-1'"></i>
+                                                 {{ getPaymentModeBadge(student.paymentMode) }}
+                                             </span>
+                                             <span class="text-muted" style="font-size: 0.72rem;">
+                                                 {{ student.payment?.paymentType || 'Cash' }}
+                                             </span>
+                                         </div>
+                                     </td>
                                      <td><strong class="text-dark">₱{{ formatCurrency(student.payment.totalFee) }}</strong></td>
                                      <td><strong class="text-success">₱{{ formatCurrency(student.payment.amountPaid) }}</strong></td>
                                      <td><strong :class="(student.payment.balance && student.payment.balance > 0) ? 'text-danger' : 'text-success'">₱{{ formatCurrency(student.payment.balance) }}</strong></td>
@@ -389,7 +433,9 @@
                                      </td>
                                     <td>
                                         <div class="d-flex gap-2">
-                                            <button type="button" class="btn-pill btn-pill-sm btn-pill-green" @click="openProcess(student)">{{ (student.status === 'PAID' || student.status === 'ENROLLED') ? 'View' : 'Process' }}</button>
+                                            <button type="button" class="btn-pill btn-pill-sm btn-pill-green w-100" @click="openProcess(student)">
+                                                <i class="fa-solid fa-cash-register me-1"></i>{{ (student.status === 'PAID' || student.status === 'ENROLLED') ? 'View' : 'Process' }}
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -400,10 +446,10 @@
             </div>
     <!-- Process Payment Modal -->
     <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel">
-        <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
             <div class="modal-content" v-if="selectedStudent">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="paymentModalLabel">Payment Processing  {{ selectedStudent.studentName }}</h5>
+                    <h5 class="modal-title" id="paymentModalLabel">Payment Processing · {{ selectedStudent.studentName }}</h5>
                     <button type="button" class="btn-close" @click="closeModal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -422,9 +468,18 @@
                                 <div class="form-label text-muted small uppercase">Program / Course</div>
                                 <div class="fw-bold text-dark">{{ selectedStudent.program }}</div>
                             </div>
-                            <div class="mb-3">
-                                <div class="form-label text-muted small uppercase">Student Type</div>
-                                <div class="badge bg-success-subtle text-success px-2 py-1 rounded">{{ selectedStudent.studentType }}</div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <div class="form-label text-muted small uppercase">Student Type</div>
+                                    <div class="badge bg-success-subtle text-success px-2 py-1 rounded">{{ selectedStudent.studentType }}</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-label text-muted small uppercase">Chosen Plan (Pre-Reg)</div>
+                                    <div class="badge px-2 py-1 rounded" :class="selectedStudent.paymentMode === 'CASH' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle'">
+                                        <i class="fa-solid" :class="selectedStudent.paymentMode === 'CASH' ? 'fa-money-bill-wave me-1' : 'fa-layer-group me-1'"></i>
+                                        {{ formatPaymentMode(selectedStudent.paymentMode) }}
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Financial Account Summary -->
@@ -447,169 +502,178 @@
                             </div>
 
                             <!-- Collect Payment Details Panel -->
-                            <div class="panel p-3 bg-light border border-light-subtle rounded" v-if="selectedStudent.payment.balance > 0">
-                                <h6 class="mb-3 text-dark fw-bold" style="font-size: 0.85rem;"><i class="fa-solid fa-hand-holding-dollar me-2 text-success"></i>Collect Payment Details</h6>
+                            <div class="panel p-3.5 bg-white border rounded-3 shadow-sm mb-3" style="border-color: #E2E8F0 !important;" v-if="selectedStudent.payment.balance > 0">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="m-0 text-dark fw-bold" style="font-size: 0.88rem; font-family: var(--font-heading);">
+                                        <i class="fa-solid fa-hand-holding-dollar me-2 text-success"></i>Collect Payment Details
+                                    </h6>
+                                    <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2.5 py-1" style="font-size: 0.7rem; font-weight: 700;">
+                                        <i class="fa-solid fa-calculator me-1"></i>Active Assessment
+                                    </span>
+                                </div>
+
                                 <div class="row g-3">
-                                    <!-- Payment Plan Radio Selector -->
+                                    <!-- Interactive Payment Plan Cards -->
                                     <div class="col-12">
-                                        <label class="form-label text-muted small uppercase fw-bold mb-1">Select Payment Plan</label>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            <div class="form-check form-check-inline border rounded px-3 py-1.5 bg-white cursor-pointer" :class="{'border-success bg-success bg-opacity-10': paymentScheme === 'FULL'}">
-                                                <input class="form-check-input" type="radio" name="paymentSchemeChoice" id="schemeFull" value="FULL" v-model="paymentScheme" @change="handleSchemeChange">
-                                                <label class="form-check-input-label fw-bold text-dark ms-1 cursor-pointer" for="schemeFull" style="font-size: 0.8rem;">
-                                                    Full Payment (₱{{ formatCurrency(selectedStudent.payment.balance) }})
-                                                </label>
-                                            </div>
-                                            <div class="form-check form-check-inline border rounded px-3 py-1.5 bg-white cursor-pointer" v-if="selectedStudent.payment.balance >= 3000" :class="{'border-success bg-success bg-opacity-10': paymentScheme === 'DOWNPAYMENT'}">
-                                                <input class="form-check-input" type="radio" name="paymentSchemeChoice" id="schemeDown" value="DOWNPAYMENT" v-model="paymentScheme" @change="handleSchemeChange">
-                                                <label class="form-check-input-label fw-bold text-dark ms-1 cursor-pointer" for="schemeDown" style="font-size: 0.8rem;">
-                                                    Minimum Downpayment (₱3,000)
-                                                </label>
-                                            </div>
-                                            <div class="form-check form-check-inline border rounded px-3 py-1.5 bg-white cursor-pointer" :class="{'border-success bg-success bg-opacity-10': paymentScheme === 'CUSTOM'}">
-                                                <input class="form-check-input" type="radio" name="paymentSchemeChoice" id="schemeCustom" value="CUSTOM" v-model="paymentScheme" @change="handleSchemeChange">
-                                                <label class="form-check-input-label fw-bold text-dark ms-1 cursor-pointer" for="schemeCustom" style="font-size: 0.8rem;">
-                                                    Custom Amount
-                                                </label>
-                                            </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label class="form-label text-secondary small uppercase fw-bold m-0" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                                Select Payment Plan
+                                            </label>
+                                            <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.68rem; font-weight: 700;">
+                                                <i class="fa-solid fa-user-check me-1 text-primary"></i>Pre-Reg Choice: <strong class="text-dark">{{ formatPaymentMode(selectedStudent.paymentMode) }}</strong>
+                                            </span>
                                         </div>
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label class="form-label text-muted small uppercase fw-bold">Payment Mode</label>
-                                        <select class="form-select" v-model="selectedStudent.payment.paymentType" @change="onPaymentTypeChange">
-                                            <option value="Cash">Cash</option>
-                                            <option value="GCash">GCash (PayMongo QR Ph)</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label text-muted small uppercase fw-bold">Amount to Pay</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0" style="font-size: 0.88rem;">₱</span>
-                                            <input class="form-control border-start-0" type="number" :min="selectedStudent.payment.balance < 3000 ? selectedStudent.payment.balance : 3000" :max="selectedStudent.payment.balance" v-model.number="payAmountInput" :readonly="paymentScheme !== 'CUSTOM'" @input="onAmountChanged" style="border-top-right-radius: 9px; border-bottom-right-radius: 9px;">
-                                        </div>
-                                        <div class="form-text text-muted" style="font-size: 0.7rem;">Minimum allowed: ₱{{ formatCurrency(selectedStudent.payment.balance < 3000 ? selectedStudent.payment.balance : 3000) }}</div>
-                                    </div>
-                                    <div class="col-md-6" v-if="selectedStudent.payment.paymentType === 'Cash'">
-                                        <label class="form-label text-muted small uppercase fw-bold">Cash Tendered</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0" style="font-size: 0.88rem;">₱</span>
-                                            <input class="form-control border-start-0" type="number" min="0" v-model.number="cashTendered" style="border-top-right-radius: 9px; border-bottom-right-radius: 9px;">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6" v-if="selectedStudent.payment.paymentType === 'Cash'">
-                                        <label class="form-label text-muted small uppercase fw-bold">Change Due</label>
-                                        <div class="form-control bg-light border-0 text-success fw-bold">
-                                            ₱{{ formatCurrency(changeDue) }}
-                                        </div>
-                                    </div>
-
-                                    <!-- GCash PayMongo Dynamic QR Ph Panel -->
-                                    <div class="col-12" v-if="selectedStudent.payment.paymentType === 'GCash'">
-                                        <div class="card border shadow-sm rounded-3 p-3" style="background: #f0f7ff; border-color: #bae6fd !important;">
-                                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom" style="border-color: rgba(2, 132, 199, 0.15) !important;">
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <span class="badge rounded-pill text-white fw-bold px-2.5 py-1" style="background: #007dfe; font-size: 0.75rem;">
-                                                        <i class="fa-solid fa-mobile-screen-button me-1"></i>GCash
+                                        <div class="payment-plan-grid">
+                                            <!-- Full Payment Option -->
+                                            <div class="plan-card" :class="{'is-selected': paymentScheme === 'FULL'}" @click="selectScheme('FULL')">
+                                                <div class="d-flex justify-content-between align-items-center w-100">
+                                                    <span class="plan-card-title">
+                                                        <i class="fa-solid fa-circle-check text-success"></i> Full Settlement
                                                     </span>
-                                                    <span class="text-secondary small fw-semibold">Powered by PayMongo QR Ph</span>
+                                                    <span class="plan-radio-indicator"></span>
                                                 </div>
-                                                <span class="badge rounded-pill bg-white text-primary border border-primary-subtle font-monospace px-2 py-1" style="font-size: 0.68rem;">
-                                                    <i class="fa-solid fa-circle-dot text-success me-1"></i>Live QR Ready
+                                                <div class="plan-card-amount">₱{{ formatCurrency(selectedStudent.payment.balance) }}</div>
+                                                <span class="plan-card-badge">100% Cleared</span>
+                                            </div>
+
+                                            <!-- Minimum Downpayment Option -->
+                                            <div class="plan-card" v-if="selectedStudent.payment.balance >= 3000" :class="{'is-selected': paymentScheme === 'DOWNPAYMENT'}" @click="selectScheme('DOWNPAYMENT')">
+                                                <div class="d-flex justify-content-between align-items-center w-100">
+                                                    <span class="plan-card-title">
+                                                        <i class="fa-solid fa-layer-group text-warning"></i> Downpayment
+                                                    </span>
+                                                    <span class="plan-radio-indicator"></span>
+                                                </div>
+                                                <div class="plan-card-amount">₱3,000</div>
+                                                <span class="plan-card-badge">Min. Entry</span>
+                                            </div>
+                                            <!-- Custom Amount Option -->
+                                            <div class="plan-card" :class="{'is-selected': paymentScheme === 'CUSTOM'}" @click="selectScheme('CUSTOM')">
+                                                <div class="d-flex justify-content-between align-items-center w-100">
+                                                    <span class="plan-card-title">
+                                                        <i class="fa-solid fa-sliders text-secondary"></i> Custom
+                                                    </span>
+                                                    <span class="plan-radio-indicator"></span>
+                                                </div>
+                                                <div class="plan-card-amount" style="font-size: 0.95rem; color: #4B5563;">Flexible</div>
+                                                <span class="plan-card-badge">Manual Entry</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Payment Mode & Amount Inputs -->
+                                    <div class="col-md-6">
+                                        <label class="form-label text-secondary small uppercase fw-bold mb-1.5" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                             Payment Mode
+                                        </label>
+                                        <div class="payment-input-group">
+                                            <span class="payment-input-addon">
+                                                <i class="fa-solid" :class="selectedStudent.payment.paymentType === 'Cash' ? 'fa-money-bill-wave text-success' : 'fa-wallet text-success'"></i>
+                                            </span>
+                                            <select class="form-select border-0 shadow-none fw-semibold" style="font-size: 0.88rem; background-color: transparent;" v-model="selectedStudent.payment.paymentType" @change="onPaymentTypeChange">
+                                                <option value="Cash">Cash (Over-the-Counter)</option>
+                                                <option value="GCash">GCash / Digital</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label text-secondary small uppercase fw-bold mb-1.5" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                            Amount to Pay
+                                        </label>
+                                        <div class="payment-input-group" :class="{'is-readonly': paymentScheme !== 'CUSTOM'}">
+                                            <span class="payment-input-addon">₱</span>
+                                            <input class="payment-input-control" type="number" :min="selectedStudent.payment.balance < 3000 ? selectedStudent.payment.balance : 3000" :max="selectedStudent.payment.balance" v-model.number="payAmountInput" :readonly="paymentScheme !== 'CUSTOM'" @input="onAmountChanged" placeholder="0">
+                                            <span class="d-flex align-items-center pe-3 text-muted" v-if="paymentScheme !== 'CUSTOM'" title="Locked by selected plan" style="font-size: 0.8rem;">
+                                                <i class="fa-solid fa-lock text-secondary"></i>
+                                            </span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mt-1.5 px-0.5">
+                                            <span class="text-muted" style="font-size: 0.7rem; font-weight: 600;">Min: ₱{{ formatCurrency(selectedStudent.payment.balance < 3000 ? selectedStudent.payment.balance : 3000) }}</span>
+                                            <span class="badge bg-light text-secondary border px-2 py-0.5" style="font-size: 0.68rem; font-weight: 700;" v-if="paymentScheme !== 'CUSTOM'">
+                                                {{ paymentScheme === 'FULL' ? 'Full Settlement' : 'Minimum Downpayment' }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- 1. Cash Mode: Cash Tendered & Change Due -->
+                                    <div class="col-md-6" v-if="selectedStudent.payment.paymentType === 'Cash'">
+                                        <label class="form-label text-secondary small uppercase fw-bold mb-1.5" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                            Cash Tendered
+                                        </label>
+                                        <div class="payment-input-group">
+                                            <span class="payment-input-addon">₱</span>
+                                            <input class="payment-input-control" type="number" min="0" v-model.number="cashTendered" placeholder="0">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6" v-if="selectedStudent.payment.paymentType === 'Cash'">
+                                        <label class="form-label text-secondary small uppercase fw-bold mb-1.5" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                            Change Due
+                                        </label>
+                                        <div class="payment-input-group is-readonly" style="background: #F0FDF4; border-color: #86EFAC;">
+                                            <span class="payment-input-addon" style="background: #DCFCE7; color: #15803D; border-color: #86EFAC;">₱</span>
+                                            <div class="payment-input-control text-success fw-bold d-flex align-items-center" style="font-size: 1.15rem; color: #166534 !important;">
+                                                {{ formatCurrency(changeDue) }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 2. GCash / Digital Channel -->
+                                    <div class="col-12" v-if="selectedStudent.payment.paymentType === 'GCash'">
+                                        <div class="card border rounded-3 p-3" style="background: #F8FAFC; border-color: #E2E8F0 !important;">
+                                            <div class="d-flex justify-content-between align-items-center mb-2.5 pb-2 border-bottom">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="badge px-2.5 py-1 text-white fw-bold" style="background: var(--primary-green, #006A4E); font-size: 0.72rem;">
+                                                        <i class="fa-solid fa-wallet me-1"></i>Digital Payment
+                                                    </span>
+                                                    <span class="text-secondary small fw-semibold">GCash / Merchant QR / PayMongo</span>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <button type="button" class="btn-pill btn-pill-sm btn-pill-outline py-1 px-2.5" @click="copyPayMongoLink" title="Copy payment link for student">
+                                                        <i class="fa-regular fa-copy me-1"></i>Copy Link
+                                                    </button>
+                                                    <button type="button" class="btn-pill btn-pill-sm btn-pill-green py-1 px-3" @click="launchPayMongoCheckout">
+                                                        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Open Checkout
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label class="form-label text-secondary small uppercase fw-bold mb-1" style="font-size: 0.7rem; letter-spacing: 0.04em;">
+                                                    Transaction Reference No. / GCash Ref ID
+                                                </label>
+                                                <div class="payment-input-group bg-white">
+                                                    <span class="payment-input-addon"><i class="fa-solid fa-hashtag text-muted"></i></span>
+                                                    <input class="payment-input-control font-monospace" type="text" v-model="otcReferenceNumber" placeholder="e.g. MP-20260823-998124 or GCash Ref No.">
+                                                </div>
+                                                <small class="text-muted mt-1 d-block" style="font-size: 0.72rem;">
+                                                    Enter the student's transaction reference ID, or click <strong>Open Checkout</strong> to process digitally.
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Dynamic Real-Time Settlement Ledger Breakdown -->
+                                    <div class="col-12">
+                                        <div class="payment-ledger-card">
+                                            <div class="ledger-row text-secondary">
+                                                <span class="d-flex align-items-center"><i class="fa-solid fa-wallet me-2 text-muted"></i>Current Assessment Balance:</span>
+                                                <span class="fw-bold text-dark fs-6">₱{{ formatCurrency(selectedStudent.payment.balance) }}</span>
+                                            </div>
+                                            <div class="ledger-row text-success">
+                                                <span class="d-flex align-items-center"><i class="fa-solid fa-circle-minus me-2"></i>Payment Amount:</span>
+                                                <span class="fw-bold fs-6">- ₱{{ formatCurrency(payAmountInput) }}</span>
+                                            </div>
+                                            <div class="ledger-row total-row">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="fw-bold text-dark d-flex align-items-center"><i class="fa-solid fa-scale-balanced me-2 text-muted"></i>New Remaining Balance:</span>
+                                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" :class="newBalance === 0 ? 'bg-success text-white' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'" style="font-size: 0.7rem;">
+                                                        {{ newBalance === 0 ? 'Fully Cleared' : 'Remaining Balance' }}
+                                                    </span>
+                                                </div>
+                                                <span class="fw-bold fs-5" :class="newBalance === 0 ? 'text-success' : 'text-danger'">
+                                                    ₱{{ formatCurrency(newBalance) }}
                                                 </span>
                                             </div>
-
-                                            <div class="row align-items-center g-3">
-                                                <!-- Dynamic QR Code Column -->
-                                                <div class="col-sm-5 text-center">
-                                                    <div class="bg-white p-2.5 rounded-3 border border-light-subtle shadow-sm d-inline-block position-relative">
-                                                        <svg v-if="paymongoSession" width="130" height="130" viewBox="0 0 130 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                            <rect width="130" height="130" fill="#ffffff" rx="6"/>
-                                                            <!-- QR Corners Pattern -->
-                                                            <rect x="10" y="10" width="30" height="30" fill="#000000" rx="3"/>
-                                                            <rect x="15" y="15" width="20" height="20" fill="#ffffff" rx="2"/>
-                                                            <rect x="20" y="20" width="10" height="10" fill="#007dfe"/>
-                                                            
-                                                            <rect x="90" y="10" width="30" height="30" fill="#000000" rx="3"/>
-                                                            <rect x="95" y="15" width="20" height="20" fill="#ffffff" rx="2"/>
-                                                            <rect x="100" y="20" width="10" height="10" fill="#007dfe"/>
-
-                                                            <rect x="10" y="90" width="30" height="30" fill="#000000" rx="3"/>
-                                                            <rect x="15" y="95" width="20" height="20" fill="#ffffff" rx="2"/>
-                                                            <rect x="20" y="100" width="10" height="10" fill="#007dfe"/>
-
-                                                            <!-- Data Pattern Simulation -->
-                                                            <rect x="48" y="12" width="6" height="6" fill="#000000"/>
-                                                            <rect x="62" y="18" width="6" height="6" fill="#000000"/>
-                                                            <rect x="76" y="12" width="6" height="6" fill="#000000"/>
-                                                            <rect x="48" y="28" width="6" height="6" fill="#007dfe"/>
-                                                            <rect x="68" y="32" width="6" height="6" fill="#000000"/>
-                                                            
-                                                            <rect x="12" y="52" width="6" height="6" fill="#000000"/>
-                                                            <rect x="26" y="58" width="6" height="6" fill="#007dfe"/>
-                                                            <rect x="40" y="52" width="6" height="6" fill="#000000"/>
-                                                            <rect x="54" y="48" width="8" height="8" fill="#007dfe"/>
-                                                            <rect x="70" y="52" width="6" height="6" fill="#000000"/>
-                                                            <rect x="84" y="58" width="6" height="6" fill="#007dfe"/>
-                                                            <rect x="100" y="52" width="6" height="6" fill="#000000"/>
-                                                            <rect x="114" y="58" width="6" height="6" fill="#000000"/>
-
-                                                            <rect x="48" y="90" width="6" height="6" fill="#000000"/>
-                                                            <rect x="62" y="96" width="6" height="6" fill="#007dfe"/>
-                                                            <rect x="76" y="90" width="6" height="6" fill="#000000"/>
-                                                            <rect x="90" y="80" width="6" height="6" fill="#000000"/>
-                                                            <rect x="104" y="94" width="6" height="6" fill="#007dfe"/>
-                                                            <rect x="116" y="82" width="6" height="6" fill="#000000"/>
-                                                        </svg>
-                                                        <div v-else class="d-flex align-items-center justify-content-center" style="width:130px;height:130px;background:#f3f4f6;border-radius:6px;">
-                                                            <i class="fa-solid fa-qrcode fa-3x text-muted opacity-50"></i>
-                                                        </div>
-                                                    </div>
-                                                    <div class="mt-1 font-monospace" style="font-size: 0.68rem; color: #0369a1; font-weight: 700;">
-                                                        <i class="fa-solid fa-qrcode me-1"></i>Scan via GCash App
-                                                    </div>
-                                                </div>
-
-                                                <!-- Session & Transaction Info -->
-                                                <div class="col-sm-7">
-                                                    <div class="mb-2">
-                                                        <div class="text-muted" style="font-size: 0.68rem; font-weight: 700; text-transform: uppercase;">GCash Reference ID</div>
-                                                        <code class="font-monospace text-dark fw-bold" style="font-size: 0.76rem; word-break: break-all;">
-                                                            {{ paymongoSession ? paymongoSession.transactionRef : 'Generating reference...' }}
-                                                        </code>
-                                                    </div>
-                                                    <div class="mb-2">
-                                                        <div class="text-muted" style="font-size: 0.68rem; font-weight: 700; text-transform: uppercase;">PayMongo Checkout Session</div>
-                                                        <code class="font-monospace text-secondary" style="font-size: 0.70rem; word-break: break-all;">
-                                                            {{ paymongoSession ? paymongoSession.sessionId : 'Connecting gateway...' }}
-                                                        </code>
-                                                    </div>
-                                                    <div class="mb-1">
-                                                        <div class="text-muted" style="font-size: 0.68rem; font-weight: 700; text-transform: uppercase;">Exact Charge Amount</div>
-                                                        <span class="fw-bold text-primary" style="font-size: 1rem;">₱{{ formatCurrency(payAmountInput) }}</span>
-                                                        <span class="text-muted small ms-1">({{ (payAmountInput * 100).toLocaleString() }} centavos)</span>
-                                                    </div>
-                                                    <div class="alert alert-info py-1.5 px-2.5 mb-0 mt-2 d-flex align-items-center gap-2" style="font-size: 0.72rem; border-radius: 6px; background: rgba(0, 125, 254, 0.08); border: 1px solid rgba(0, 125, 254, 0.2);">
-                                                        <i class="fa-solid fa-shield-halved text-primary"></i>
-                                                        <span>Click <strong>Record Payment</strong> below once customer completes QR Ph transfer.</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-12 border-top pt-2 mt-2">
-                                        <div class="d-flex justify-content-between text-muted small">
-                                            <span>Current Balance:</span>
-                                            <span class="fw-semibold">₱{{ formatCurrency(selectedStudent.payment.balance) }}</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between text-success fw-bold small mt-1">
-                                            <span>Payment Amount:</span>
-                                            <span>- ₱{{ formatCurrency(payAmountInput) }}</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between text-danger fw-bold border-top pt-1 mt-1">
-                                            <span>New Balance:</span>
-                                            <span>₱{{ formatCurrency(newBalance) }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -652,10 +716,6 @@
                                 </div>
                             </div>
 
-                            <div class="mb-3" v-if="selectedStudent.payment.paymentType === 'GCash' && selectedStudent.payment.balance > 0">
-                                <label class="form-label text-muted small uppercase fw-bold">GCash Reference / OR Ref No.</label>
-                                <input class="form-control" type="text" v-model="selectedStudent.payment.transactionRef" placeholder="Enter GCash Ref ID...">
-                            </div>
                             <div class="mb-1" v-if="selectedStudent.payment.balance > 0">
                                 <label class="form-label text-muted small uppercase fw-bold">Cashier Observations / Notes</label>
                                 <textarea class="form-control" rows="4" v-model="selectedStudent.payment.cashierNotes" placeholder="Enter ledger modifications or payment observations here..."></textarea>
@@ -707,30 +767,40 @@
 </main>
 
         <!-- Printable Receipt Overlay -->
-        <div v-if="receiptData" class="confirm-overlay" style="background: rgba(0, 0, 0, 0.75); z-index: 1100;">
-            <div class="receipt-container bg-white text-dark p-4 rounded shadow-lg position-relative" style="width: 800px; max-width: 95%;">
+        <div v-if="receiptData" class="confirm-overlay"
+            style="background: rgba(0, 0, 0, 0.75); z-index: 1100; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto;">
+            <div class="receipt-container bg-white text-dark p-4 rounded-4 shadow-lg position-relative" style="width: 820px; max-width: 95%; max-height: 95vh; overflow-y: auto;">
                 
                 <!-- Print Header & Controls (Hidden during print) -->
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom no-print">
-                    <span class="fw-bold text-success"><i class="fa-solid fa-circle-check me-1"></i> Payment Recorded Successfully</span>
+                    <div class="d-flex align-items-center gap-2 text-success fw-bold">
+                        <i class="fa-solid fa-circle-check fs-5"></i>
+                        <span>Official Receipt Generated</span>
+                    </div>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-secondary" @click="closeReceipt">Close &amp; Back to Queue</button>
-                        <button class="btn btn-sm btn-success" @click="printReceipt"><i class="fa-solid fa-print me-1"></i> Print Receipt</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3 fw-semibold" @click="closeReceipt">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Close &amp; Back to Queue
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success px-3 fw-bold text-white shadow-sm"
+                            style="background: var(--primary-green, #006A4E); border-color: var(--primary-green, #006A4E);"
+                            @click="printReceipt">
+                            <i class="fa-solid fa-print me-1"></i> Print Receipt
+                        </button>
                     </div>
                 </div>
 
                 <!-- Actual Receipt Section (Printed horizontally) -->
-                <div id="printable-receipt-card" class="receipt-horizontal-layout p-4 border border-dark rounded" style="background: #fafafa; font-size: 0.85rem; font-family: 'Courier New', Courier, monospace;">
+                <div id="printable-receipt-card" class="receipt-horizontal-layout p-4 border border-dark rounded-3" style="background: #fafafa; font-size: 0.85rem; font-family: 'Courier New', Courier, monospace;">
                     <div class="row align-items-center border-bottom pb-2 mb-3">
                         <div class="col-8">
                             <h4 class="fw-bold m-0" style="color: #004A3C; font-family: sans-serif; letter-spacing: 0.5px; font-size: 1.25rem;">
                                 GO-ON NATIONAL COLLEGE OF THE PHILIPPINES
                             </h4>
-                            <small class="text-muted">Emilio Aguinaldo Highway, Dasmarias City, Cavite</small>
+                            <small class="text-muted">Emilio Aguinaldo Highway, Dasmari&ntilde;as City, Cavite</small>
                         </div>
                         <div class="col-4 text-end">
                             <div class="fw-bold text-uppercase fs-6" style="color: #cda819;">Official Receipt</div>
-                            <small class="font-monospace text-secondary">OR: {{ receiptData.transactionRef }}</small>
+                            <small class="font-monospace text-secondary fw-bold">OR: {{ receiptData.transactionRef }}</small>
                         </div>
                     </div>
 
@@ -806,9 +876,11 @@
 
     <script src="../../shared/libs/bootstrap.bundle.min.js"></script>
     <script src="../../shared/libs/vue.global.js"></script>
-    <script src="../../shared/js/components/EmployeeSidebar.js?v=10"></script>
     <script src="../../shared/libs/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/DataBus.js?v=2.2"></script>
-    <script src="assets/js/app.js?v=20260822_swal"></script>
+    <script src="../../shared/js/SessionExpirationGuard.js?v=20260823"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js?v=20260823"></script>
+    <script src="../../shared/js/components/EmployeeSidebar.js?v=10"></script>
+    <script src="../assets/js/DataBus.js?v=20260823_v6"></script>
+    <script src="assets/js/app.js?v=20260823_v6"></script>
 </body>
 </html>

@@ -292,6 +292,128 @@ class EmailService {
     }
 
     /**
+     * Sends an Undertaking / Document Compliance Reminder email to student
+     */
+    public static function sendUndertakingReminder($recipientEmail, $recipientName, $studentId, array $missingOrUndertakingDocs) {
+        if (empty($recipientEmail)) {
+            return ['success' => false, 'message' => 'Recipient email address is empty.'];
+        }
+
+        $config = self::getConfig();
+        $subject = 'GNCP Admission Notice — Pending Document Requirements & Undertakings';
+
+        $docsListHtml = '';
+        foreach ($missingOrUndertakingDocs as $doc) {
+            $title = htmlspecialchars($doc['title'] ?? 'Document Requirement');
+            $status = htmlspecialchars($doc['status'] ?? 'NOT_SUBMITTED');
+            $reason = !empty($doc['undertakingReason']) ? ('<br><small style="color: #d97706;">Waiver Reason: ' . htmlspecialchars($doc['undertakingReason']) . '</small>') : '';
+            $deadline = !empty($doc['undertakingDeadline']) ? ('<br><small style="color: #dc2626; font-weight: bold;">Commitment Deadline: ' . htmlspecialchars($doc['undertakingDeadline']) . '</small>') : '';
+
+            $docsListHtml .= "
+                <li style='margin-bottom: 12px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #f59e0b;'>
+                    <strong style='color: #0f172a;'>{$title}</strong> 
+                    <span style='font-size: 11px; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 99px; margin-left: 6px; font-weight: 700;'>{$status}</span>
+                    {$reason}
+                    {$deadline}
+                </li>
+            ";
+        }
+
+        $htmlBody = "
+        <!DOCTYPE html>
+        <html lang='en'>
+        <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <title>GNCP Document Requirement Notice</title>
+        </head>
+        <body style='margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;'>
+            <table role='presentation' width='100%' cellspacing='0' cellpadding='0' border='0' style='background-color: #f8fafc; padding: 30px 10px;'>
+                <tr>
+                    <td align='center'>
+                        <table role='presentation' width='100%' cellspacing='0' cellpadding='0' border='0' style='max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;'>
+                            
+                            <!-- Header Banner -->
+                            <tr>
+                                <td style='background: linear-gradient(135deg, #006A4E 0%, #003D2B 100%); padding: 32px 36px; text-align: left; border-bottom: 4px solid #D4AF37;'>
+                                    <div style='color: #FCD34D; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px;'>
+                                        Go-on National College of the Philippines
+                                    </div>
+                                    <div style='color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;'>
+                                        Academic Credentials Notice
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Body Content -->
+                            <tr>
+                                <td style='padding: 36px;'>
+                                    <p style='margin: 0 0 16px 0; color: #1e293b; font-size: 16px; font-weight: 700;'>
+                                        Hello " . htmlspecialchars($recipientName) . " (" . htmlspecialchars($studentId) . "),
+                                    </p>
+                                    <p style='margin: 0 0 20px 0; color: #475569; font-size: 15px; line-height: 1.6;'>
+                                        This is an official advisory from the <strong>Office of the College Registrar</strong> regarding your pending admission requirements and conditional undertaking commitments:
+                                    </p>
+
+                                    <!-- Documents List -->
+                                    <ul style='list-style-type: none; padding-left: 0; margin-bottom: 24px;'>
+                                        {$docsListHtml}
+                                    </ul>
+
+                                    <div style='background-color: #fefce8; border: 1px solid #fef08a; border-radius: 10px; padding: 14px 18px; margin-bottom: 24px;'>
+                                        <p style='margin: 0; color: #854d0e; font-size: 13px; line-height: 1.5;'>
+                                            <strong>Action Required:</strong> You can upload clear digital scans of these credentials directly inside your <strong>GNCP Student Portal</strong> under the <em>Documents & Undertakings</em> tab.
+                                        </p>
+                                    </div>
+
+                                    <!-- Portal CTA -->
+                                    <div style='text-align: center; margin-bottom: 24px;'>
+                                        <a href='http://localhost/systemtest/student-portal/index.html' target='_blank' style='display: inline-block; background-color: #006A4E; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 15px; padding: 14px 28px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 106, 78, 0.2);'>
+                                            Upload Documents to Portal
+                                        </a>
+                                    </div>
+
+                                    <p style='margin: 0; color: #64748b; font-size: 13px;'>
+                                        Office of the College Registrar<br>
+                                        <strong>Go-on National College of the Philippines</strong>
+                                    </p>
+                                </td>
+                            </tr>
+
+                            <!-- Footer -->
+                            <tr>
+                                <td style='background-color: #f8fafc; padding: 20px 36px; text-align: center; border-top: 1px solid #e2e8f0;'>
+                                    <p style='margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.5;'>
+                                        © " . date('Y') . " Go-on National College of the Philippines. All rights reserved.<br>
+                                        Automated notification — do not reply directly to this email.
+                                    </p>
+                                </td>
+                            </tr>
+
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+        ";
+
+        if (!empty($config['username']) && !empty($config['password'])) {
+            $smtpResult = self::sendViaSmtpSocket($config, $recipientEmail, $subject, $htmlBody);
+            if ($smtpResult['success']) return $smtpResult;
+
+            $altConfig = $config;
+            $altConfig['port'] = ($config['port'] == 587) ? 465 : 587;
+            $altResult = self::sendViaSmtpSocket($altConfig, $recipientEmail, $subject, $htmlBody);
+            if ($altResult['success']) return $altResult;
+
+            return ['success' => false, 'message' => 'Gmail SMTP dispatch failed: ' . ($altResult['message'] ?? $smtpResult['message'])];
+        }
+
+        return ['success' => false, 'message' => 'SMTP Username or Password missing in shared/backend/config/mail.php.'];
+    }
+
+    /**
      * Native PHP Socket SMTP Dispatcher for Gmail (Supports Port 587 STARTTLS & Port 465 SSL)
      */
     private static function sendViaSmtpSocket($config, $to, $subject, $body) {

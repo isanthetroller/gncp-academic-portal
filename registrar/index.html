@@ -18,6 +18,7 @@
     <script src="../shared/libs/bootstrap.bundle.min.js" defer></script>
     <script src="../shared/libs/vue.global.js" defer></script>
     <script src="../shared/libs/sweetalert2.all.min.js" defer></script>
+    <script src="../shared/js/SessionExpirationGuard.js" defer></script>
     <script src="../shared/js/PasswordChangeGuard.js" defer></script>
     <script src="../shared/js/components/EmployeeSidebar.js?v=10" defer></script>
     <!-- Application MVC & Service Layer -->
@@ -30,192 +31,7 @@
             display: none !important;
         }
 
-        /* ── Requirements Checklist Core Component ─────────── */
-        .req-container {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 14px;
-        }
-        .req-header-pill {
-            font-size: 0.72rem;
-            font-weight: 700;
-            padding: 3px 10px;
-            border-radius: 99px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .req-progress-bar {
-            height: 4px;
-            border-radius: 99px;
-            background: #e2e8f0;
-            overflow: hidden;
-            margin-top: 6px;
-            margin-bottom: 10px;
-        }
-        .req-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #006A4E 0%, #10b981 100%);
-            border-radius: 99px;
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .req-checklist-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 12px 14px;
-            margin-bottom: 10px;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-        }
-        .req-checklist-card:hover {
-            border-color: #cbd5e1;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
-            transform: translateY(-1px);
-        }
-        .req-checklist-card:last-child {
-            margin-bottom: 0;
-        }
-        .req-checklist-card.is-invalid {
-            border-color: #f87171 !important;
-            background-color: #fffafb;
-        }
-        .req-icon-box {
-            width: 34px;
-            height: 34px;
-            border-radius: 9px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.92rem;
-            flex-shrink: 0;
-            transition: all 0.2s ease;
-        }
-        .req-icon-box.status-original {
-            background: #e6f4ea;
-            color: #006A4E;
-            border: 1px solid rgba(0, 106, 78, 0.2);
-        }
-        .req-icon-box.status-photocopy {
-            background: #f0f9ff;
-            color: #0284c7;
-            border: 1px solid rgba(2, 132, 199, 0.2);
-        }
-        .req-icon-box.status-undertaking {
-            background: #fffbeb;
-            color: #d97706;
-            border: 1px solid rgba(217, 119, 6, 0.25);
-        }
-        .req-icon-box.status-missing {
-            background: #f8fafc;
-            color: #94a3b8;
-            border: 1px solid #e2e8f0;
-        }
-        .req-doc-title {
-            font-size: 0.84rem;
-            font-weight: 700;
-            color: #0f172a;
-            line-height: 1.35;
-            word-break: break-word;
-            margin-bottom: 4px;
-        }
-        .req-badge-tag {
-            font-size: 0.68rem;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 99px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .doc-segmented-control {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            background: #f1f5f9;
-            padding: 3px;
-            border-radius: 8px;
-            gap: 3px;
-            width: 100%;
-            margin-top: 10px;
-        }
-        .doc-segment-btn {
-            border: none;
-            background: transparent;
-            padding: 6px 3px;
-            border-radius: 6px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: #64748b;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            white-space: nowrap;
-            text-align: center;
-        }
-        .doc-segment-btn:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.8);
-            color: #0f172a;
-        }
-        .doc-segment-btn:disabled {
-            cursor: not-allowed;
-            opacity: 0.55;
-        }
-        .doc-segment-btn.active-original {
-            background: linear-gradient(135deg, #006A4E 0%, #004D38 100%) !important;
-            color: #ffffff !important;
-            box-shadow: 0 2px 4px rgba(0, 106, 78, 0.25) !important;
-        }
-        .doc-segment-btn.active-photocopy {
-            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-            color: #ffffff !important;
-            box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25) !important;
-        }
-        .doc-segment-btn.active-undertaking {
-            background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
-            color: #ffffff !important;
-            box-shadow: 0 2px 4px rgba(217, 119, 6, 0.25) !important;
-        }
-        .doc-segment-btn.active-missing {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-            color: #ffffff !important;
-            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.25) !important;
-        }
-        .undertaking-drawer {
-            margin-top: 10px;
-            padding: 11px 13px;
-            background: #fffdf5;
-            border: 1px solid #fef3c7;
-            border-left: 3.5px solid #f59e0b;
-            border-radius: 8px;
-        }
-        .undertaking-drawer label {
-            font-size: 0.67rem;
-            font-weight: 700;
-            color: #92400e;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 3px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .undertaking-drawer input {
-            background: #ffffff;
-            border: 1.5px solid #fde68a;
-            font-size: 0.78rem;
-            border-radius: 6px;
-            padding: 5px 8px;
-        }
-        .undertaking-drawer input:focus {
-            border-color: #d97706;
-            box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.15);
-            outline: none;
-        }
+
 
         /* ── Confirmation Dialog ───────────────────────────── */
         .confirm-overlay {
@@ -598,15 +414,23 @@
                                 <p class="mb-0 fw-bold text-success">{{ selectedApplication.nstp }}</p>
                             </div>
 
+                            <div class="col-md-4" v-if="selectedApplication.shsTrack === 'ALS'">
+                                <h6 class="mb-1 text-muted small text-uppercase font-monospace">Education Pathway</h6>
+                                <p class="mb-0 fw-bold text-primary"><i class="fas fa-graduation-cap me-1"></i>ALS Completer</p>
+                            </div>
+                            <div class="col-md-4" v-else-if="selectedApplication.shsTrack && selectedApplication.shsTrack !== 'REGULAR'">
+                                <h6 class="mb-1 text-muted small text-uppercase font-monospace">Curriculum / Strand</h6>
+                                <p class="mb-0 fw-bold text-dark">{{ selectedApplication.shsTrack }}</p>
+                            </div>
                             <div class="col-md-4" v-if="selectedApplication.previousCollege">
                                 <h6 class="mb-1 text-muted small text-uppercase font-monospace">Previous College</h6>
                                 <p class="mb-0 fw-bold text-dark">{{ selectedApplication.previousCollege }}</p>
                             </div>
-                            <div :class="selectedApplication.previousCollege ? 'col-md-4' : 'col-md-6'">
+                            <div class="col-md-4">
                                 <h6 class="mb-1 text-muted small text-uppercase font-monospace">Date Submitted</h6>
                                 <p class="mb-0 fw-bold text-dark">{{ selectedApplication.dateSubmitted }}</p>
                             </div>
-                            <div :class="selectedApplication.previousCollege ? 'col-md-4' : 'col-md-6'">
+                            <div class="col-md-4">
                                 <h6 class="mb-1 text-muted small text-uppercase font-monospace">Live Progress</h6>
                                 <p class="mb-0 font-monospace text-success fw-bold">
                                     <i class="fas fa-bars-progress me-1"></i>
@@ -651,46 +475,30 @@
                                         class="req-checklist-card"
                                         :class="{'is-invalid': !isDocVerified(item) && showRequirementsValidation}">
                                         
-                                        <!-- Top Row: Icon, Title, and Submission Mode Badge -->
-                                        <div class="d-flex align-items-start gap-2.5">
-                                            <div class="req-icon-box" :class="{
-                                                'status-original': getDocStatus(item) === 'ORIGINAL',
-                                                'status-photocopy': getDocStatus(item) === 'PHOTOCOPY',
-                                                'status-undertaking': getDocStatus(item) === 'UNDERTAKING',
-                                                'status-missing': getDocStatus(item) === 'NOT_SUBMITTED'
-                                            }">
-                                                <i class="fa-solid" :class="{
-                                                    'fa-check': getDocStatus(item) === 'ORIGINAL',
-                                                    'fa-copy': getDocStatus(item) === 'PHOTOCOPY',
-                                                    'fa-clock-rotate-left': getDocStatus(item) === 'UNDERTAKING',
-                                                    'fa-xmark': getDocStatus(item) === 'NOT_SUBMITTED'
-                                                }"></i>
-                                            </div>
-
-                                            <div class="min-w-0 flex-grow-1">
+                                        <!-- Top Row: Document Index, Title & Submission Badge / View Button -->
+                                        <div class="req-card-top">
+                                            <div class="req-doc-info">
+                                                <span class="req-item-index">{{ idx + 1 }}</span>
                                                 <div class="req-doc-title">
                                                     {{ item }}
                                                 </div>
-                                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-1.5">
-                                                    <div>
-                                                        <span v-if="getDocFile(item)" class="badge bg-success-subtle text-success border border-success-subtle req-badge-tag">
-                                                            <i class="fas fa-file-arrow-up"></i> Soft Copy Attached
-                                                        </span>
-                                                        <span v-else class="badge bg-light text-muted border req-badge-tag">
-                                                            <i class="fas fa-file-lines"></i> Physical Hardcopy
-                                                        </span>
-                                                    </div>
+                                            </div>
+                                            <div class="req-doc-badges">
+                                                <span v-if="getDocFile(item)" class="req-source-badge is-softcopy">
+                                                    <i class="fa-solid fa-cloud-arrow-up"></i> Soft Copy Attached
+                                                </span>
+                                                <span v-else class="req-source-badge is-hardcopy">
+                                                    <i class="fa-regular fa-file-lines"></i> Physical Hardcopy
+                                                </span>
 
-                                                    <!-- View Soft Copy Trigger Button -->
-                                                    <button v-if="getDocFile(item)" type="button" 
-                                                            class="btn btn-xs btn-outline-success py-0.5 px-2 rounded-pill fw-bold d-flex align-items-center gap-1" 
-                                                            @click.stop="openDocumentModal(getDocFile(item))" 
-                                                            title="View uploaded document" 
-                                                            style="font-size: 0.70rem;">
-                                                        <i class="fas fa-eye"></i>
-                                                        <span>Preview</span>
-                                                    </button>
-                                                </div>
+                                                <!-- View Soft Copy Trigger Button -->
+                                                <button v-if="getDocFile(item)" type="button" 
+                                                        class="btn-doc-view" 
+                                                        @click.stop="openDocumentModal(getDocFile(item))" 
+                                                        title="View uploaded soft copy">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                    <span>View</span>
+                                                </button>
                                             </div>
                                         </div>
 
@@ -1118,8 +926,9 @@
                                                     }">
                                                         {{ getDocStatus(doc, selectedStudent) === 'UNDERTAKING' ? ('Promissory: Due ' + getDocUndertakingDeadline(doc, selectedStudent)) : getDocStatus(doc, selectedStudent) }}
                                                     </span>
-                                                    <button v-if="getDocFile(doc, selectedStudent)" type="button" class="btn btn-xs btn-outline-success py-0 px-2 rounded-pill" @click="openDocumentModal(getDocFile(doc, selectedStudent))" title="View uploaded soft copy" style="font-size:0.68rem;">
+                                                    <button v-if="getDocFile(doc, selectedStudent)" type="button" class="btn-doc-view" @click="openDocumentModal(getDocFile(doc, selectedStudent))" title="View uploaded soft copy">
                                                         <i class="fas fa-eye"></i>
+                                                        <span>View</span>
                                                     </button>
                                                 </div>
                                             </div>
@@ -1208,7 +1017,7 @@
         </template>
 
         <!-- ── UNAUTHENTICATED FALLBACK VIEW ────────────────── -->
-        <template v-else>
+        <template v-else-if="!isCheckingSession && !currentUser">
             <div class="container d-flex align-items-center justify-content-center min-vh-100 py-5">
                 <div class="text-center p-5 rounded-4 shadow-lg bg-white" style="max-width: 460px; border: 1px solid rgba(0,0,0,0.08);">
                     <div class="mb-4">

@@ -192,6 +192,7 @@
                             } else {
                                 const sessionKey = (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
                                 sessionStorage.setItem(sessionKey, JSON.stringify(user));
+                                localStorage.setItem(sessionKey, JSON.stringify(user));
                             }
 
                             Swal.fire({

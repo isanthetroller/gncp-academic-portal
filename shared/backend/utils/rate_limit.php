@@ -74,6 +74,124 @@ function checkRateLimit(string $action, int $maxHits = 10, int $windowSec = 60):
 }
 
 /**
+ * Checks if client is currently locked out from login attempts.
+ */
+function checkLoginRateLimit(string $action, string $identifier = '', int $maxFailed = 5, int $windowSec = 300): void {
+    $ip  = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $safeIp = preg_replace('/[^a-f0-9:.\-]/', '_', strtolower(trim(explode(',', $ip)[0])));
+    $safeAction = preg_replace('/[^a-z0-9_]/', '_', $action);
+    $safeUser = preg_replace('/[^a-z0-9_\-]/', '_', strtolower(trim($identifier)));
+
+    $dir = __DIR__ . '/../logs/rate_limits/';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+
+    $key = $safeAction . '_' . $safeIp . ($safeUser ? '_' . $safeUser : '');
+    $file = $dir . $key . '.json';
+    $now  = time();
+
+    if (file_exists($file)) {
+        $raw = @file_get_contents($file);
+        if ($raw) {
+            $state = json_decode($raw, true);
+            if (is_array($state) && isset($state['failures'], $state['window_start'])) {
+                if (($now - $state['window_start']) < $windowSec && $state['failures'] >= $maxFailed) {
+                    $retryAfter = $windowSec - ($now - $state['window_start']);
+                    header('Retry-After: ' . max(1, $retryAfter));
+                    header('X-RateLimit-Limit: ' . $maxFailed);
+                    header('X-RateLimit-Remaining: 0');
+                    http_response_code(429);
+                    echo json_encode([
+                        'success'    => false,
+                        'message'    => 'Too many failed login attempts. Please wait ' . max(1, $retryAfter) . ' seconds before trying again.',
+                        'code'       => 429,
+                        'retryAfter' => max(1, $retryAfter)
+                    ]);
+                    exit;
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Records a failed login attempt. If threshold exceeded, triggers 429 lockout.
+ */
+function recordLoginFailure(string $action, string $identifier = '', int $maxFailed = 5, int $windowSec = 300): void {
+    $ip  = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $safeIp = preg_replace('/[^a-f0-9:.\-]/', '_', strtolower(trim(explode(',', $ip)[0])));
+    $safeAction = preg_replace('/[^a-z0-9_]/', '_', $action);
+    $safeUser = preg_replace('/[^a-z0-9_\-]/', '_', strtolower(trim($identifier)));
+
+    $dir = __DIR__ . '/../logs/rate_limits/';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+
+    $key = $safeAction . '_' . $safeIp . ($safeUser ? '_' . $safeUser : '');
+    $file = $dir . $key . '.json';
+    $now  = time();
+
+    $state = ['failures' => 0, 'window_start' => $now];
+    if (file_exists($file)) {
+        $raw = @file_get_contents($file);
+        if ($raw) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $state = $decoded;
+            }
+        }
+    }
+
+    if (($now - $state['window_start']) >= $windowSec) {
+        $state = ['failures' => 0, 'window_start' => $now];
+    }
+
+    $state['failures'] = ($state['failures'] ?? 0) + 1;
+    @file_put_contents($file, json_encode($state), LOCK_EX);
+
+    if ($state['failures'] >= $maxFailed) {
+        $retryAfter = $windowSec - ($now - $state['window_start']);
+        header('Retry-After: ' . max(1, $retryAfter));
+        header('X-RateLimit-Limit: ' . $maxFailed);
+        header('X-RateLimit-Remaining: 0');
+        http_response_code(429);
+        echo json_encode([
+            'success'    => false,
+            'message'    => 'Too many failed login attempts. Please wait ' . max(1, $retryAfter) . ' seconds before trying again.',
+            'code'       => 429,
+            'retryAfter' => max(1, $retryAfter)
+        ]);
+        exit;
+    }
+}
+
+/**
+ * Resets failed login attempt counter upon successful login.
+ */
+function clearLoginFailures(string $action, string $identifier = ''): void {
+    $ip  = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $safeIp = preg_replace('/[^a-f0-9:.\-]/', '_', strtolower(trim(explode(',', $ip)[0])));
+    $safeAction = preg_replace('/[^a-z0-9_]/', '_', $action);
+    $safeUser = preg_replace('/[^a-z0-9_\-]/', '_', strtolower(trim($identifier)));
+
+    $dir = __DIR__ . '/../logs/rate_limits/';
+    if (!is_dir($dir)) return;
+
+    $key = $safeAction . '_' . $safeIp . ($safeUser ? '_' . $safeUser : '');
+    $file = $dir . $key . '.json';
+    if (file_exists($file)) {
+        @unlink($file);
+    }
+    // Also clear IP-only key if any
+    $fileIp = $dir . $safeAction . '_' . $safeIp . '.json';
+    if (file_exists($fileIp)) {
+        @unlink($fileIp);
+    }
+}
+
+/**
  * Purge rate limit files older than the given TTL (called opportunistically).
  * Prevents rate_limits/ from growing unbounded.
  *

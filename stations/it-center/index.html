@@ -38,7 +38,7 @@
              width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: #FFF; border: 2px solid #E5E8EC; color: #9CA3AF; z-index: 1; transition: all 0.2s ease;
          }
          .is-completed .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; }
-         .is-active .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; box-shadow: 0 0 0 4px rgba(0, 106, 78, 0.15); }
+         .is-active .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; box-shadow: none !important; }
          .vertical-step-content { display: flex; flex-direction: column; text-align: left; }
          .vertical-step-title { font-size: 0.78rem; font-weight: 700; margin: 0; color: var(--text-dark); line-height: 1.2; }
          .is-completed .vertical-step-title { color: var(--dark-green); }
@@ -324,6 +324,7 @@
                             </span>
                             <div class="d-flex align-items-center gap-2">
                                 <select class="form-select form-select-sm py-1" style="max-width:180px;font-size:0.8rem;border-radius:6px;" v-model="sortBy">
+                                    <option value="arrivedAt">Arrival Time</option>
                                     <option value="referenceNumber">Reference ID</option>
                                     <option value="name">Student Name</option>
                                     <option value="program">Program Choice</option>
@@ -344,7 +345,7 @@
                         <div class="panel-header d-flex justify-content-between align-items-center">
                             <div>
                                 <h3>Full Student Activation Queue</h3>
-                                <p>Manage setup details and credentials — click column headers to sort</p>
+                                <p>First-Come, First-Served permanent student ID generation and credentials provisioning — click headers to sort</p>
                             </div>
                             <span class="badge rounded-pill fw-bold font-monospace px-3 py-2"
                                   :class="filteredStudents.length > 0 ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'">
@@ -355,6 +356,7 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
+                                        <th style="width:110px;">Queue Ticket</th>
                                         <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
                                             Ref No. <i :class="getSortIcon('referenceNumber')"></i>
                                         </th>
@@ -365,11 +367,18 @@
                                             Program <i :class="getSortIcon('program')"></i>
                                         </th>
                                         <th>Status</th>
-                                        <th>Action</th>
+                                        <th style="width:120px;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr v-for="student in filteredStudents" :key="student.referenceNumber">
+                                        <!-- Queue Ticket -->
+                                        <td>
+                                            <span class="queue-ticket-badge" :class="getQueueRank(student) === 1 ? 'ticket-next' : 'ticket-default'">
+                                                <span v-if="getQueueRank(student) === 1" class="ticket-indicator"></span>
+                                                {{ student.queueTicket || ('ITC-' + student.id) }}
+                                            </span>
+                                        </td>
                                         <td><code>{{ student.referenceNumber }}</code></td>
                                         <td><strong>{{ student.name }}</strong></td>
                                         <td><span class="badge bg-secondary-subtle text-secondary">{{ student.program }}</span></td>
@@ -383,13 +392,13 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <button class="btn-pill btn-pill-green btn-pill-sm" @click="openReview(student)">
-                                                {{ getItStepStatus(student) === 'COMPLETED' ? 'View Details' : 'Process Setup' }}
+                                            <button class="btn-pill btn-pill-green btn-pill-sm w-100" @click="openReview(student)">
+                                                <i class="fa-solid fa-id-card me-1"></i>{{ getItStepStatus(student) === 'COMPLETED' ? 'View Details' : 'Process Setup' }}
                                             </button>
                                         </td>
                                     </tr>
                                     <tr v-if="filteredStudents.length === 0">
-                                        <td colspan="5" class="text-center text-muted py-4">No matching records found.</td>
+                                        <td colspan="6" class="text-center text-muted py-4">No matching records found.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -741,8 +750,11 @@
     <!-- Script imports -->
     <script src="../../shared/libs/bootstrap.bundle.min.js"></script>
     <script src="../../shared/libs/vue.global.js"></script>
+    <script src="../../shared/libs/sweetalert2.all.min.js"></script>
+    <script src="../../shared/js/SessionExpirationGuard.js?v=20260823"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js?v=20260823"></script>
     <script src="../../shared/js/components/EmployeeSidebar.js?v=10"></script>
     <script src="../assets/js/DataBus.js?v=2.3"></script>
-    <script src="assets/js/app.js?v=20260822_swal"></script>
+    <script src="assets/js/app.js?v=20260822_v4"></script>
 </body>
 </html>

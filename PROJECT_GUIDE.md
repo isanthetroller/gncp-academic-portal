@@ -307,35 +307,31 @@ Before either of you writes code, you sit down and agree on:
 
 ---
 
-## 7. The Enrollment System Features (MVP)
-
-MVP = Minimum Viable Product. Just the essentials, nothing fancy.
+## 7. The Enrollment System Features & Multi-Station Workflow
 
 ### What Users Can Do
 
-| User | What They Can Do |
-|:--|:--|
-| **Admin / Registrar** | Add/edit/delete courses |
-|  | Create semesters (1st Sem 2026-2027, etc.) |
-|  | Open sections for courses (CS101 Section A, B, C...) |
-|  | Enroll students into sections |
-|  | View all enrollments |
-| **Student** | View available courses and sections |
-|  | See their own enrollment (what am I enrolled in?) |
-
-### Pages We Need
-
-| Page | Who Sees It | What's On It |
+| User / Role | Station Portal | What They Can Do |
 |:--|:--|:--|
-| **Login** | Everyone | Email + password form |
-| **Dashboard** | Admin/Registrar | Summary stats (total students, enrolled this sem) |
-| **Courses** | Admin/Registrar | Table of courses with Add/Edit/Delete buttons |
-| **Sections** | Admin/Registrar | Sections per course per semester with capacity |
-| **Enroll Student** | Admin/Registrar | Pick student → pick sections → submit |
-| **My Enrollment** | Student | "You are enrolled in: CS101-A, MATH101-B..." |
+| **Registrar Desk** | `/registrar/` | Review incoming applications, evaluate document requirements (Form 138, PSA, Good Moral, etc.), issue conditional undertaking waivers, and approve status (`PRE_REGISTERED` $\rightarrow$ `VERIFIED`). |
+| **TLC Helpdesk** | `/stations/tlc-helpdesk/` | Evaluate academic units, lock in NSTP choices, and allocate block sections (`VERIFIED` $\rightarrow$ `ADVISED`). |
+| **Medical Clinic** | `/stations/medical-checkup/` | Record physical fitness, vitals, and medical clearance (`ADVISED` $\rightarrow$ `MEDICAL_CLEARED`). |
+| **Cashier / Treasury** | `/stations/payment-processing/` | Settle tuition via 3 POS modes (`Cash` with change calculator, `GCash/OTC` with reference logging, and `PayMongo Hosted Gateway` with QR/Link generation), validate billing, and issue Official Receipts (`MEDICAL_CLEARED` $\rightarrow$ `PAID`). |
+| **IT Center** | `/stations/it-center/` | Transactionally promote applicants from `pre_enrollments` staging to permanent `students` table, generate permanent student IDs (`GNCP-YYYY-XXXX`), and dispatch credentials (`PAID` $\rightarrow$ `ENROLLED / ACTIVE`). |
+| **Student** | `/student-portal/` | View enrolled classes (COR), track campus bulletins & milestones, upload missing academic requirements & undertakings, download soft copies, and manage profile security. |
+| **Public Applicant** | `/enrollment-system/tracker.html` | Track multi-station verification roadmap, view ticket rank, check document clearance status, and access direct PayMongo online payment. |
 
-> [!NOTE]
-> **For the MVP, only Admin/Registrar can enroll students.** Students just view their enrollment. Self-enrollment can be added later as an upgrade — that's what "scalable" means. We can add features without rebuilding.
+### Pages & Workstations
+
+| Portal / Page | Route | Who Uses It | What's On It |
+|:--|:--|:--|:--|
+| **Public Landing & Catalog** | `/school-website/` | Public | Academic programs, college calendar, campus directory. |
+| **Online Application Form** | `/enrollment-system/` | New Applicants | 4-step registration wizard with reference number generation. |
+| **Application Tracker** | `/enrollment-system/tracker.html` | Applicants | Live queue position, timeline milestones, document status, PayMongo checkout. |
+| **Station Workstations** | `/stations/*/` & `/registrar/` | Staff Operators | Zero-refresh live queue tables, action modals, audit trails. |
+| **PayMongo Hosted Checkout** | `/shared/paymongo/checkout.html` | Students / Cashier | Interactive payment rail for GCash, Maya, QR Ph, and Debit/Credit cards. |
+| **Student Portal & Hub** | `/student-portal/` | Enrolled Students | COR schedule, announcements, Documents & Undertakings Hub, profile editor. |
+| **Central Admin Control** | `/admin/` | Admin / Super Admin | Program curriculum manager, section caps, operator provisioning, announcements. |
 
 ---
 

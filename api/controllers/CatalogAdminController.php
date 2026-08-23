@@ -3,6 +3,7 @@
  * Catalog Admin Controller — Handles academic programs, subjects, and curriculum catalog actions
  */
 require_once __DIR__ . '/../models/CourseModel.php';
+require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
 
 class CatalogAdminController {
     private $courseModel;
@@ -16,6 +17,7 @@ class CatalogAdminController {
     }
 
     public function saveProgram(array $payload): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
         $prog = $payload['program'] ?? [];
         $code = strtoupper(trim($prog['code'] ?? ''));
         $name = trim($prog['name'] ?? '');
@@ -32,6 +34,7 @@ class CatalogAdminController {
     }
 
     public function saveSubject(array $payload): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
         $subj = $payload['subject'] ?? [];
         $code = strtoupper(trim($subj['code'] ?? ''));
         $title = trim($subj['title'] ?? '');
@@ -55,6 +58,7 @@ class CatalogAdminController {
     }
 
     public function saveCurriculum(array $payload): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
         $curr = $payload['curriculum'] ?? [];
         if (empty($curr['program']) || empty($curr['subject'])) {
             return ['success' => false, 'message' => 'Program and Subject are required for curriculum mapping.', 'code' => 400];
@@ -63,6 +67,7 @@ class CatalogAdminController {
     }
 
     public function deleteCurriculum(array $payload): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
         $id = $payload['id'] ?? null;
         if (!$id) {
             return ['success' => false, 'message' => 'Curriculum ID is required.', 'code' => 400];
@@ -71,6 +76,7 @@ class CatalogAdminController {
     }
 
     public function cloneCurriculumVersion(array $payload): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
         $prog = trim($payload['program'] ?? '');
         $fromV = trim($payload['fromVersion'] ?? '');
         $toV = trim($payload['toVersion'] ?? '');

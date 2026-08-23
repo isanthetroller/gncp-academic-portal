@@ -13,26 +13,31 @@ def run_test():
     print("  GNCP STUDENT FORGOT PASSWORD & DUAL-EMAIL VERIFICATION")
     print("=" * 60)
 
-    # 1. Look up an existing student in DB
+    # 1. Look up or seed a test student in DB
     cmd = 'C:\\xampp\\mysql\\bin\\mysql.exe -u root gncp_portal -e "SELECT id, name, email, personal_info FROM students LIMIT 1;"'
     out = subprocess.check_output(cmd, shell=True).decode()
-    print("Database Student Sample:\n", out)
-
-    # Fetch first active student
     lines = [l.strip() for l in out.strip().split('\n') if l.strip()]
+
+    is_seeded = False
     if len(lines) < 2:
-        print("[FAIL] No students in DB to test.")
-        return
-
-    fields = lines[1].split('\t')
-    student_id = fields[0]
-    student_name = fields[1]
-    school_email = fields[2]
-    personal_email = "student.test.recovery@gmail.com"
-
-    # Ensure personal_info has a valid personal email
-    update_cmd = f"""C:\\xampp\\mysql\\bin\\mysql.exe -u root gncp_portal -e "UPDATE students SET personal_info = JSON_SET(COALESCE(NULLIF(personal_info, ''), '{{}}'), '$.email', '{personal_email}') WHERE id = '{student_id}';" """
-    subprocess.check_call(update_cmd, shell=True)
+        student_id = "GNCP-2026-TESTRECOVERY"
+        student_name = "Test Recovery Student"
+        school_email = "student.testrecovery@gncp.edu.ph"
+        personal_email = "student.test.recovery@gmail.com"
+        pass_hash = subprocess.check_output('C:\\xampp\\php\\php.exe -r "echo password_hash(\'delacruz\', PASSWORD_DEFAULT);"', shell=True).decode().strip()
+        personal_info_json = json.dumps({"email": personal_email, "phone": "09123456789", "firstName": "Test", "lastName": "Recovery"}).replace('"', '\\"')
+        
+        insert_cmd = f"""C:\\xampp\\mysql\\bin\\mysql.exe -u root gncp_portal -e "INSERT INTO students (id, temp_reference_no, name, email, password, program, year_level, status, personal_info) VALUES ('{student_id}', 'GNCP-2026-REC01', '{student_name}', '{school_email}', '{pass_hash}', 'BSIT', '1st Year', 'ACTIVE', '{personal_info_json}');" """
+        subprocess.check_call(insert_cmd, shell=True)
+        is_seeded = True
+    else:
+        fields = lines[1].split('\t')
+        student_id = fields[0]
+        student_name = fields[1]
+        school_email = fields[2]
+        personal_email = "student.test.recovery@gmail.com"
+        update_cmd = f"""C:\\xampp\\mysql\\bin\\mysql.exe -u root gncp_portal -e "UPDATE students SET personal_info = JSON_SET(COALESCE(NULLIF(personal_info, ''), '{{}}'), '$.email', '{personal_email}') WHERE id = '{student_id}';" """
+        subprocess.check_call(update_cmd, shell=True)
 
     # ── TEST SCENARIO A: Request via Student ID (dispatches to Personal Email) ──
     print("\n--- Scenario A: Request via Student ID ---")
@@ -91,11 +96,15 @@ def run_test():
     assert res3.json().get("success") is True
     print("  [PASS] Student Login with New Password Verified")
 
-    # Cleanup: restore default password
-    restore_pass = "delacruz"
-    restore_hash = subprocess.check_output(f'C:\\xampp\\php\\php.exe -r "echo password_hash(\'{restore_pass}\', PASSWORD_DEFAULT);"', shell=True).decode()
-    subprocess.check_call(f"""C:\\xampp\\mysql\\bin\\mysql.exe -u root gncp_portal -e "UPDATE students SET password = '{restore_hash}' WHERE id = '{student_id}';" """, shell=True)
-    print("  [PASS] Restored student default password")
+    # Cleanup
+    if is_seeded:
+        subprocess.check_call(f"""C:\\xampp\\mysql\\bin\\mysql.exe -u root gncp_portal -e "DELETE FROM students WHERE id = '{student_id}'; DELETE FROM password_resets WHERE email IN ('{school_email}', '{personal_email}');" """, shell=True)
+        print("  [PASS] Cleaned up seeded test student and reset tokens")
+    else:
+        restore_pass = "delacruz"
+        restore_hash = subprocess.check_output(f'C:\\xampp\\php\\php.exe -r "echo password_hash(\'{restore_pass}\', PASSWORD_DEFAULT);"', shell=True).decode()
+        subprocess.check_call(f"""C:\\xampp\\mysql\\bin\\mysql.exe -u root gncp_portal -e "UPDATE students SET password = '{restore_hash}' WHERE id = '{student_id}';" """, shell=True)
+        print("  [PASS] Restored student default password")
 
     print("\n" + "=" * 60)
     print("  ALL SCENARIOS PASSED WITH PERFECT DUAL-EMAIL ROUTING!")

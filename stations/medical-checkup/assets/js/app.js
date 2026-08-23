@@ -11,13 +11,23 @@ window.app = createApp({
         'station-sidebar': window.StationSidebar || window.EmployeeSidebar
     },
     setup() {
-        const currentView = ref('dashboard');
+        const currentView = ref('queue');
         const searchQuery = ref('');
         const activeFilter = ref('All');
-        const sortBy = ref('referenceNumber');
-        const sortDesc = ref(false);
+        const sortBy = ref('arrivedAt');
+        const sortDesc = ref(false); // FIFO: Earliest clinic arrivals served first (First In, First Out)
         const selectedStudent = ref(null);
         const students = ref([]);
+        const hasSubmitted = ref(false);
+
+        const calculateAge = (dob) => {
+            if (!dob) return '';
+            const birth = new Date(dob);
+            if (isNaN(birth.getTime())) return '';
+            const ageDifMs = Date.now() - birth.getTime();
+            const ageDate = new Date(ageDifMs);
+            return Math.abs(ageDate.getUTCFullYear() - 1970);
+        };
 
         const timeGreeting = computed(() => {
             const hour = new Date().getHours();
@@ -54,6 +64,12 @@ window.app = createApp({
             return step ? step.status : 'PENDING';
         };
 
+        const getQueueRank = (student) => {
+            const pendingList = filteredStudents.value.filter(s => getMedicalStepStatus(s) !== 'COMPLETED');
+            const idx = pendingList.findIndex(s => s.referenceNumber === student.referenceNumber);
+            return idx >= 0 ? idx + 1 : null;
+        };
+
         const completedStudents = computed(() => {
             const list = [];
             for (let i = 0; i < students.value.length; i++) {
@@ -65,6 +81,11 @@ window.app = createApp({
             return [...list].sort((a, b) => {
                 let vA = a[sortBy.value] || '';
                 let vB = b[sortBy.value] || '';
+                if (sortBy.value === 'arrivedAt' || sortBy.value === 'createdAt') {
+                    vA = vA ? new Date(vA).getTime() : (a.id || 0);
+                    vB = vB ? new Date(vB).getTime() : (b.id || 0);
+                    return sortDesc.value ? vB - vA : vA - vB;
+                }
                 if (typeof vA === 'string') vA = vA.toLowerCase();
                 if (typeof vB === 'string') vB = vB.toLowerCase();
                 if (vA < vB) return sortDesc.value ? 1 : -1;
@@ -85,7 +106,8 @@ window.app = createApp({
                 if (query) {
                     const nameMatches = student.name.toLowerCase().indexOf(query) !== -1;
                     const refMatches = student.referenceNumber.toLowerCase().indexOf(query) !== -1;
-                    matchesQuery = nameMatches || refMatches;
+                    const ticketMatches = student.queueTicket && student.queueTicket.toLowerCase().indexOf(query) !== -1;
+                    matchesQuery = nameMatches || refMatches || ticketMatches;
                 }
 
                 // Matches filter
@@ -105,10 +127,15 @@ window.app = createApp({
                 }
             }
 
-            // Registrar Sorting Logic
+            // FIFO (First In, First Out) / Header Sorting Logic
             return [...result].sort((a, b) => {
                 let vA = a[sortBy.value] || '';
                 let vB = b[sortBy.value] || '';
+                if (sortBy.value === 'arrivedAt' || sortBy.value === 'createdAt') {
+                    vA = vA ? new Date(vA).getTime() : (a.id || 0);
+                    vB = vB ? new Date(vB).getTime() : (b.id || 0);
+                    return sortDesc.value ? vB - vA : vA - vB;
+                }
                 if (typeof vA === 'string') vA = vA.toLowerCase();
                 if (typeof vB === 'string') vB = vB.toLowerCase();
                 if (vA < vB) return sortDesc.value ? 1 : -1;
@@ -116,6 +143,16 @@ window.app = createApp({
                 return 0;
             });
         });
+
+        const nextInQueue = computed(() => {
+            return filteredStudents.value.find(s => getMedicalStepStatus(s) !== 'COMPLETED') || filteredStudents.value[0] || null;
+        });
+
+        const callNextPatient = () => {
+            if (nextInQueue.value) {
+                openReview(nextInQueue.value);
+            }
+        };
 
         // Authentication State
         const currentUser = ref(null);
@@ -140,8 +177,16 @@ window.app = createApp({
                 // Safely default all medical fields to avoid undefined in the UI
                 const med = student.medical && typeof student.medical === 'object' ? student.medical : {};
                 
+                const padId = String(student.id || (i + 1)).padStart(3, '0');
+                const queueTicket = (student.queueTickets && student.queueTickets.medical) ? student.queueTickets.medical : ('MED-' + padId);
+                const arrivedAt = (student.stationArrivals && student.stationArrivals.medical) ? student.stationArrivals.medical : (student.createdAt || student.datePreRegistered || '');
+
                 const s = {
+                    id: student.referenceNumber || student.id,
                     referenceNumber: student.referenceNumber,
+                    queueTicket: queueTicket,
+                    arrivedAt: arrivedAt,
+                    createdAt: student.createdAt,
                     name: student.name,
                     program: student.program,
                     studentType: student.studentType,
@@ -163,7 +208,16 @@ window.app = createApp({
                     medicalConditions: form.medicalConditions || [],
                     allergies: form.allergies || 'None',
                     currentMedication: form.currentMedication !== undefined ? form.currentMedication : false,
-                    medicationDetails: form.medicationDetails || ''
+                    medicationDetails: form.medicationDetails || '',
+                    // Demographics & Emergency Details
+                    birthDate: student.birthDate || (student.personal ? student.personal.birthDate : ''),
+                    gender: student.gender || 'Not specified',
+                    phone: student.phone || '',
+                    email: student.email || '',
+                    nstp: student.nstp || (student.helpdesk ? student.helpdesk.nstp : (form.nstp || 'CWTS')),
+                    emergencyContactName: student.emergencyContactName || form.emergencyContactName || '',
+                    emergencyContactPhone: student.emergencyContactPhone || form.emergencyContactPhone || '',
+                    fitnessParticipation: student.fitnessParticipation !== undefined ? student.fitnessParticipation : (form.fitnessParticipation !== undefined ? form.fitnessParticipation : true)
                 };
                 result.push(s);
             }
@@ -187,16 +241,22 @@ window.app = createApp({
                 }).catch(() => {});
         };
 
-        const checkSession = () => {
-            const stored = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user') || localStorage.getItem('gncp_station_user') || localStorage.getItem('gncp_admin_user');
-            if (stored) {
-                try {
-                    const user = JSON.parse(stored);
-                    if (user && (user.role === 'MEDICAL' || user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'REGISTRAR')) {
-                        currentUser.value = user;
+        const checkSession = async () => {
+            localStorage.removeItem('gncp_station_user');
+            localStorage.removeItem('gncp_admin_user');
+
+            try {
+                const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
+                if (res.ok) {
+                    const result = await res.json();
+                    const allowedRoles = ['MEDICAL', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'];
+                    if (result.success && result.data && allowedRoles.includes(result.data.role)) {
+                        currentUser.value = result.data;
+                        const sessionKey = (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
+                        sessionStorage.setItem(sessionKey, JSON.stringify(result.data));
                         fetchCurrentProfile();
-                        if (user.must_change_password && typeof window.PasswordChangeGuard !== 'undefined') {
-                            window.PasswordChangeGuard.checkAndPrompt(user, function() {
+                        if (result.data.must_change_password && typeof window.PasswordChangeGuard !== 'undefined') {
+                            window.PasswordChangeGuard.checkAndPrompt(result.data, function() {
                                 loadQueue();
                             });
                         } else {
@@ -204,15 +264,22 @@ window.app = createApp({
                         }
                         return;
                     }
-                } catch (e) {
-                    console.error('[Medical] Session parse error:', e);
                 }
+            } catch (e) {
+                console.error('[Medical] Session check error:', e);
             }
-            sessionStorage.removeItem('gncp_station_user');
-            sessionStorage.removeItem('gncp_admin_user');
-            localStorage.removeItem('gncp_station_user');
-            localStorage.removeItem('gncp_admin_user');
-            window.location.href = '../../index.html?clear=true&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+
+            if (typeof window.SessionExpirationGuard !== 'undefined') {
+                window.SessionExpirationGuard.handleExpiredSession({
+                    title: 'Session Expired',
+                    message: 'Your medical clinic session has expired. Please sign in again to continue student medical clearance.',
+                    reason: 'expired'
+                });
+            } else {
+                sessionStorage.removeItem('gncp_station_user');
+                sessionStorage.removeItem('gncp_admin_user');
+                window.location.href = '../../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            }
         };
 
 
@@ -317,6 +384,7 @@ window.app = createApp({
         };
 
         const openReview = (student) => {
+            hasSubmitted.value = false;
             selectedStudent.value = student;
             // Use getOrCreateInstance so the modal works even if it wasn't pre-initialized
             const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('checkupModal'));
@@ -352,31 +420,72 @@ window.app = createApp({
                 s.medical.notes = student.notes;
 
                 // Sync global roadmap steps
-                const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r.stepId === 'clinic_checkup') : -1;
+                const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) 
+                    ? s.roadmap.findIndex(r => r.stepId === 'clinic_checkup' || r.stepId === 'medical_checkup' || r.name === 'Medical Clearance' || r.id === 4) 
+                    : -1;
                 if (currentStepIdx !== -1) {
                     if (student.status === 'fit' || student.status === 'conditional') {
                         s.medical.verifiedBy = currentUser.value?.name || currentUser.value?.username || 'Medical Officer';
                         s.medical.dateVerified = new Date().toLocaleDateString();
                         s.roadmap[currentStepIdx].status = 'COMPLETED';
+                        s.roadmap[currentStepIdx].updatedAt = new Date().toISOString();
+                        s.status = 'MEDICAL_CLEARED';
                         
-                        // Open next station step: Cashier / Treasury
-                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING');
+                        // Open next station step: Cashier / Treasury / Scholarship
+                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING' || r.status === 'LOCKED');
                         if (nextStep) {
                             nextStep.status = 'IN_PROGRESS';
+                            nextStep.updatedAt = new Date().toISOString();
                         }
                     } else if (student.status === 'unfit') {
                         s.roadmap[currentStepIdx].status = 'FLAGGED';
+                        s.roadmap[currentStepIdx].updatedAt = new Date().toISOString();
+                        s.status = 'FLAGGED';
                     } else {
                         s.roadmap[currentStepIdx].status = 'IN_PROGRESS';
                     }
                 }
-            }, ['medical', 'roadmap']); // Delta: only send medical + roadmap fields
+            }, ['medical', 'roadmap', 'status']); // Delta: send medical + roadmap + status fields
             loadQueue();
         };
 
         const saveCheckup = () => {
-            if (selectedStudent.value) {
-                persistStudentUpdate(selectedStudent.value);
+            hasSubmitted.value = true;
+            if (!selectedStudent.value) return;
+            const s = selectedStudent.value;
+
+            // Required dropdown validation
+            const unassessed = [];
+            if (!s.physicalExam || s.physicalExam === 'not-assessed') unassessed.push('Physical Examination');
+            if (!s.medicalInterview || s.medicalInterview === 'not-assessed') unassessed.push('Medical Interview');
+            if (!s.peFitness || s.peFitness === 'not-assessed') unassessed.push('PE Fitness');
+            if (!s.nstpFitness || s.nstpFitness === 'not-assessed') unassessed.push('NSTP Fitness');
+            if (!s.status || s.status === 'pending') unassessed.push('Overall Medical Status');
+
+            if (unassessed.length > 0) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Incomplete Medical Assessment',
+                        html: `<div class="text-start small">All evaluation dropdowns are required before saving.<br><br>Please select assessments for:<ul class="mt-2 text-danger fw-bold mb-0">${unassessed.map(f => `<li>${f}</li>`).join('')}</ul></div>`,
+                        confirmButtonColor: '#006A4E'
+                    });
+                }
+                return;
+            }
+
+            const sName = s.name;
+            persistStudentUpdate(s);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `Medical clearance saved for ${sName}`,
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
             }
             if (document.activeElement && typeof document.activeElement.blur === 'function') {
                 document.activeElement.blur();
@@ -533,12 +642,6 @@ window.app = createApp({
                             p.avatar = newFilename;
                             sessionStorage.setItem('gncp_station_user', JSON.stringify(p));
                         }
-                        const rawLoc = localStorage.getItem('gncp_station_user');
-                        if (rawLoc) {
-                            const p = JSON.parse(rawLoc);
-                            p.avatar = newFilename;
-                            localStorage.setItem('gncp_station_user', JSON.stringify(p));
-                        }
                         Swal.fire('Success', 'Profile picture updated successfully.', 'success');
                     } else { Swal.fire('Upload Failed', data.message || 'Unable to update profile picture.', 'error'); }
                 } catch (err) { Swal.fire('Error', 'Unable to process image upload.', 'error'); }
@@ -574,14 +677,6 @@ window.app = createApp({
                         p.email = user.value.email;
                         p.avatar = avatarFilename;
                         sessionStorage.setItem('gncp_station_user', JSON.stringify(p));
-                    }
-                    const rawLoc = localStorage.getItem('gncp_station_user');
-                    if (rawLoc) {
-                        const p = JSON.parse(rawLoc);
-                        p.name = user.value.name;
-                        p.email = user.value.email;
-                        p.avatar = avatarFilename;
-                        localStorage.setItem('gncp_station_user', JSON.stringify(p));
                     }
                     Swal.fire('Success', 'Personal details updated successfully.', 'success');
                 } else { Swal.fire('Update Failed', data.message || 'Unable to update profile.', 'error'); }
@@ -622,6 +717,9 @@ window.app = createApp({
             students,
             filteredStudents,
             completedStudents,
+            nextInQueue,
+            callNextPatient,
+            getQueueRank,
             selectedStudent,
             pendingCount,
             completedCount,
@@ -630,6 +728,7 @@ window.app = createApp({
             setView,
             openReview,
             badgeClass: getStatusBadgeClass,
+            getStatusBadgeClass,
             getStepIcon,
             saveCheckup,
             formatStatus,
@@ -643,6 +742,8 @@ window.app = createApp({
             getMedicalStepStatus,
             isMedicalStepCompleted,
             timeGreeting,
+            hasSubmitted,
+            calculateAge,
             // Profile & Security
             user, pass, saving, updatingPass, showCurrentPass, showNewPass, fileInput,
             passStrengthLevel, passStrengthLabel, passStrengthColor, passStrengthWidth,

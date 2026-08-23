@@ -186,16 +186,16 @@ a { text-decoration: none; }
 .btn-pill:hover { transform: translateY(-1px); }
 .btn-pill:active { transform: none; }
 
-.btn-pill-green  { background: var(--primary-green); color: var(--white); box-shadow: 0 2px 8px rgba(0,106,78,0.18); }
+.btn-pill-green  { background: var(--primary-green); color: var(--white); box-shadow: none; }
 .btn-pill-green:hover { background: var(--primary-green-hover); color: var(--white); }
 
 .btn-pill-outline { background: transparent; color: var(--primary-green); border: 1.5px solid var(--primary-green); }
 .btn-pill-outline:hover { background: var(--primary-green-light); }
 
-.btn-pill-danger  { background: #EF4444; color: var(--white); box-shadow: 0 2px 8px rgba(239,68,68,0.15); }
+.btn-pill-danger  { background: #EF4444; color: var(--white); box-shadow: none; }
 .btn-pill-danger:hover  { background: #DC2626; color: var(--white); }
 
-.btn-pill-warning { background: #F59E0B; color: #1A1D23; box-shadow: 0 2px 8px rgba(245,158,11,0.18); }
+.btn-pill-warning { background: #F59E0B; color: #1A1D23; box-shadow: none; }
 .btn-pill-warning:hover { background: #D97706; }
 
 .btn-pill-ghost { background: transparent; color: var(--text-muted); border: 1.5px solid var(--gray-border); }
@@ -630,13 +630,13 @@ a { text-decoration: none; }
     background-color: var(--primary-green);
     border-color: var(--primary-green);
     color: #FFFFFF;
-    box-shadow: 0 4px 10px rgba(0, 106, 78, 0.15);
+    box-shadow: none;
 }
 .stepper-node.is-active .stepper-circle {
     background-color: var(--primary-green);
     border-color: var(--primary-green);
     color: #FFFFFF;
-    box-shadow: 0 4px 12px rgba(0, 106, 78, 0.2);
+    box-shadow: none;
 }
 .stepper-node.is-upcoming .stepper-circle {
     background-color: #FFFFFF;
@@ -730,3 +730,301 @@ a { text-decoration: none; }
 .confirm-btn-cancel:hover { background: #E5E7EB; }
 .confirm-btn-danger { background: #ef4444; color: #fff; }
 .confirm-btn-danger:hover { background: #dc2626; }
+
+/* =========================================================
+ * Payment Plan Selector Cards & Form Modernization
+ * ========================================================= */
+.payment-plan-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+    width: 100% !important;
+}
+
+@media (max-width: 576px) {
+    .payment-plan-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.plan-card {
+    position: relative !important;
+    border: 2px solid #E2E8F0 !important;
+    border-radius: 12px !important;
+    background: #FFFFFF !important;
+    padding: 12px 14px !important;
+    cursor: pointer !important;
+    transition: border-color 0.2s ease, background-color 0.2s ease !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    min-height: 96px !important;
+    user-select: none !important;
+    box-shadow: none !important;
+}
+
+.plan-card:hover {
+    border-color: #006A4E !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.plan-card.is-selected {
+    border-color: #006A4E !important;
+    background: #F0FDF4 !important;
+    box-shadow: none !important;
+}
+
+.plan-card .plan-radio-indicator {
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 50% !important;
+    border: 2px solid #CBD5E1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+    flex-shrink: 0 !important;
+    background: #FFFFFF !important;
+    box-shadow: none !important;
+}
+
+.plan-card.is-selected .plan-radio-indicator {
+    border-color: #006A4E !important;
+    background: #006A4E !important;
+}
+
+.plan-card.is-selected .plan-radio-indicator::after {
+    content: '' !important;
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    background: #FFFFFF !important;
+}
+
+.plan-card-title {
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    color: #1E293B !important;
+    margin-bottom: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    line-height: 1.2 !important;
+}
+
+.plan-card.is-selected .plan-card-title {
+    color: #006A4E !important;
+}
+
+.plan-card-amount {
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    color: #006A4E !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.2 !important;
+    margin: 4px 0 !important;
+}
+
+.plan-card.is-selected .plan-card-amount {
+    color: #004D38 !important;
+}
+
+.plan-card-badge {
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    padding: 3px 8px !important;
+    border-radius: 6px !important;
+    background: #F1F5F9 !important;
+    color: #475569 !important;
+    display: inline-block !important;
+    width: fit-content !important;
+    line-height: 1.2 !important;
+}
+
+.plan-card.is-selected .plan-card-badge {
+    background: #DCFCE7 !important;
+    color: #15803D !important;
+}
+
+/* Modern Input Groups & Form styling */
+.payment-input-group {
+    display: flex !important;
+    align-items: stretch !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 10px !important;
+    background: #FFFFFF !important;
+    transition: border-color 0.2s ease !important;
+    overflow: hidden !important;
+    min-height: 42px !important;
+    width: 100% !important;
+    box-shadow: none !important;
+}
+
+.payment-input-group:focus-within {
+    border-color: #006A4E !important;
+    box-shadow: none !important;
+}
+
+.payment-input-group.is-readonly {
+    background: #F8FAFC !important;
+    border-color: #E2E8F0 !important;
+}
+
+.payment-input-addon {
+    background: #F1F5F9 !important;
+    color: #334155 !important;
+    font-weight: 800 !important;
+    font-size: 0.92rem !important;
+    padding: 0 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-right: 1.5px solid #E2E8F0 !important;
+    flex-shrink: 0 !important;
+}
+
+.payment-input-control {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    font-size: 0.98rem !important;
+    font-weight: 700 !important;
+    color: #0F172A !important;
+    padding: 8px 12px !important;
+    width: 100% !important;
+    flex: 1 !important;
+    background: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.payment-input-control:disabled, .payment-input-control[readonly] {
+    color: #334155 !important;
+    background: transparent !important;
+    cursor: default !important;
+}
+
+/* Real-time Ledger Summary Card */
+.payment-ledger-card {
+    background: #FFFFFF !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 12px !important;
+    padding: 14px 16px !important;
+    box-shadow: none !important;
+}
+
+.ledger-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 6px 0 !important;
+    font-size: 0.85rem !important;
+}
+
+.ledger-row.total-row {
+    border-top: 1.5px dashed #CBD5E1 !important;
+    padding-top: 10px !important;
+    margin-top: 6px !important;
+}
+
+/* ==========================================================================
+   PRINT MEDIA STYLES - Clean In-Tab Receipt Output
+   ========================================================================== */
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
+
+    *, *::before, *::after {
+        box-sizing: border-box !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    html, body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+    }
+
+    /* Hide standard UI elements during print */
+    .layout-sidebar,
+    .topbar,
+    .station-toolbar,
+    .panel,
+    .card,
+    .modal,
+    .modal-backdrop,
+    .no-print,
+    .btn,
+    .btn-pill,
+    nav,
+    header,
+    footer,
+    main {
+        display: none !important;
+    }
+
+    .confirm-overlay {
+        position: static !important;
+        inset: auto !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        display: block !important;
+        box-shadow: none !important;
+    }
+
+    .receipt-container {
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: none !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        border: none !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+        background: transparent !important;
+        display: block !important;
+    }
+
+    #printable-receipt-card {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 20px !important;
+        border: 2px solid #000000 !important;
+        border-radius: 6px !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    #printable-receipt-card table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+    }
+
+    #printable-receipt-card th,
+    #printable-receipt-card td {
+        border: 1px solid #000000 !important;
+        color: #000000 !important;
+    }
+}
+
+

@@ -156,6 +156,7 @@ class QueueService {
 
                 $personal = json_decode($sr['personal_info'] ?? '{}', true) ?: [];
                 $academic = json_decode($sr['academic_info'] ?? '{}', true) ?: [];
+                $paymentInfo = json_decode($sr['payment_data'] ?? '{}', true) ?: [];
                 $nameParts = explode(' ', trim($sr['name'] ?? ''));
                 $firstName = $personal['firstName'] ?? ($nameParts[0] ?? '');
                 $lastName = $personal['lastName'] ?? (end($nameParts) ?: '');
@@ -177,7 +178,7 @@ class QueueService {
                     'email'               => $sr['email'],
                     'gender'              => $personal['gender'] ?? 'Other',
                     'address'             => $personal['address'] ?? '',
-                    'payment_mode'        => 'Cash',
+                    'payment_mode'        => $paymentInfo['paymentMode'] ?? ($paymentInfo['paymentType'] ?? 'CASH'),
                     'created_at'          => $sr['created_at'],
                     'senior_high_school'  => $academic['seniorHighSchool'] ?? '',
                     'shs_track'           => $academic['shsTrack'] ?? '',
@@ -290,11 +291,51 @@ class QueueService {
                 }
             }
 
+            $rowId = (int)($row['id'] ?? 0);
+            $padId = str_pad((string)($rowId > 0 ? $rowId : rand(1, 999)), 3, '0', STR_PAD_LEFT);
+            $parsedRoadmap = json_decode((string)($row['roadmap'] ?? ''), true) ?: [];
+
+            // Compute deterministic station queue tokens
+            $queueTickets = [
+                'registrar' => 'REG-' . $padId,
+                'helpdesk'  => 'ADV-' . $padId,
+                'medical'   => 'MED-' . $padId,
+                'cashier'   => 'CSH-' . $padId,
+                'it'        => 'ITC-' . $padId
+            ];
+
+            // Compute arrival timestamps per station based on roadmap progression
+            $stationArrivals = [
+                'registrar' => $row['created_at'] ?? null,
+                'helpdesk'  => $parsedRoadmap[1]['updatedAt'] ?? ($parsedRoadmap[0]['updatedAt'] ?? ($row['created_at'] ?? null)),
+                'medical'   => $parsedRoadmap[2]['updatedAt'] ?? ($parsedRoadmap[1]['updatedAt'] ?? ($row['created_at'] ?? null)),
+                'cashier'   => $parsedRoadmap[3]['updatedAt'] ?? ($parsedRoadmap[2]['updatedAt'] ?? ($row['created_at'] ?? null)),
+                'it'        => $parsedRoadmap[4]['updatedAt'] ?? ($parsedRoadmap[3]['updatedAt'] ?? ($row['created_at'] ?? null))
+            ];
+
+            // Determine active station ticket
+            $activeStationKey = 'registrar';
+            if ($row['status'] === 'VERIFIED') {
+                $activeStationKey = 'helpdesk';
+            } elseif ($row['status'] === 'ADVISED') {
+                $activeStationKey = 'medical';
+            } elseif ($row['status'] === 'MEDICAL_CLEARED') {
+                $activeStationKey = 'cashier';
+            } elseif ($row['status'] === 'PAID') {
+                $activeStationKey = 'it';
+            }
+
+            $currentTicket = $queueTickets[$activeStationKey] ?? ('Q-' . $padId);
+
             $queue[] = [
                 'id'                 => (int)$row['id'],
                 'referenceNumber'    => $row['temp_student_id'],
                 'tempPin'            => $row['temp_pin'],
                 'status'             => $row['status'] ?? 'PRE_REGISTERED',
+                'queueTickets'       => $queueTickets,
+                'stationArrivals'    => $stationArrivals,
+                'currentTicket'      => $currentTicket,
+                'activeStation'      => $activeStationKey,
                 'lastName'           => $row['last_name'],
                 'firstName'          => $row['first_name'],
                 'middleName'         => $row['middle_name'] ?? '',
@@ -303,8 +344,13 @@ class QueueService {
                 'studentType'        => $row['student_type'],
                 'phone'              => $row['phone'],
                 'email'              => $row['email'],
-                'gender'             => $row['gender'],
+                'gender'             => $row['gender'] ?? 'Not specified',
+                'birthDate'          => $row['birth_date'] ?? '',
                 'address'            => $row['address'],
+                'nstp'               => $row['nstp'] ?? '',
+                'emergencyContactName'  => $row['emergency_contact_name'] ?? '',
+                'emergencyContactPhone' => $row['emergency_contact_phone'] ?? '',
+                'fitnessParticipation'  => (bool)($row['fitness_participation'] ?? true),
                 'paymentMode'        => $row['payment_mode'] ?? 'Cash',
                 'datePreRegistered'  => date('F j, Y', strtotime($row['created_at'])),
                 'createdAt'          => $row['created_at'],
@@ -314,13 +360,16 @@ class QueueService {
                 'enrolledAt'         => $row['enrolled_at'] ?? null,
                 'cashierName'        => $row['cashier_name'] ?? null,
                 'form'               => [
-                    'healthStatus'      => $row['health_status'] ?? 'GOOD',
-                    'medicalConditions' => $medConditionsArr,
-                    'allergies'         => $row['allergies'] ?? 'None',
-                    'currentMedication' => (bool)($row['current_medication'] ?? false),
-                    'medicationDetails' => $row['medication_details'] ?? ''
+                    'healthStatus'          => $row['health_status'] ?? 'GOOD',
+                    'medicalConditions'     => $medConditionsArr,
+                    'allergies'             => $row['allergies'] ?? 'None',
+                    'currentMedication'     => (bool)($row['current_medication'] ?? false),
+                    'medicationDetails'     => $row['medication_details'] ?? '',
+                    'fitnessParticipation'  => (bool)($row['fitness_participation'] ?? true),
+                    'emergencyContactName'  => $row['emergency_contact_name'] ?? '',
+                    'emergencyContactPhone' => $row['emergency_contact_phone'] ?? ''
                 ],
-                'roadmap'            => json_decode((string)($row['roadmap'] ?? ''), true) ?: [],
+                'roadmap'            => $parsedRoadmap,
                 'requirements'       => json_decode((string)($row['requirements_data'] ?? ''), true) ?: new stdClass(),
                 'medical'            => json_decode((string)($row['medical_data'] ?? ''), true) ?: new stdClass(),
                 'scholarship'        => json_decode((string)($row['scholarship_data'] ?? ''), true) ?: new stdClass(),

@@ -125,6 +125,25 @@ window.StudentApiService = {
     },
 
     /**
+     * Fetch document requirements and undertaking compliance status
+     */
+    async fetchDocuments(studentId) {
+        return this.request(`get_student_documents&studentId=${encodeURIComponent(studentId)}`, {
+            method: 'GET'
+        });
+    },
+
+    /**
+     * Upload document soft copy or undertaking form
+     */
+    async uploadDocument(payload) {
+        return this.request('upload_student_document', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+    },
+
+    /**
      * Terminate student session
      */
     async logout() {

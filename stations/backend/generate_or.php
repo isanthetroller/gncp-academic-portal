@@ -1,3 +1,4 @@
+<?php
 require_once __DIR__ . '/../../shared/backend/config/database.php';
 require_once __DIR__ . '/../../shared/backend/utils/response.php';
 require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';

@@ -38,7 +38,7 @@
              width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: #FFF; border: 2px solid #E5E8EC; color: #9CA3AF; z-index: 1; transition: all 0.2s ease;
          }
          .is-completed .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; }
-         .is-active .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; box-shadow: 0 0 0 4px rgba(0, 106, 78, 0.15); }
+         .is-active .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; box-shadow: none !important; }
          .vertical-step-content { display: flex; flex-direction: column; text-align: left; }
          .vertical-step-title { font-size: 0.78rem; font-weight: 700; margin: 0; color: var(--text-dark); line-height: 1.2; }
          .is-completed .vertical-step-title { color: var(--dark-green); }
@@ -266,14 +266,14 @@
                 <div class="row g-3 mb-3">
                     <div class="col-6 col-md-4">
                         <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #f59e0b !important;">
-                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Pending Review</div>
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Pending Advising</div>
                             <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#d97706;line-height:1.1;">{{ pendingCount }}</div>
                             <div style="font-size:0.7rem;color:#9ca3af;">students waiting in queue</div>
                         </div>
                     </div>
                     <div class="col-6 col-md-4">
                         <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #22c55e !important;">
-                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Completed Today</div>
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Advised / Cleared</div>
                             <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#16a34a;line-height:1.1;">{{ completedToday }}</div>
                             <div style="font-size:0.7rem;color:#9ca3af;">cleared by advising</div>
                         </div>
@@ -323,6 +323,7 @@
                         </span>
                         <div class="d-flex align-items-center gap-2">
                             <select class="form-select form-select-sm py-1" style="max-width:180px;font-size:0.8rem;border-radius:6px;" v-model="sortBy">
+                                <option value="arrivedAt">Arrival Time</option>
                                 <option value="referenceNumber">Reference ID</option>
                                 <option value="name">Applicant Name</option>
                                 <option value="program">Program Choice</option>
@@ -343,7 +344,7 @@
                     <div class="panel-header d-flex justify-content-between align-items-center">
                         <div>
                             <h3>Student Advising Queue</h3>
-                            <p>Review and process advising assessments — click column headers to sort</p>
+                            <p>First-Come, First-Served advising assessments & block section assignment — click headers to sort</p>
                         </div>
                         <span class="badge rounded-pill fw-bold font-monospace px-3 py-2"
                               :class="filteredStudents.length > 0 ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'">
@@ -354,6 +355,7 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
+                                    <th style="width:110px;">Queue Ticket</th>
                                     <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
                                         Ref No. <i :class="getSortIcon('referenceNumber')"></i>
                                     </th>
@@ -367,11 +369,18 @@
                                     <th class="cursor-pointer select-none" @click="toggleSort('status')">
                                         Status <i :class="getSortIcon('status')"></i>
                                     </th>
-                                    <th>Action</th>
+                                    <th style="width:120px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-for="student in filteredStudents" :key="student.referenceNumber">
+                                    <!-- Queue Ticket -->
+                                    <td>
+                                        <span class="queue-ticket-badge" :class="getQueueRank(student) === 1 ? 'ticket-next' : 'ticket-default'">
+                                            <span v-if="getQueueRank(student) === 1" class="ticket-indicator"></span>
+                                            {{ student.queueTicket || ('ADV-' + student.id) }}
+                                        </span>
+                                    </td>
                                     <td><code>{{ student.referenceNumber }}</code></td>
                                     <td><strong>{{ student.name }}</strong></td>
                                     <td><span class="badge bg-secondary-subtle text-secondary">{{ student.program }}</span></td>
@@ -387,12 +396,14 @@
                                     </td>
                                     <td>
                                         <div class="action-buttons">
-                                            <button class="btn-pill btn-pill-green btn-pill-sm" @click="openReview(student)">{{ student.status === 'COMPLETED' ? 'View' : 'Review' }}</button>
+                                            <button class="btn-pill btn-pill-green btn-pill-sm w-100" @click="openReview(student)">
+                                                <i class="fa-solid fa-user-check me-1"></i>{{ student.status === 'COMPLETED' ? 'View' : 'Advise' }}
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
                                 <tr v-if="filteredStudents.length === 0">
-                                    <td colspan="6" class="empty-state text-center py-4 text-muted">
+                                    <td colspan="7" class="empty-state text-center py-4 text-muted">
                                         <i class="fa-solid fa-inbox fs-3 mb-2 d-block text-secondary"></i>
                                         <p class="mb-0 small">No students match your filter.</p>
                                     </td>
@@ -555,8 +566,10 @@
     <script src="../../shared/libs/bootstrap.bundle.min.js"></script>
     <script src="../../shared/libs/vue.global.js"></script>
     <script src="../../shared/libs/sweetalert2.all.min.js"></script>
+    <script src="../../shared/js/SessionExpirationGuard.js?v=20260823"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js?v=20260823"></script>
     <script src="../../shared/js/components/EmployeeSidebar.js?v=10"></script>
     <script src="../assets/js/DataBus.js?v=2.5"></script>
-    <script src="assets/js/app.js?v=20260822_swal"></script>
+    <script src="assets/js/app.js?v=20260822_v4"></script>
 </body>
 </html>

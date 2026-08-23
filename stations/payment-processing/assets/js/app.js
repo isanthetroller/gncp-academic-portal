@@ -14,8 +14,8 @@ window.app = createApp({
         const currentView = ref('dashboard');
         const searchQuery = ref('');
         const activeFilter = ref('All');
-        const sortBy = ref('referenceNumber');
-        const sortDesc = ref(false);
+        const sortBy = ref('arrivedAt');
+        const sortDesc = ref(false); // FIFO: Earliest cashier arrivals served first (First In, First Out)
         const selectedStudent = ref(null);
         const students = ref([]);
         const receiptData = ref(null);
@@ -45,6 +45,12 @@ window.app = createApp({
             return sortDesc.value ? 'fa-solid fa-sort-down text-success ms-1' : 'fa-solid fa-sort-up text-success ms-1';
         };
 
+        const getQueueRank = (student) => {
+            const pendingList = filteredStudents.value.filter(s => s.status === 'PENDING');
+            const idx = pendingList.findIndex(s => s.referenceNumber === student.referenceNumber);
+            return idx >= 0 ? idx + 1 : null;
+        };
+
         // Authentication State
         const currentUser = ref(null);
         const isLoggingIn = ref(false);
@@ -59,37 +65,58 @@ window.app = createApp({
             const result = [];
             for (let i = 0; i < queue.length; i++) {
                 const student = queue[i];
+                let roadmap = student.roadmap;
+                if (typeof roadmap === 'string') {
+                    try { roadmap = JSON.parse(roadmap); } catch (e) { roadmap = []; }
+                }
+                if (!Array.isArray(roadmap)) roadmap = [];
+
+                let payment = student.payment;
+                if (typeof payment === 'string') {
+                    try { payment = JSON.parse(payment); } catch (e) { payment = {}; }
+                }
+                if (!payment || typeof payment !== 'object') payment = {};
+
                 // Enforce sequential station workflow
-                const step = student.roadmap ? student.roadmap.find(r => r.stepId === 'cashier_payment') : null;
-                if (!step || step.status === 'PENDING') {
+                const step = roadmap.find(r => r && (r.stepId === 'cashier_payment' || r.name === 'Cashier Payment' || r.id === 6));
+                if (!step || step.status === 'PENDING' || step.status === 'LOCKED') {
                     continue;
                 }
                 
-                let balanceVal = student.payment.totalFee || 0;
-                if (student.payment.balance != null) {
-                    balanceVal = student.payment.balance;
+                let balanceVal = payment.totalFee || 0;
+                if (payment.balance != null) {
+                    balanceVal = payment.balance;
                 }
 
+                const padId = String(student.id || (i + 1)).padStart(3, '0');
+                const queueTicket = (student.queueTickets && student.queueTickets.cashier) ? student.queueTickets.cashier : ('CSH-' + padId);
+                const arrivedAt = (student.stationArrivals && student.stationArrivals.cashier) ? student.stationArrivals.cashier : (student.createdAt || student.datePreRegistered || '');
+
                 const s = {
+                    id: student.referenceNumber || student.id,
                     referenceNumber: student.referenceNumber,
+                    queueTicket: queueTicket,
+                    arrivedAt: arrivedAt,
+                    createdAt: student.createdAt,
                     tempPin: student.tempPin || '',
                     studentName: student.name,
                     program: student.program,
                     studentType: student.studentType,
-                    status: student.payment.status || 'PENDING',
+                    paymentMode: student.paymentMode || student.payment?.paymentMode || 'CASH',
+                    status: payment.status || 'PENDING',
                     orNumber: student.orNumber || null,
                     enrolledAt: student.enrolledAt || null,
                     cashierName: student.cashierName || null,
                     payment: {
-                        totalFee:       student.payment.totalFee     || 0,
-                        amountPaid:     student.payment.amountPaid   || 0,
+                        totalFee:       payment.totalFee     || 0,
+                        amountPaid:     payment.amountPaid   || 0,
                         balance:        balanceVal,
-                        paymentType:    student.payment.paymentType  || 'Cash',
-                        transactionRef: student.payment.transactionRef || '',
-                        cashierNotes:   student.payment.notes        || '',
-                        history:        student.payment.history      || []
+                        paymentType:    String(payment.paymentType || 'Cash').toUpperCase() === 'GCASH' ? 'GCash' : 'Cash',
+                        transactionRef: payment.transactionRef || '',
+                        cashierNotes:   payment.notes        || '',
+                        history:        payment.history      || []
                     },
-                    roadmap: student.roadmap,
+                    roadmap: roadmap,
                     scholarship: student.scholarship || {},
                     helpdesk: student.helpdesk || {}
                 };
@@ -115,41 +142,61 @@ window.app = createApp({
                 }).catch(() => {});
         };
 
-        const checkSession = () => {
-            const stored = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user') || localStorage.getItem('gncp_station_user') || localStorage.getItem('gncp_admin_user');
-            if (stored) {
-                try {
-                    const user = JSON.parse(stored);
-                    if (user && (user.role === 'CASHIER' || user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'REGISTRAR')) {
-                        currentUser.value = user;
+        const checkSession = async () => {
+            localStorage.removeItem('gncp_station_user');
+            localStorage.removeItem('gncp_admin_user');
+
+            try {
+                const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
+                if (res.ok) {
+                    const result = await res.json();
+                    const allowedRoles = ['CASHIER', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'];
+                    if (result.success && result.data && allowedRoles.includes(result.data.role)) {
+                        currentUser.value = result.data;
+                        const sessionKey = (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
+                        sessionStorage.setItem(sessionKey, JSON.stringify(result.data));
                         fetchCurrentProfile();
-                        if (user.must_change_password && typeof window.PasswordChangeGuard !== 'undefined') {
-                            window.PasswordChangeGuard.checkAndPrompt(user, function() {
+                        if (result.data.must_change_password && typeof window.PasswordChangeGuard !== 'undefined') {
+                            window.PasswordChangeGuard.checkAndPrompt(result.data, async function() {
+                                if (window.StationDataBus) await window.StationDataBus.syncWithBackend();
                                 loadQueue();
                             });
                         } else {
+                            if (window.StationDataBus) await window.StationDataBus.syncWithBackend();
                             loadQueue();
                         }
                         return;
                     }
-                } catch (e) {
-                    console.error('[Cashier] Session parse error:', e);
                 }
+            } catch (e) {
+                console.error('[Cashier] Session check error:', e);
             }
-            sessionStorage.removeItem('gncp_station_user');
-            sessionStorage.removeItem('gncp_admin_user');
-            localStorage.removeItem('gncp_station_user');
-            localStorage.removeItem('gncp_admin_user');
-            window.location.href = '../../index.html?clear=true&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+
+            if (typeof window.SessionExpirationGuard !== 'undefined') {
+                window.SessionExpirationGuard.handleExpiredSession({
+                    title: 'Session Expired',
+                    message: 'Your cashier workstation session has expired. Please sign in again to continue managing payments.',
+                    reason: 'expired'
+                });
+            } else {
+                sessionStorage.removeItem('gncp_station_user');
+                sessionStorage.removeItem('gncp_admin_user');
+                window.location.href = '../../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            }
         };
 
 
 
         let clockTimer = null;
+        let queueSyncTimer = null;
         const stopLiveSync = () => {
             if (clockTimer) {
                 clearInterval(clockTimer);
                 clockTimer = null;
+            }
+            if (queueSyncTimer) {
+                clearInterval(queueSyncTimer);
+                queueSyncTimer = null;
             }
             if (window.StationDataBus && typeof window.StationDataBus.stopPolling === 'function') {
                 window.StationDataBus.stopPolling();
@@ -207,7 +254,8 @@ window.app = createApp({
                     const matchesName = (student.studentName || '').toLowerCase().indexOf(query) !== -1;
                     const matchesProg = (student.program || '').toLowerCase().indexOf(query) !== -1;
                     const matchesType = (student.payment?.paymentType || '').toLowerCase().indexOf(query) !== -1;
-                    matchesQuery = matchesRef || matchesName || matchesProg || matchesType;
+                    const matchesTicket = (student.queueTicket || '').toLowerCase().indexOf(query) !== -1;
+                    matchesQuery = matchesRef || matchesName || matchesProg || matchesType || matchesTicket;
                 }
 
                 let matchesFilter = false;
@@ -228,10 +276,15 @@ window.app = createApp({
                 }
             }
 
-            // Registrar Sorting Logic
+            // FIFO (First In, First Out) / Header Sorting Logic
             return [...result].sort((a, b) => {
                 let vA = (sortBy.value === 'studentName' || sortBy.value === 'name') ? a.studentName : (a[sortBy.value] || '');
                 let vB = (sortBy.value === 'studentName' || sortBy.value === 'name') ? b.studentName : (b[sortBy.value] || '');
+                if (sortBy.value === 'arrivedAt' || sortBy.value === 'createdAt') {
+                    vA = vA ? new Date(vA).getTime() : (a.id || 0);
+                    vB = vB ? new Date(vB).getTime() : (b.id || 0);
+                    return sortDesc.value ? vB - vA : vA - vB;
+                }
                 if (typeof vA === 'string') vA = vA.toLowerCase();
                 if (typeof vB === 'string') vB = vB.toLowerCase();
                 if (vA < vB) return sortDesc.value ? 1 : -1;
@@ -239,6 +292,16 @@ window.app = createApp({
                 return 0;
             });
         });
+
+        const nextInQueue = computed(() => {
+            return filteredStudents.value.find(s => s.status === 'PENDING') || filteredStudents.value[0] || null;
+        });
+
+        const serveNextPayee = () => {
+            if (nextInQueue.value) {
+                openProcess(nextInQueue.value);
+            }
+        };
 
         const totalInQueue = computed(() => {
             return students.value.length;
@@ -317,9 +380,11 @@ window.app = createApp({
 
         const payAmountInput = ref(0);
         const cashTendered = ref(0);
+        const otcReferenceNumber = ref('');
         const paymentScheme = ref('FULL');
         const paymongoSession = ref(null);
         const isProcessingPayMongo = ref(false);
+        let paymongoPollingInterval = null;
 
         const fetchPayMongoSession = async () => {
             if (!selectedStudent.value) return;
@@ -350,6 +415,128 @@ window.app = createApp({
             }
         };
 
+        const launchPayMongoCheckout = async () => {
+            if (!selectedStudent.value) return;
+            const student = selectedStudent.value;
+            const payAmt = parseFloat(payAmountInput.value) || 0;
+            if (payAmt <= 0) {
+                await Swal.fire({
+                    title: 'Invalid Amount',
+                    text: 'Please select a valid payment amount.',
+                    icon: 'warning',
+                    confirmButtonColor: '#006A4E'
+                });
+                return;
+            }
+
+            if (!paymongoSession.value) {
+                await fetchPayMongoSession();
+            }
+
+            const checkoutUrl = paymongoSession.value?.checkoutUrl || 
+                `/systemtest/shared/paymongo/checkout.html?session_id=cs_test_${Date.now()}&ref=${encodeURIComponent(student.referenceNumber)}&amount=${encodeURIComponent(payAmt)}&desc=${encodeURIComponent('Tuition Assessment - ' + student.studentName)}`;
+            
+            const win = window.open(checkoutUrl, 'PayMongoCheckoutWindow', 'width=1020,height=800,scrollbars=yes');
+            if (win) {
+                win.focus();
+            }
+
+            // Start live settlement listener
+            if (paymongoPollingInterval) clearInterval(paymongoPollingInterval);
+            paymongoPollingInterval = setInterval(() => {
+                checkPayMongoSettlement(false);
+            }, 2500);
+        };
+
+        const copyPayMongoLink = async () => {
+            if (!selectedStudent.value) return;
+            const student = selectedStudent.value;
+            const payAmt = parseFloat(payAmountInput.value) || 0;
+            const checkoutUrl = (window.location.origin || '') + (paymongoSession.value?.checkoutUrl || 
+                `/systemtest/shared/paymongo/checkout.html?session_id=cs_test_${Date.now()}&ref=${encodeURIComponent(student.referenceNumber)}&amount=${encodeURIComponent(payAmt)}`);
+
+            try {
+                await navigator.clipboard.writeText(checkoutUrl);
+                await Swal.fire({
+                    title: 'Payment Link Copied!',
+                    text: 'PayMongo checkout link copied to clipboard. You can send this directly to the student via SMS or Email.',
+                    icon: 'success',
+                    timer: 2200,
+                    showConfirmButton: false
+                });
+            } catch (e) {
+                prompt('Copy PayMongo Checkout Link:', checkoutUrl);
+            }
+        };
+
+        const checkPayMongoSettlement = async (showManualFeedback = true) => {
+            if (!selectedStudent.value) return;
+            const student = selectedStudent.value;
+
+            try {
+                // Fetch latest data from database
+                const res = await fetch(`../../api/index.php?action=stations/queue`);
+                const json = await res.json();
+                if (json.success && Array.isArray(json.data)) {
+                    const found = json.data.find(s => s.referenceNumber === student.referenceNumber || s.id === student.id);
+                    if (found && (found.status === 'PAID' || found.status === 'PARTIAL')) {
+                        // Settlement completed!
+                        if (paymongoPollingInterval) {
+                            clearInterval(paymongoPollingInterval);
+                            paymongoPollingInterval = null;
+                        }
+
+                        selectedStudent.value = found;
+                        loadQueue();
+
+                        const lastTxn = (found.payment?.history && found.payment.history.length > 0)
+                            ? found.payment.history[found.payment.history.length - 1]
+                            : null;
+
+                        receiptData.value = {
+                            refNo: found.referenceNumber,
+                            name: found.studentName,
+                            program: found.program,
+                            paymentMode: lastTxn ? lastTxn.paymentType : 'PayMongo Gateway',
+                            transactionRef: lastTxn ? lastTxn.reference : (found.payment?.transactionRef || 'PM-' + Date.now()),
+                            totalFee: found.payment?.totalFee || 0,
+                            amountPaid: lastTxn ? lastTxn.amount : (found.payment?.amountPaid || 0),
+                            balance: found.payment?.balance || 0,
+                            date: new Date().toLocaleString('en-US', {
+                                year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                            }),
+                            cashier: lastTxn ? lastTxn.cashier : 'PayMongo Gateway'
+                        };
+
+                        closeModal();
+
+                        await Swal.fire({
+                            title: 'PayMongo Payment Verified!',
+                            html: `<div class="text-start">
+                                    <p class="mb-1"><strong>Status:</strong> <span class="badge bg-success">${found.status}</span></p>
+                                    <p class="mb-1"><strong>Transaction Ref:</strong> <code class="font-monospace">${receiptData.value.transactionRef}</code></p>
+                                    <p class="mb-0"><strong>Remaining Balance:</strong> ₱${(found.payment?.balance || 0).toLocaleString()}</p>
+                                   </div>`,
+                            icon: 'success',
+                            confirmButtonColor: '#006A4E'
+                        });
+                        return;
+                    }
+                }
+
+                if (showManualFeedback) {
+                    await Swal.fire({
+                        title: 'Awaiting Settlement',
+                        text: 'PayMongo checkout session is still pending payment by the customer.',
+                        icon: 'info',
+                        confirmButtonColor: '#006A4E'
+                    });
+                }
+            } catch (e) {
+                console.error('[PayMongo] Settlement check error:', e);
+            }
+        };
+
         const onPaymentTypeChange = () => {
             if (selectedStudent.value?.payment?.paymentType === 'GCash') {
                 fetchPayMongoSession();
@@ -377,6 +564,11 @@ window.app = createApp({
             }
         };
 
+        const selectScheme = (scheme) => {
+            paymentScheme.value = scheme;
+            handleSchemeChange();
+        };
+
         const changeDue = computed(() => {
             if (cashTendered.value <= 0 || payAmountInput.value <= 0) return 0;
             return Math.max(0, cashTendered.value - payAmountInput.value);
@@ -388,143 +580,44 @@ window.app = createApp({
             return Math.max(0, currentBal - (payAmountInput.value || 0));
         });
 
-        const simulatePayMongoPayment = async (channel = 'GCash') => {
-            if (!selectedStudent.value) return;
-            const student = selectedStudent.value;
-            const payAmt = parseFloat(payAmountInput.value) || 0;
-            const currentBal = parseFloat(student.payment.balance) || 0;
+        const formatPaymentMode = (mode) => {
+            if (!mode) return 'Full Cash Payment Plan';
+            const m = String(mode).toUpperCase();
+            if (m === 'CASH') return 'Full Cash Payment Plan';
+            if (m === 'SEMI') return 'Semi-Annual Installment (30% Down)';
+            if (m === 'QUAD') return 'Quarterly Installment (30% Down)';
+            return mode;
+        };
 
-            const minAllowed = currentBal < 3000 ? currentBal : 3000;
-            if (payAmt < minAllowed) {
-                await Swal.fire({
-                    title: 'Minimum Payment Limit',
-                    text: `Minimum allowed payment is ₱${minAllowed.toLocaleString()}.`,
-                    icon: 'warning',
-                    confirmButtonColor: '#006A4E'
-                });
-                return;
-            }
-
-            isProcessingPayMongo.value = true;
-            try {
-                const cashierName = currentUser.value ? currentUser.value.name : 'Cashier Officer';
-                const res = await fetch('../../api/index.php?action=payments/paymongo_simulate_paid', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        referenceNumber: student.referenceNumber,
-                        amount: payAmt,
-                        channel: channel,
-                        transactionRef: paymongoSession.value?.transactionRef || '',
-                        cashier: `${cashierName} (PayMongo)`,
-                        notes: `Instant ${channel} online settlement via PayMongo Gateway`
-                    })
-                });
-                const json = await res.json();
-
-                if (!json.success) {
-                    throw new Error(json.message || 'Payment simulation failed.');
-                }
-
-                const data = json.data;
-                const newStatus = data.status;
-                const txnRef = data.transactionRef;
-
-                // Update local reactive student
-                student.payment.amountPaid = data.totalPaid;
-                student.payment.balance = data.balance;
-                student.payment.status = newStatus;
-                student.status = newStatus;
-                student.payment.paymentType = `PayMongo (${channel})`;
-                student.payment.transactionRef = txnRef;
-
-                if (!student.payment.history || !Array.isArray(student.payment.history)) {
-                    student.payment.history = [];
-                }
-                student.payment.history.push({
-                    date: new Date().toISOString(),
-                    amount: payAmt,
-                    reference: txnRef,
-                    paymentType: `PayMongo (${channel})`,
-                    cashier: `${cashierName} (PayMongo)`,
-                    notes: `Instant ${channel} online settlement via PayMongo Gateway`
-                });
-
-                // Broadcast to StationDataBus
-                StationDataBus.updateStudent(student.referenceNumber, (s) => {
-                    s.status = newStatus;
-                    s.payment.status = newStatus;
-                    s.payment.amountPaid = data.totalPaid;
-                    s.payment.balance = data.balance;
-                    s.payment.paymentType = `PayMongo (${channel})`;
-                    s.payment.transactionRef = txnRef;
-                    s.payment.notes = `Instant ${channel} online settlement via PayMongo Gateway`;
-                    s.payment.verifiedBy = `${cashierName} (PayMongo)`;
-                    s.payment.dateVerified = new Date().toLocaleDateString();
-                    s.payment.history = student.payment.history;
-
-                    const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r.stepId === 'cashier_payment') : -1;
-                    if (currentStepIdx !== -1) {
-                        s.roadmap[currentStepIdx].status = 'COMPLETED';
-                        s.roadmap[currentStepIdx].updatedAt = new Date().toISOString();
-
-                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING');
-                        if (nextStep) {
-                            nextStep.status = 'IN_PROGRESS';
-                        }
-                    }
-                }, ['status', 'payment', 'roadmap']);
-
-                loadQueue();
-
-                receiptData.value = {
-                    refNo: student.referenceNumber,
-                    name: student.studentName,
-                    program: student.program,
-                    paymentMode: `PayMongo (${channel})`,
-                    transactionRef: txnRef,
-                    totalFee: student.payment.totalFee,
-                    amountPaid: payAmt,
-                    balance: data.balance,
-                    date: new Date().toLocaleString('en-US', {
-                        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                    }),
-                    cashier: `${cashierName} (PayMongo)`
-                };
-
-                closeModal();
-
-                await Swal.fire({
-                    title: 'PayMongo Settlement Received!',
-                    html: `<div class="text-start">
-                            <p class="mb-1"><strong>Payment Channel:</strong> ${channel}</p>
-                            <p class="mb-1"><strong>Amount Paid:</strong> <span class="text-success fw-bold">₱${payAmt.toLocaleString()}</span></p>
-                            <p class="mb-1"><strong>Transaction Ref:</strong> <code class="font-monospace">${txnRef}</code></p>
-                            <p class="mb-0"><strong>New Balance:</strong> ₱${data.balance.toLocaleString()}</p>
-                           </div>`,
-                    icon: 'success',
-                    confirmButtonColor: '#006A4E'
-                });
-            } catch (err) {
-                await Swal.fire({
-                    title: 'Payment Error',
-                    text: err.message || 'Failed to process PayMongo payment.',
-                    icon: 'error',
-                    confirmButtonColor: '#006A4E'
-                });
-            } finally {
-                isProcessingPayMongo.value = false;
-            }
+        const getPaymentModeBadge = (mode) => {
+            if (!mode) return 'Full Cash';
+            const m = String(mode).toUpperCase();
+            if (m === 'CASH') return 'Full Cash';
+            if (m === 'SEMI') return 'Semi-Annual (30% Down)';
+            if (m === 'QUAD') return 'Quarterly (30% Down)';
+            return mode;
         };
 
         const openProcess = (student) => {
             selectedStudent.value = student;
             const currentBal = student.payment.balance || 0;
-            paymentScheme.value = 'FULL';
-            payAmountInput.value = currentBal; // Default to full outstanding balance
+
+            // Reflect the student's chosen payment scheme from enrollment-system:
+            // CASH -> Full Settlement
+            // SEMI / QUAD -> Downpayment (30% / Min. ₱3,000 entry)
+            const chosenMode = String(student.paymentMode || student.payment?.paymentMode || '').toUpperCase();
+            if ((chosenMode === 'SEMI' || chosenMode === 'QUAD' || chosenMode === 'INSTALLMENT') && currentBal >= 3000) {
+                paymentScheme.value = 'DOWNPAYMENT';
+                payAmountInput.value = 3000;
+            } else {
+                paymentScheme.value = 'FULL';
+                payAmountInput.value = currentBal; // Default to full outstanding balance
+            }
+
             cashTendered.value = 0;
+            otcReferenceNumber.value = '';
             paymongoSession.value = null;
-            if (student.payment.paymentType === 'GCash') {
+            if (student.payment.paymentType === 'PayMongo') {
                 fetchPayMongoSession();
             }
             setTimeout(() => {
@@ -557,19 +650,21 @@ window.app = createApp({
                 s.payment.dateVerified = new Date().toLocaleDateString();
 
                 // Mark cashier step as completed; advance IT Center step to IN_PROGRESS
-                const currentStepIdx = s.roadmap.findIndex(r => r.stepId === 'cashier_payment');
+                const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r.stepId === 'cashier_payment' || r.name === 'Cashier Payment' || r.id === 6) : -1;
                 if (currentStepIdx !== -1) {
                     if (student.status === 'PAID' || student.status === 'PARTIAL') {
                         s.roadmap[currentStepIdx].status = 'COMPLETED';
                         s.roadmap[currentStepIdx].updatedAt = new Date().toISOString();
 
                         // Unlock the IT Center step
-                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING');
+                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING' || r.status === 'LOCKED');
                         if (nextStep) {
                             nextStep.status = 'IN_PROGRESS';
+                            nextStep.updatedAt = new Date().toISOString();
                         }
                     } else if (student.status === 'REJECTED') {
                         s.roadmap[currentStepIdx].status = 'FLAGGED';
+                        s.roadmap[currentStepIdx].updatedAt = new Date().toISOString();
                     }
                 }
             }, ['payment', 'roadmap']); // Delta: only send payment + roadmap
@@ -624,6 +719,11 @@ window.app = createApp({
                 return;
             }
 
+            if (student.payment.paymentType === 'PayMongo') {
+                await launchPayMongoCheckout();
+                return;
+            }
+
             isRecordingPayment.value = true;
             try {
                 const isFull = (currentBal - payAmt) === 0;
@@ -631,14 +731,14 @@ window.app = createApp({
 
                 // Generate a FRESH unique transaction reference for each individual payment
                 const isGCash = student.payment.paymentType === 'GCash';
-                const paymentType = isGCash ? 'GCash (PayMongo)' : 'Cash';
-                const transactionRef = (isGCash && paymongoSession.value?.transactionRef)
-                    ? paymongoSession.value.transactionRef
-                    : (isGCash ? 'GCASH-' + Math.floor(100000 + Math.random() * 900000) : 'TXN-' + Math.floor(100000 + Math.random() * 900000));
+                const paymentType = isGCash ? 'GCash (Over-the-Counter)' : 'Cash (Over-the-Counter)';
+                const transactionRef = isGCash
+                    ? (otcReferenceNumber.value.trim() || ('GCASH-' + Math.floor(100000 + Math.random() * 900000)))
+                    : ('TXN-' + Math.floor(100000 + Math.random() * 900000));
                 student.payment.transactionRef = transactionRef;
                 student.payment.paymentType = paymentType;
 
-                const notes = student.payment.cashierNotes || (isGCash ? 'GCash QR Ph online transfer' : 'Over-the-counter cash payment');
+                const notes = student.payment.cashierNotes || (isGCash ? 'Over-the-counter GCash digital receipt verification' : 'Over-the-counter cash payment');
                 const cashierName = currentUser.value ? currentUser.value.name : 'Cashier Officer';
 
                 // 1. Update the reactive local state directly for real-time modal update
@@ -673,14 +773,15 @@ window.app = createApp({
                     s.payment.dateVerified   = new Date().toLocaleDateString();
                     s.payment.history        = student.payment.history;
 
-                    const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r.stepId === 'cashier_payment') : -1;
+                    const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r.stepId === 'cashier_payment' || r.name === 'Cashier Payment' || r.id === 6) : -1;
                     if (currentStepIdx !== -1) {
                         s.roadmap[currentStepIdx].status = 'COMPLETED';
                         s.roadmap[currentStepIdx].updatedAt = new Date().toISOString();
 
-                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING');
+                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING' || r.status === 'LOCKED');
                         if (nextStep) {
                             nextStep.status = 'IN_PROGRESS';
+                            nextStep.updatedAt = new Date().toISOString();
                         }
                     }
                 }, ['status', 'payment', 'roadmap']);
@@ -738,29 +839,119 @@ window.app = createApp({
             window.open(url, '_blank');
         };
 
+        const printReceipt = () => {
+            const card = document.getElementById('printable-receipt-card');
+            if (!card) {
+                window.print();
+                return;
+            }
+
+            try {
+                const printFrame = document.createElement('iframe');
+                printFrame.style.position = 'fixed';
+                printFrame.style.right = '0';
+                printFrame.style.bottom = '0';
+                printFrame.style.width = '0';
+                printFrame.style.height = '0';
+                printFrame.style.border = '0';
+                document.body.appendChild(printFrame);
+
+                const frameDoc = printFrame.contentWindow.document;
+                frameDoc.open();
+                frameDoc.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Official Receipt - ${receiptData.value?.transactionRef || 'GNCP'}</title>
+                        <meta charset="utf-8">
+                        <link rel="stylesheet" href="../../shared/libs/bootstrap.min.css">
+                        <style>
+                            @page {
+                                size: A4 portrait;
+                                margin: 12mm;
+                            }
+                            * {
+                                box-sizing: border-box !important;
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                            }
+                            body {
+                                margin: 0;
+                                padding: 10px;
+                                background: #ffffff !important;
+                                color: #000000 !important;
+                                font-family: 'Courier New', Courier, monospace;
+                            }
+                            .receipt-horizontal-layout {
+                                border: 2px solid #000000 !important;
+                                border-radius: 8px !important;
+                                padding: 24px !important;
+                                background: #ffffff !important;
+                                width: 100% !important;
+                                max-width: 800px;
+                                margin: 0 auto;
+                            }
+                            .table-bordered {
+                                border: 1.5px solid #000000 !important;
+                            }
+                            .table-bordered th, .table-bordered td {
+                                border: 1px solid #000000 !important;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${card.outerHTML}
+                        <script>
+                            window.onload = function() {
+                                window.focus();
+                                window.print();
+                                setTimeout(function() {
+                                    if (window.frameElement && window.frameElement.parentNode) {
+                                        window.frameElement.parentNode.removeChild(window.frameElement);
+                                    }
+                                }, 1500);
+                            };
+                        <\/script>
+                    </body>
+                    </html>
+                `);
+                frameDoc.close();
+            } catch (e) {
+                console.error('[Cashier] iframe print failed, falling back to window.print():', e);
+                window.print();
+            }
+        };
+
+        const closeReceipt = () => {
+            receiptData.value = null;
+            loadQueue();
+        };
+
         const markEnrolledAndPrint = async (student) => {
             try {
+                const cashierDisplayName = currentUser.value ? (currentUser.value.name || currentUser.value.username || 'Cashier Representative') : 'Cashier Representative';
                 const res = await fetch('../backend/generate_or.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                     body: JSON.stringify({
                         referenceNumber: student.referenceNumber,
-                        cashierName: currentUser.value ? currentUser.value.name : 'Cashier Representative'
+                        cashierName: cashierDisplayName
                     })
                 });
                 const data = await res.json();
                 if (data.success) {
                     student.orNumber = data.data.orNumber;
                     student.enrolledAt = data.data.enrolledAt;
-                    student.cashierName = currentUser.value ? currentUser.value.name : 'Cashier Representative';
+                    student.cashierName = cashierDisplayName;
 
                     StationDataBus.updateStudent(student.referenceNumber, (s) => {
                         s.orNumber = data.data.orNumber;
                         s.enrolledAt = data.data.enrolledAt;
-                        s.cashierName = currentUser.value ? currentUser.value.name : 'Cashier Representative';
+                        s.cashierName = cashierDisplayName;
                         s.payment.status = student.status;
                         
-                        const currentStepIdx = s.roadmap.findIndex(r => r.stepId === 'cashier_payment');
+                        const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r.stepId === 'cashier_payment' || r.name === 'Cashier Payment' || r.id === 6) : -1;
                         if (currentStepIdx !== -1) {
                             if (s.roadmap[currentStepIdx].status === 'COMPLETED') {
                                 return;
@@ -768,14 +959,34 @@ window.app = createApp({
                             s.roadmap[currentStepIdx].status = 'COMPLETED';
                             s.roadmap[currentStepIdx].updatedAt = new Date().toISOString();
 
-                            const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING');
+                            const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING' || r.status === 'LOCKED');
                             if (nextStep) {
                                 nextStep.status = 'IN_PROGRESS';
+                                nextStep.updatedAt = new Date().toISOString();
                             }
                         }
                     }, ['orNumber', 'enrolledAt', 'cashierName', 'payment', 'roadmap']); // Delta: send cashier print attributes + payment + roadmap
 
-                    window.open(`receipt_print.php?ref=${student.referenceNumber}&autoprint=true`, '_blank');
+                    const lastTxn = (student.payment?.history && student.payment.history.length > 0)
+                        ? student.payment.history[student.payment.history.length - 1]
+                        : null;
+
+                    receiptData.value = {
+                        refNo: student.referenceNumber,
+                        name: student.studentName,
+                        program: student.program,
+                        paymentMode: lastTxn ? lastTxn.paymentType : (student.payment?.paymentType || 'Cash'),
+                        transactionRef: data.data.orNumber || student.orNumber || (lastTxn ? lastTxn.reference : 'OR-' + Date.now()),
+                        totalFee: student.payment?.totalFee || 0,
+                        amountPaid: student.payment?.amountPaid || (lastTxn ? lastTxn.amount : (student.payment?.totalFee || 0)),
+                        balance: student.payment?.balance || 0,
+                        date: new Date(data.data.enrolledAt || Date.now()).toLocaleString('en-US', {
+                            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                        }),
+                        cashier: cashierDisplayName
+                    };
+
+                    closeModal();
                     loadQueue();
                 } else {
                     await Swal.fire({
@@ -827,14 +1038,6 @@ window.app = createApp({
             closeModal();
         };
 
-        const printReceipt = () => {
-            window.print();
-        };
-
-        const closeReceipt = () => {
-            receiptData.value = null;
-        };
-
         const closeModal = () => {
             const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('paymentModal'));
             modal.hide();
@@ -867,6 +1070,11 @@ window.app = createApp({
             checkSession();
             updateTime();
             clockTimer = setInterval(updateTime, 1000);
+            queueSyncTimer = setInterval(() => {
+                if (currentUser.value) {
+                    loadQueue();
+                }
+            }, 2500);
 
             document.addEventListener('hide.bs.modal', () => {
                 if (document.activeElement && typeof document.activeElement.blur === 'function') {
@@ -993,12 +1201,6 @@ window.app = createApp({
                             p.avatar = newFilename;
                             sessionStorage.setItem('gncp_station_user', JSON.stringify(p));
                         }
-                        const rawLoc = localStorage.getItem('gncp_station_user');
-                        if (rawLoc) {
-                            const p = JSON.parse(rawLoc);
-                            p.avatar = newFilename;
-                            localStorage.setItem('gncp_station_user', JSON.stringify(p));
-                        }
                         Swal.fire('Success', 'Profile picture updated successfully.', 'success');
                     } else { Swal.fire('Upload Failed', data.message || 'Unable to update profile picture.', 'error'); }
                 } catch (err) { Swal.fire('Error', 'Unable to process image upload.', 'error'); }
@@ -1035,14 +1237,6 @@ window.app = createApp({
                         p.avatar = avatarFilename;
                         sessionStorage.setItem('gncp_station_user', JSON.stringify(p));
                     }
-                    const rawLoc = localStorage.getItem('gncp_station_user');
-                    if (rawLoc) {
-                        const p = JSON.parse(rawLoc);
-                        p.name = user.value.name;
-                        p.email = user.value.email;
-                        p.avatar = avatarFilename;
-                        localStorage.setItem('gncp_station_user', JSON.stringify(p));
-                    }
                     Swal.fire('Success', 'Personal details updated successfully.', 'success');
                 } else { Swal.fire('Update Failed', data.message || 'Unable to update profile.', 'error'); }
             } catch (e) { Swal.fire('Error', 'Server error while saving profile.', 'error'); }
@@ -1069,6 +1263,8 @@ window.app = createApp({
             finally { updatingPass.value = false; }
         };
 
+        window.__cashierScope = { students, filteredStudents, openProcess, loadQueue, selectedStudent };
+
         return {
             currentView,
             currentDateTime,
@@ -1082,6 +1278,9 @@ window.app = createApp({
             selectedStudent,
             students,
             filteredStudents,
+            nextInQueue,
+            serveNextPayee,
+            getQueueRank,
             totalInQueue,
             pendingCount,
             paidToday,
@@ -1112,7 +1311,9 @@ window.app = createApp({
             closeReceipt,
             payAmountInput,
             cashTendered,
+            otcReferenceNumber,
             paymentScheme,
+            selectScheme,
             handleSchemeChange,
             changeDue,
             newBalance,
@@ -1120,14 +1321,18 @@ window.app = createApp({
             recordPayment,
             printCOR,
             markEnrolledAndPrint,
+            formatPaymentMode,
+            getPaymentModeBadge,
             timeGreeting,
             // PayMongo Gateway Integration
             paymongoSession,
             isProcessingPayMongo,
             fetchPayMongoSession,
+            launchPayMongoCheckout,
+            copyPayMongoLink,
+            checkPayMongoSettlement,
             onPaymentTypeChange,
             onAmountChanged,
-            simulatePayMongoPayment,
             // Profile & Security
             user, pass, saving, updatingPass, showCurrentPass, showNewPass, fileInput,
             passStrengthLevel, passStrengthLabel, passStrengthColor, passStrengthWidth,
@@ -1135,4 +1340,5 @@ window.app = createApp({
             saveStaffProfile, updatePassword, loadProfile
         };
     }
-}).mount('#app');
+});
+window.app = app.mount('#app');

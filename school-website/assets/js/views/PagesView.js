@@ -213,16 +213,150 @@ window.PagesView = {
         props: ['subPage', 'data', 'enrollNowUrl'],
         data() {
             return {
+                activeTab: 'freshmen',
+                checkedReqs: {},
+                searchQuery: '',
+                activeFaq: 0,
                 // Tuition Calculator States
                 selectedProgram: 'it',
                 yearLevel: '1',
                 unitsCount: 18,
                 labCourses: 1,
                 paymentPlan: 'full',
-                calculationResult: null
+                calculationResult: null,
+                enrollmentSteps: [
+                    {
+                        step: 1,
+                        title: "Online Pre-Registration Wizard",
+                        station: "Public Portal",
+                        location: "Self-Service Online",
+                        icon: "fas fa-laptop-file",
+                        desc: "Submit applicant personal & academic data, select degree program, and obtain your official Reference Number (REF-2026-XXXX)."
+                    },
+                    {
+                        step: 2,
+                        title: "Document Verification & Acceptance",
+                        station: "Office of the Registrar",
+                        location: "Admin Building · 1st Floor",
+                        icon: "fas fa-file-circle-check",
+                        desc: "Present your original Form 138/SF9, Good Moral Certificate, and PSA Birth Certificate to verify academic requirements."
+                    },
+                    {
+                        step: 3,
+                        title: "Academic Advising & Section Allocation",
+                        station: "TLC Helpdesk",
+                        location: "Academic Wing · Room 204",
+                        icon: "fas fa-chalkboard-user",
+                        desc: "Lock in your official block section, select NSTP component (ROTC / CWTS), and receive your signed curriculum assessment."
+                    },
+                    {
+                        step: 4,
+                        title: "Physical Fitness & Health Clearance",
+                        station: "GNCP Campus Clinic",
+                        location: "Student Services Pavilion",
+                        icon: "fas fa-heart-pulse",
+                        desc: "Complete physical fitness exam, medical history interview, and obtain health clearance for physical education and campus activities."
+                    },
+                    {
+                        step: 5,
+                        title: "Tuition Downpayment & OR Issuance",
+                        station: "Cashier & Treasury Office",
+                        location: "Ground Floor · Treasury Hall",
+                        icon: "fas fa-cash-register",
+                        desc: "Settle minimum downpayment or full semester tuition via Over-The-Counter Cash or PayMongo QR Ph / GCash instant verification."
+                    },
+                    {
+                        step: 6,
+                        title: "Permanent ID Capture & Portal Activation",
+                        station: "IT Center Workstation",
+                        location: "Tech Building · Room 301",
+                        icon: "fas fa-id-card",
+                        desc: "Take official photo for RFID Student ID, receive permanent institutional email (user@gncp.edu.ph), and access Student Portal."
+                    }
+                ],
+                faqs: [
+                    {
+                        q: "What if my Form 138 / SF9 is not yet released by my High School?",
+                        a: "You may temporarily submit an Official Certificate of Candidacy for Graduation or Certified Grade Slip along with an Undertaking Form promising to submit the original Form 138 within 30 days."
+                    },
+                    {
+                        q: "Is the PSA Birth Certificate required to be newly issued?",
+                        a: "Any clear and authentic PSA Birth Certificate (formerly NSO) on official security paper with a readable barcode is accepted, regardless of issuance date."
+                    },
+                    {
+                        q: "Can I apply for a scholarship or tuition discount during document submission?",
+                        a: "Yes! If you are a Valedictorian, Salutatorian, Academic Honor graduate, or Barangay Indigent, present your Certificate of Honors or Indigency directly during Step 2 (Registrar) and Step 3 (Helpdesk) to apply discount vouchers."
+                    },
+                    {
+                        q: "Are transferees required to take the entrance examination?",
+                        a: "Transferees must submit their Transcript of Records (TOR) for course syllabus credit evaluation. An academic interview with the College Dean is conducted in lieu of the freshman entrance exam."
+                    }
+                ]
             };
         },
+        computed: {
+            classList() {
+                if (this.data && this.data.classifications) {
+                    return this.data.classifications;
+                }
+                return [];
+            },
+            currentClassification() {
+                const list = this.classList;
+                return list.find(c => c.id === this.activeTab) || list[0] || { requirements: [] };
+            },
+            filteredRequirements() {
+                const reqs = (this.currentClassification && this.currentClassification.requirements) ? this.currentClassification.requirements : [];
+                if (!this.searchQuery) return reqs;
+                const q = this.searchQuery.toLowerCase().trim();
+                return reqs.filter(r => r.title.toLowerCase().includes(q) || (r.note && r.note.toLowerCase().includes(q)) || (r.agency && r.agency.toLowerCase().includes(q)));
+            },
+            totalReqsCount() {
+                return (this.currentClassification && this.currentClassification.requirements) ? this.currentClassification.requirements.length : 0;
+            },
+            checkedReqsCount() {
+                const reqs = (this.currentClassification && this.currentClassification.requirements) ? this.currentClassification.requirements : [];
+                let count = 0;
+                reqs.forEach(r => {
+                    if (this.checkedReqs[r.id]) count++;
+                });
+                return count;
+            },
+            readinessPercentage() {
+                if (this.totalReqsCount === 0) return 0;
+                return Math.round((this.checkedReqsCount / this.totalReqsCount) * 100);
+            },
+            readinessColor() {
+                const p = this.readinessPercentage;
+                if (p === 100) return '#10b981';
+                if (p >= 60) return '#0284c7';
+                if (p > 0) return '#f59e0b';
+                return '#94a3b8';
+            }
+        },
         methods: {
+            selectTab(tabId) {
+                this.activeTab = tabId;
+                this.searchQuery = '';
+            },
+            toggleReq(id) {
+                this.checkedReqs[id] = !this.checkedReqs[id];
+            },
+            toggleFaq(idx) {
+                this.activeFaq = this.activeFaq === idx ? -1 : idx;
+            },
+            printChecklist() {
+                window.print();
+            },
+            formatBadgeClass(format) {
+                if (!format) return 'adm-badge-original';
+                const f = format.toUpperCase();
+                if (f.includes('ORIGINAL') && !f.includes('PHOTOCOPY')) return 'adm-badge-original';
+                if (f.includes('PHOTOCOPY') || f.includes('COPY')) return 'adm-badge-copy';
+                if (f.includes('LEGAL') || f.includes('PSA')) return 'adm-badge-legal';
+                if (f.includes('PHOTO')) return 'adm-badge-photo';
+                return 'adm-badge-original';
+            },
             calculateTuition() {
                 const ratePerUnit = this.data.tuition.ratePerUnit;
                 const baseTuition = this.unitsCount * ratePerUnit;
@@ -236,10 +370,8 @@ window.PagesView = {
                     miscFeesTotal += fee.amount;
                 });
                 
-                // Adjust misc fee slightly if they select high lab count
                 const totalGross = baseTuition + miscFeesTotal + labFees;
                 
-                // Applied discount (5% of base tuition for full payment)
                 let discount = 0;
                 if (this.paymentPlan === 'full') {
                     discount = Math.round(baseTuition * 0.05);
@@ -261,42 +393,259 @@ window.PagesView = {
                 <!-- Page Banner Header -->
                 <div class="subpage-banner text-center d-flex align-items-center justify-content-center">
                     <div class="container position-relative" style="z-index: 2;">
-                        <span class="subpage-banner-tag text-gold text-uppercase fw-bold">Admission Portal</span>
+                        <span class="subpage-banner-tag text-gold text-uppercase fw-bold">Admission Portal 2026-2027</span>
                         <h1 class="subpage-banner-title text-white text-uppercase" v-if="subPage === 'admission-requirements'">Admission Requirements</h1>
                         <h1 class="subpage-banner-title text-white text-uppercase" v-else-if="subPage === 'admission-fees'">Tuition & Fees</h1>
                     </div>
                 </div>
 
-                <!-- Admission Requirements -->
+                <!-- ══════════════════════════════════════════════════════════════
+                     REDESIGNED ADMISSION REQUIREMENTS & DOCUMENT ROADMAP
+                     ══════════════════════════════════════════════════════════════ -->
                 <div v-if="subPage === 'admission-requirements'" class="container py-5">
-                    <div class="text-center mb-5">
-                        <span class="section-tagline">How to Apply</span>
-                        <h2 class="section-title">Document Checklist</h2>
+                    
+                    <!-- Section Header -->
+                    <div class="text-center mb-4">
+                        <div class="adm-hero-badge mb-2">
+                            <i class="fas fa-clipboard-check text-gold"></i>
+                            Official Document &amp; Enrollment Guide
+                        </div>
+                        <h2 class="section-title mb-2">Required Admission Credentials</h2>
+                        <p class="text-muted mx-auto" style="max-width: 680px;">
+                            Select your student classification below to view official documentary requirements, submission formats, and verification roadmap for Academic Year 2026–2027.
+                        </p>
                     </div>
 
-                    <div class="row g-4">
-                        <div v-for="req in data.requirements" :key="req.category" class="col-md-4">
-                            <div class="content-card shadow-sm h-100 p-4 border-0">
-                                <div class="bg-green-light d-inline-block px-3 py-2 rounded mb-3 text-green fw-bold text-uppercase small">
-                                    {{ req.category }}
+                    <!-- ── Interactive Classification Tabs ──────────────── -->
+                    <div class="adm-tabs-container mb-4">
+                        <button v-for="c in classList" :key="c.id"
+                                class="adm-tab-pill" 
+                                :class="{ 'active': activeTab === c.id }"
+                                @click="selectTab(c.id)">
+                            <i :class="c.icon"></i>
+                            <span>{{ c.name }}</span>
+                        </button>
+                    </div>
+
+                    <!-- ── Classification Overview Header ───────────────── -->
+                    <div class="adm-overview-card mb-4" v-if="currentClassification">
+                        <div class="row align-items-center g-3">
+                            <div class="col-lg-8">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 text-uppercase fw-bold" style="font-size: 0.75rem;">
+                                        {{ currentClassification.badge }}
+                                    </span>
+                                    <span class="text-muted small">· {{ filteredRequirements.length }} Required Documents</span>
                                 </div>
-                                <ul class="list-group list-group-flush mt-2">
-                                    <li v-for="item in req.items" :key="item" class="list-group-item py-2 px-0 bg-transparent border-light-subtle">
-                                        <i class="fas fa-file-alt text-gold me-2"></i> {{ item }}
-                                    </li>
-                                </ul>
+                                <h4 class="fw-bold text-dark mb-1">{{ currentClassification.name }} Document Checklist</h4>
+                                <p class="text-muted small mb-0">{{ currentClassification.desc }}</p>
+                            </div>
+                            <div class="col-lg-4 text-lg-end">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                                    <input type="text" class="form-control border-start-0 ps-0" placeholder="Filter documents..." v-model="searchQuery">
+                                    <button class="btn btn-outline-secondary" type="button" v-if="searchQuery" @click="searchQuery = ''"><i class="fas fa-times"></i></button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="text-center mt-5 p-4 bg-light rounded shadow-sm border border-light-subtle" style="max-width: 700px; margin: 0 auto;">
-                        <h4 class="fw-bold text-green mb-3">Admissions Reminder</h4>
-                        <p class="text-muted mb-4">Please prepare the original copies of all documentation for physical validation at the Registrar's Office during official enrollment hours.</p>
-                        <a :href="enrollNowUrl" class="btn btn-pill btn-pill-green shadow px-4">START PORTAL REGISTRATION</a>
+                    <!-- ── Main Grid: Requirements Checklist & Readiness Meter ── -->
+                    <div class="row g-4 mb-5">
+                        
+                        <!-- Left Column: Interactive Requirement Cards Grid (8 Cols) -->
+                        <div class="col-lg-8">
+                            <div class="row g-3">
+                                <div v-for="req in filteredRequirements" :key="req.id" class="col-md-6">
+                                    <div class="adm-req-card" :class="{ 'is-checked': checkedReqs[req.id] }">
+                                        <div class="d-flex align-items-start gap-3 mb-2.5">
+                                            <div class="adm-req-icon-box">
+                                                <i :class="req.icon"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
+                                                    <span class="adm-format-badge" :class="formatBadgeClass(req.format)">
+                                                        <i class="fas fa-shield-alt" v-if="req.format.includes('ORIGINAL')"></i>
+                                                        <i class="fas fa-copy" v-else></i>
+                                                        {{ req.format }}
+                                                    </span>
+                                                </div>
+                                                <h6 class="fw-bold text-dark mb-0" style="font-size: 0.92rem; line-height: 1.35;">
+                                                    {{ req.title }}
+                                                </h6>
+                                            </div>
+                                        </div>
+
+                                        <p class="text-muted small mb-2" style="font-size: 0.8rem; line-height: 1.45;">
+                                            {{ req.note }}
+                                        </p>
+
+                                        <div class="d-flex align-items-center justify-content-between text-muted small mb-2" style="font-size: 0.73rem;">
+                                            <span><i class="fas fa-building-columns text-gold me-1"></i>Issuing: <strong>{{ req.agency }}</strong></span>
+                                        </div>
+
+                                        <!-- Interactive Checkmark Box -->
+                                        <label class="adm-check-toggle" :class="{ 'checked': checkedReqs[req.id] }">
+                                            <input type="checkbox" :checked="checkedReqs[req.id]" @change="toggleReq(req.id)">
+                                            <span>{{ checkedReqs[req.id] ? 'Document Prepared ✓' : 'Mark as Prepared' }}</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div v-if="filteredRequirements.length === 0" class="col-12 text-center py-5 bg-white rounded-3 border">
+                                    <i class="fas fa-search fs-2 text-muted mb-2"></i>
+                                    <h6 class="text-muted mb-0">No documents matched your search filter "{{ searchQuery }}".</h6>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Interactive Readiness Meter & Station Info (4 Cols) -->
+                        <div class="col-lg-4">
+                            
+                            <!-- Readiness Meter Box -->
+                            <div class="adm-readiness-box mb-4">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <span class="text-uppercase fw-bold text-gold small letter-spacing-1">Document Readiness</span>
+                                    <span class="badge bg-white text-dark fw-bold px-2 py-1">{{ checkedReqsCount }} / {{ totalReqsCount }} Prepared</span>
+                                </div>
+                                <h3 class="fw-bold text-white mb-0">{{ readinessPercentage }}% Ready</h3>
+                                
+                                <div class="adm-readiness-bar-bg">
+                                    <div class="adm-readiness-bar-fill" :style="{ width: readinessPercentage + '%' }"></div>
+                                </div>
+
+                                <p class="small text-white text-opacity-85 mb-3" v-if="readinessPercentage === 100">
+                                    🎉 Excellent! You have prepared all required credentials. You are ready to proceed with official Registrar validation.
+                                </p>
+                                <p class="small text-white text-opacity-85 mb-3" v-else-if="readinessPercentage >= 50">
+                                    👍 Great progress! Keep preparing the remaining physical copies before visiting the campus Registrar.
+                                </p>
+                                <p class="small text-white text-opacity-85 mb-3" v-else>
+                                    Check off documents as you assemble them to track your preparedness for enrollment day.
+                                </p>
+
+                                <div class="d-grid gap-2">
+                                    <a :href="enrollNowUrl" class="btn btn-pill btn-pill-green shadow fw-bold py-2.5">
+                                        <i class="fas fa-user-plus me-2"></i>START PRE-REGISTRATION
+                                    </a>
+                                    <button class="btn btn-pill btn-outline-light py-2 small" @click="printChecklist">
+                                        <i class="fas fa-print me-2"></i>Print Checklist Slip
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Verification Stations Guide Card -->
+                            <div class="content-card shadow-sm p-3.5 border-0 mb-4 bg-white rounded-3">
+                                <h6 class="fw-bold text-dark mb-3 d-flex align-items-center">
+                                    <i class="fas fa-map-location-dot text-success me-2"></i>
+                                    Submission Station Guide
+                                </h6>
+                                <div class="d-flex flex-column gap-2.5">
+                                    <div class="adm-station-card">
+                                        <div class="adm-station-icon"><i class="fas fa-building-user"></i></div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-0 small">Office of the Registrar</h6>
+                                            <span class="text-muted" style="font-size: 0.74rem;">Admin Hall · 8:00 AM – 5:00 PM</span>
+                                        </div>
+                                    </div>
+                                    <div class="adm-station-card">
+                                        <div class="adm-station-icon"><i class="fas fa-stethoscope"></i></div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-0 small">GNCP Campus Clinic</h6>
+                                            <span class="text-muted" style="font-size: 0.74rem;">Health Pavilion · 8:30 AM – 4:30 PM</span>
+                                        </div>
+                                    </div>
+                                    <div class="adm-station-card">
+                                        <div class="adm-station-icon"><i class="fas fa-cash-register"></i></div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-0 small">Treasury &amp; Cashier</h6>
+                                            <span class="text-muted" style="font-size: 0.74rem;">Ground Floor · 8:00 AM – 4:00 PM</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
                     </div>
+
+                    <!-- ── Campus Enrollment Roadmap Section ────────────── -->
+                    <div class="mb-5 p-4 p-lg-5 bg-white rounded-4 border shadow-sm">
+                        <div class="text-center mb-4">
+                            <span class="section-tagline text-gold fw-bold text-uppercase">Step-by-Step Procedure</span>
+                            <h3 class="fw-bold text-dark">Campus Enrollment Roadmap</h3>
+                            <p class="text-muted small mx-auto" style="max-width: 600px;">
+                                Follow our streamlined 6-stage sequential onboarding pipeline from online pre-registration to permanent student ID activation.
+                            </p>
+                        </div>
+
+                        <div class="adm-flow-timeline">
+                            <div v-for="step in enrollmentSteps" :key="step.step" class="adm-flow-step">
+                                <div class="adm-flow-marker">
+                                    <span>0{{ step.step }}</span>
+                                </div>
+                                <div class="adm-flow-content">
+                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+                                        <span class="adm-flow-badge">{{ step.station }} · {{ step.location }}</span>
+                                        <span class="text-muted small fw-bold"><i :class="step.icon" class="text-gold me-1"></i>Station 0{{ step.step }}</span>
+                                    </div>
+                                    <h5 class="fw-bold text-dark mb-1.5" style="font-size: 1.05rem;">{{ step.title }}</h5>
+                                    <p class="text-muted small mb-0">{{ step.desc }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Admissions FAQs Accordion ─────────────────────── -->
+                    <div class="mb-5" style="max-width: 860px; margin: 0 auto;">
+                        <div class="text-center mb-4">
+                            <span class="section-tagline text-gold fw-bold text-uppercase">Got Questions?</span>
+                            <h3 class="fw-bold text-dark">Frequently Asked Questions</h3>
+                        </div>
+
+                        <div class="d-flex flex-column gap-3">
+                            <div v-for="(faq, idx) in faqs" :key="idx" 
+                                 class="bg-white border rounded-3 p-3.5 shadow-sm transition-smooth"
+                                 style="cursor: pointer;"
+                                 @click="toggleFaq(idx)">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                        <i class="fas fa-circle-question text-success"></i>
+                                        {{ faq.q }}
+                                    </h6>
+                                    <i class="fas" :class="activeFaq === idx ? 'fa-chevron-up text-success' : 'fa-chevron-down text-muted'"></i>
+                                </div>
+                                <div v-if="activeFaq === idx" class="mt-3 pt-3 border-top text-muted small" style="line-height: 1.55;">
+                                    {{ faq.a }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Bottom Call-to-Action Bar ────────────────────── -->
+                    <div class="text-center p-4 p-lg-5 rounded-4 shadow-sm border border-light-subtle position-relative overflow-hidden" 
+                         style="background: linear-gradient(135deg, #003D2B 0%, #006A4E 100%); color: white;">
+                        <div class="position-relative" style="z-index: 2;">
+                            <span class="badge bg-gold text-dark text-uppercase fw-bold px-3 py-1.5 mb-2.5">Admissions Ongoing</span>
+                            <h3 class="fw-bold text-white mb-2">Ready to Become a GNCP Patriot?</h3>
+                            <p class="text-white text-opacity-85 mb-4 mx-auto" style="max-width: 600px;">
+                                Begin your application online in under 3 minutes, or track the real-time clearance status of your submitted reference number.
+                            </p>
+                            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                                <a :href="enrollNowUrl" class="btn btn-pill btn-pill-green shadow px-4 py-3 fw-bold">
+                                    <i class="fas fa-graduation-cap me-2"></i>START ONLINE PRE-REGISTRATION
+                                </a>
+                                <a href="../enrollment-system/track.html" class="btn btn-pill btn-outline-light px-4 py-3 fw-bold">
+                                    <i class="fas fa-route me-2"></i>TRACK SUBMITTED APPLICATION
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
-                <!-- Tuition & Fees and Calculator -->
+                <!-- ══════════════════════════════════════════════════════════════
+                     TUITION & FEES AND ESTIMATOR
+                     ══════════════════════════════════════════════════════════════ -->
                 <div v-else-if="subPage === 'admission-fees'" class="container py-5">
                     <div class="row g-5">
                         <div class="col-lg-6">

@@ -15,8 +15,8 @@
             const currentView = ref('dashboard');
             const searchQuery = ref('');
             const activeFilter = ref('All');
-            const sortBy = ref('referenceNumber');
-            const sortDesc = ref(false);
+            const sortBy = ref('arrivedAt');
+            const sortDesc = ref(false); // FIFO: Earliest arrivals served first (First In, First Out)
             const selectedStudent = ref(null);
             const studentsList = ref([]);
 
@@ -43,6 +43,12 @@
             const getSortIcon = (field) => {
                 if (sortBy.value !== field) return 'fa-solid fa-sort text-muted ms-1';
                 return sortDesc.value ? 'fa-solid fa-sort-down text-success ms-1' : 'fa-solid fa-sort-up text-success ms-1';
+            };
+
+            const getQueueRank = (student) => {
+                const pendingList = filteredStudents.value.filter(s => getItStepStatus(s) !== 'COMPLETED');
+                const idx = pendingList.findIndex(s => s.referenceNumber === student.referenceNumber);
+                return idx >= 0 ? idx + 1 : null;
             };
 
             // Existing student accounts view state
@@ -118,6 +124,9 @@
                     if (!step || step.status === 'PENDING') {
                         continue;
                     }
+                    const padId = String(student.id || (i + 1)).padStart(3, '0');
+                    student.queueTicket = (student.queueTickets && student.queueTickets.it_center) ? student.queueTickets.it_center : ('ITC-' + padId);
+                    student.arrivedAt = (student.stationArrivals && student.stationArrivals.it_center) ? student.stationArrivals.it_center : (student.createdAt || student.datePreRegistered || '');
                     result.push(student);
                 }
                 studentsList.value = result;
@@ -141,16 +150,22 @@
                     }).catch(() => {});
             };
 
-            const checkSession = () => {
-                const stored = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user') || localStorage.getItem('gncp_station_user') || localStorage.getItem('gncp_admin_user');
-                if (stored) {
-                    try {
-                        const user = JSON.parse(stored);
-                        if (user && (user.role === 'IT_CENTER' || user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'REGISTRAR')) {
-                            currentUser.value = user;
+            const checkSession = async () => {
+                localStorage.removeItem('gncp_station_user');
+                localStorage.removeItem('gncp_admin_user');
+
+                try {
+                    const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
+                    if (res.ok) {
+                        const result = await res.json();
+                        const allowedRoles = ['IT_CENTER', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'];
+                        if (result.success && result.data && allowedRoles.includes(result.data.role)) {
+                            currentUser.value = result.data;
+                            const sessionKey = (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
+                            sessionStorage.setItem(sessionKey, JSON.stringify(result.data));
                             fetchCurrentProfile();
-                            if (user.must_change_password && typeof window.PasswordChangeGuard !== 'undefined') {
-                                window.PasswordChangeGuard.checkAndPrompt(user, function() {
+                            if (result.data.must_change_password && typeof window.PasswordChangeGuard !== 'undefined') {
+                                window.PasswordChangeGuard.checkAndPrompt(result.data, function() {
                                     loadQueue();
                                 });
                             } else {
@@ -158,15 +173,22 @@
                             }
                             return;
                         }
-                    } catch (e) {
-                        console.error('[IT Center] Session parse error:', e);
                     }
+                } catch (e) {
+                    console.error('[IT Center] Session check error:', e);
                 }
-                sessionStorage.removeItem('gncp_station_user');
-                sessionStorage.removeItem('gncp_admin_user');
-                localStorage.removeItem('gncp_station_user');
-                localStorage.removeItem('gncp_admin_user');
-                window.location.href = '../../index.html?clear=true&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+
+                if (typeof window.SessionExpirationGuard !== 'undefined') {
+                    window.SessionExpirationGuard.handleExpiredSession({
+                        title: 'Session Expired',
+                        message: 'Your IT Center workstation session has expired. Please sign in again to continue account activations.',
+                        reason: 'expired'
+                    });
+                } else {
+                    sessionStorage.removeItem('gncp_station_user');
+                    sessionStorage.removeItem('gncp_admin_user');
+                    window.location.href = '../../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                }
             };
 
 
@@ -265,7 +287,9 @@
                     
                     let matchesQuery = true;
                     if (query) {
-                        matchesQuery = s.name.toLowerCase().includes(query) || s.referenceNumber.toLowerCase().includes(query);
+                        matchesQuery = s.name.toLowerCase().includes(query) || 
+                                       s.referenceNumber.toLowerCase().includes(query) ||
+                                       (s.queueTicket && s.queueTicket.toLowerCase().includes(query));
                     }
 
                     let matchesFilter = false;
@@ -282,10 +306,15 @@
                     }
                 }
 
-                // Registrar Sorting Logic
+                // FIFO (First In, First Out) / Header Sorting Logic
                 return [...list].sort((a, b) => {
                     let vA = a[sortBy.value] || '';
                     let vB = b[sortBy.value] || '';
+                    if (sortBy.value === 'arrivedAt' || sortBy.value === 'createdAt') {
+                        vA = vA ? new Date(vA).getTime() : (a.id || 0);
+                        vB = vB ? new Date(vB).getTime() : (b.id || 0);
+                        return sortDesc.value ? vB - vA : vA - vB;
+                    }
                     if (typeof vA === 'string') vA = vA.toLowerCase();
                     if (typeof vB === 'string') vB = vB.toLowerCase();
                     if (vA < vB) return sortDesc.value ? 1 : -1;
@@ -293,6 +322,16 @@
                     return 0;
                 });
             });
+
+            const nextInQueue = computed(() => {
+                return filteredStudents.value.find(s => getItStepStatus(s) !== 'COMPLETED') || filteredStudents.value[0] || null;
+            });
+
+            const callNextForId = () => {
+                if (nextInQueue.value) {
+                    openReview(nextInQueue.value);
+                }
+            };
 
             const loadAccounts = () => {
                 fetch('../backend/api.php?action=fetch_student_accounts')
@@ -439,7 +478,7 @@
                     const updatePayload = JSON.parse(JSON.stringify(student));
                     updatePayload.enrollment = enrollmentData;
                     updatePayload.status = 'ENROLLED';
-                    const itStepIdx = (updatePayload.roadmap && Array.isArray(updatePayload.roadmap)) ? updatePayload.roadmap.findIndex(r => r.stepId === 'it_activation' || r.stepId === 'id_email_final') : -1;
+                    const itStepIdx = (updatePayload.roadmap && Array.isArray(updatePayload.roadmap)) ? updatePayload.roadmap.findIndex(r => r.stepId === 'it_activation' || r.stepId === 'id_email_final' || r.name === 'IT Center ID' || r.id === 7) : -1;
                     if (itStepIdx !== -1) {
                         updatePayload.roadmap[itStepIdx].status = 'COMPLETED';
                         updatePayload.roadmap[itStepIdx].updatedAt = new Date().toISOString();
@@ -645,12 +684,6 @@
                                 p.avatar = newFilename;
                                 sessionStorage.setItem('gncp_station_user', JSON.stringify(p));
                             }
-                            const rawLoc = localStorage.getItem('gncp_station_user');
-                            if (rawLoc) {
-                                const p = JSON.parse(rawLoc);
-                                p.avatar = newFilename;
-                                localStorage.setItem('gncp_station_user', JSON.stringify(p));
-                            }
                             Swal.fire('Success', 'Profile picture updated successfully.', 'success');
                         } else { Swal.fire('Upload Failed', data.message || 'Unable to update profile picture.', 'error'); }
                     } catch (err) { Swal.fire('Error', 'Unable to process image upload.', 'error'); }
@@ -686,14 +719,6 @@
                             p.email = user.value.email;
                             p.avatar = avatarFilename;
                             sessionStorage.setItem('gncp_station_user', JSON.stringify(p));
-                        }
-                        const rawLoc = localStorage.getItem('gncp_station_user');
-                        if (rawLoc) {
-                            const p = JSON.parse(rawLoc);
-                            p.name = user.value.name;
-                            p.email = user.value.email;
-                            p.avatar = avatarFilename;
-                            localStorage.setItem('gncp_station_user', JSON.stringify(p));
                         }
                         Swal.fire('Success', 'Personal details updated successfully.', 'success');
                     } else { Swal.fire('Update Failed', data.message || 'Unable to update profile.', 'error'); }
@@ -733,6 +758,9 @@
                 getSortIcon,
                 studentsList,
                 filteredStudents,
+                nextInQueue,
+                callNextForId,
+                getQueueRank,
                 totalInQueue,
                 completedToday,
                 selectedStudent,

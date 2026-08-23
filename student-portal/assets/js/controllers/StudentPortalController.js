@@ -99,10 +99,236 @@ window.StudentPortalController = {
                 case 'announcements': return 'Campus Feed & Bulletins';
                 case 'dashboard': return 'Dashboard Overview & COR';
                 case 'courses': return 'My Enrolled Classes (COR)';
+                case 'documents': return 'Documents & Undertakings Hub';
                 case 'profile': return 'My Student Profile';
                 default: return 'Student Portal';
             }
         });
+
+        // ── Documents & Undertaking Management State ──────────────────────────
+        const documentsData = reactive({
+            requirements: [],
+            stats: {
+                totalRequired: 5,
+                verifiedCount: 0,
+                pendingReviewCount: 0,
+                undertakingCount: 0,
+                missingCount: 0,
+                isFullyCompliant: false
+            },
+            loading: false
+        });
+
+        const missingDocsCount = computed(() => {
+            const m = documentsData.stats?.missingCount || 0;
+            const u = documentsData.stats?.undertakingCount || 0;
+            return m + u;
+        });
+
+        const showUploadDocModal = ref(false);
+        const selectedDocRequirement = ref(null);
+        const docFileInput = ref(null);
+        const isUploadingDoc = ref(false);
+        const uploadDocError = ref('');
+        const uploadDocSuccess = ref('');
+
+        const docUploadForm = reactive({
+            docKey: '',
+            fileName: '',
+            fileType: '',
+            fileSize: 0,
+            fileData: '',
+            isUndertaking: false,
+            undertakingReason: '',
+            undertakingDeadline: ''
+        });
+
+        const previewDocModal = reactive({
+            show: false,
+            title: '',
+            url: '',
+            fileName: '',
+            fileType: '',
+            zoom: 100,
+            rotation: 0
+        });
+
+        const loadStudentDocuments = async () => {
+            if (!currentStudent.value) return;
+            const studentId = currentStudent.value.id || currentStudent.value.studentId || currentStudent.value.temp_reference_no;
+            documentsData.loading = true;
+            try {
+                const res = await StudentApiService.fetchDocuments(studentId);
+                if (res.success && res.data) {
+                    documentsData.requirements = res.data.requirements || [];
+                    documentsData.stats = res.data.stats || {
+                        totalRequired: 5,
+                        verifiedCount: 0,
+                        pendingReviewCount: 0,
+                        undertakingCount: 0,
+                        missingCount: 0,
+                        isFullyCompliant: false
+                    };
+                }
+            } catch (e) {
+                console.error('[StudentPortal::Documents] Failed to load document requirements:', e);
+            } finally {
+                documentsData.loading = false;
+            }
+        };
+
+        const openUploadDocModal = (doc = null) => {
+            selectedDocRequirement.value = doc;
+            docUploadForm.docKey = doc ? doc.key : (documentsData.requirements[0]?.key || 'form_138');
+            docUploadForm.fileName = '';
+            docUploadForm.fileType = '';
+            docUploadForm.fileSize = 0;
+            docUploadForm.fileData = '';
+            docUploadForm.isUndertaking = doc ? doc.isUndertaking : false;
+            docUploadForm.undertakingReason = doc ? (doc.undertakingReason || '') : '';
+            docUploadForm.undertakingDeadline = doc ? (doc.undertakingDeadline || '') : '';
+            uploadDocError.value = '';
+            uploadDocSuccess.value = '';
+            showUploadDocModal.value = true;
+        };
+
+        const closeUploadDocModal = () => {
+            showUploadDocModal.value = false;
+            uploadDocError.value = '';
+            uploadDocSuccess.value = '';
+        };
+
+        const triggerDocFileSelect = () => {
+            if (docFileInput.value) {
+                docFileInput.value.click();
+            }
+        };
+
+        const handleDocFileSelect = (event) => {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 10 * 1024 * 1024) {
+                uploadDocError.value = 'File exceeds maximum 10MB limit. Please choose a smaller file.';
+                return;
+            }
+
+            uploadDocError.value = '';
+            docUploadForm.fileName = file.name;
+            docUploadForm.fileType = file.type || 'application/octet-stream';
+            docUploadForm.fileSize = file.size;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                docUploadForm.fileData = e.target.result;
+            };
+            reader.onerror = () => {
+                uploadDocError.value = 'Failed to read the selected file. Please try again.';
+            };
+            reader.readAsDataURL(file);
+        };
+
+        const submitDocumentUpload = async () => {
+            if (!docUploadForm.docKey) {
+                uploadDocError.value = 'Please select a document requirement.';
+                return;
+            }
+            if (!docUploadForm.fileData && !docUploadForm.isUndertaking) {
+                uploadDocError.value = 'Please choose a document file to upload, or specify undertaking details.';
+                return;
+            }
+
+            isUploadingDoc.value = true;
+            uploadDocError.value = '';
+            uploadDocSuccess.value = '';
+
+            const studentId = currentStudent.value.id || currentStudent.value.studentId || currentStudent.value.temp_reference_no;
+            const payload = {
+                studentId,
+                docKey: docUploadForm.docKey,
+                fileName: docUploadForm.fileName,
+                fileType: docUploadForm.fileType,
+                fileData: docUploadForm.fileData,
+                isUndertaking: docUploadForm.isUndertaking,
+                undertakingReason: docUploadForm.undertakingReason,
+                undertakingDeadline: docUploadForm.undertakingDeadline
+            };
+
+            const res = await StudentApiService.uploadDocument(payload);
+            isUploadingDoc.value = false;
+
+            if (res.success) {
+                uploadDocSuccess.value = res.message || 'Document uploaded successfully!';
+                await loadStudentDocuments();
+                setTimeout(() => {
+                    closeUploadDocModal();
+                }, 1200);
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Document Submitted!',
+                        text: 'Your document has been submitted for Registrar review.',
+                        confirmButtonColor: '#006A4E',
+                        timer: 2500
+                    });
+                }
+            } else {
+                uploadDocError.value = res.message || 'Failed to upload document. Please try again.';
+            }
+        };
+
+        const openDocPreview = (doc) => {
+            if (!doc || !doc.softCopyUrl) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'No Document Uploaded',
+                        text: 'No soft copy file has been uploaded for this requirement yet.',
+                        confirmButtonColor: '#006A4E'
+                    });
+                }
+                return;
+            }
+
+            previewDocModal.show = true;
+            previewDocModal.title = doc.title;
+            previewDocModal.url = doc.softCopyUrl;
+            previewDocModal.fileName = doc.fileName || 'document';
+            previewDocModal.fileType = doc.fileType || (doc.softCopyUrl.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+            previewDocModal.zoom = 100;
+            previewDocModal.rotation = 0;
+        };
+
+        const closeDocPreview = () => {
+            previewDocModal.show = false;
+            previewDocModal.zoom = 100;
+            previewDocModal.rotation = 0;
+        };
+
+        const zoomInDoc = () => {
+            if (previewDocModal.zoom < 250) previewDocModal.zoom += 25;
+        };
+        const zoomOutDoc = () => {
+            if (previewDocModal.zoom > 50) previewDocModal.zoom -= 25;
+        };
+        const resetDocZoom = () => {
+            previewDocModal.zoom = 100;
+            previewDocModal.rotation = 0;
+        };
+        const rotateDoc = () => {
+            previewDocModal.rotation = (previewDocModal.rotation + 90) % 360;
+        };
+
+        const downloadDoc = (doc) => {
+            if (!doc || !doc.softCopyUrl) return;
+            const a = document.createElement('a');
+            a.href = doc.softCopyUrl;
+            a.download = doc.fileName || (doc.key + '.pdf');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
 
         // Print Form Trigger
         const printForm = () => {
@@ -126,13 +352,15 @@ window.StudentPortalController = {
 
         // Session Check with Auto-Redirect to login.html
         const checkSession = () => {
-            const stored = sessionStorage.getItem('gncp_portal_student') || localStorage.getItem('gncp_portal_student');
+            localStorage.removeItem('gncp_portal_student');
+            const stored = sessionStorage.getItem('gncp_portal_student');
             if (stored) {
                 try {
                     currentStudent.value = JSON.parse(stored);
                     StudentModel.hydrateProfileFromSession(state.profile, currentStudent.value);
                     syncStudentFormFromProfile();
                     fetchDashboardData();
+                    loadStudentDocuments();
 
                     if (currentStudent.value && currentStudent.value.must_change_password) {
                         if (typeof window.PasswordChangeGuard !== 'undefined') {
@@ -147,7 +375,6 @@ window.StudentPortalController = {
                 } catch (e) {
                     console.error('[StudentPortal::Session] Invalid stored session JSON:', e);
                     sessionStorage.removeItem('gncp_portal_student');
-                    localStorage.removeItem('gncp_portal_student');
                     window.location.href = 'login.html';
                 }
             } else {
@@ -731,7 +958,32 @@ window.StudentPortalController = {
             fetchMilestones,
             formatTimeAgo,
             formatDateRange,
-            formattedProfilePhoto
+            formattedProfilePhoto,
+
+            // Documents & Undertakings Hub
+            documentsData,
+            missingDocsCount,
+            showUploadDocModal,
+            selectedDocRequirement,
+            docFileInput,
+            isUploadingDoc,
+            uploadDocError,
+            uploadDocSuccess,
+            docUploadForm,
+            previewDocModal,
+            loadStudentDocuments,
+            openUploadDocModal,
+            closeUploadDocModal,
+            triggerDocFileSelect,
+            handleDocFileSelect,
+            submitDocumentUpload,
+            openDocPreview,
+            closeDocPreview,
+            zoomInDoc,
+            zoomOutDoc,
+            resetDocZoom,
+            rotateDoc,
+            downloadDoc
         };
     }
 };

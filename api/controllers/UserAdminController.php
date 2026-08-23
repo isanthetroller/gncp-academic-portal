@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/../models/UserModel.php';
 require_once __DIR__ . '/../../shared/backend/services/EmailService.php';
+require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
 
 class UserAdminController {
     private $userModel;
@@ -13,10 +14,12 @@ class UserAdminController {
     }
 
     public function getUsers(): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
         return ['success' => true, 'data' => $this->userModel->getAllUsers()];
     }
 
     public function saveUser(array $payload): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
         $userData = $payload['user'] ?? [];
         $userData['username'] = strtolower(trim($userData['username'] ?? ''));
         $userData['name'] = trim($userData['name'] ?? '');
@@ -86,6 +89,7 @@ class UserAdminController {
     }
 
     public function cleanupTestUsers(array $payload): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
         $pattern = $payload['pattern'] ?? 'test_%_auto_%';
         $deleted = $this->userModel->deleteTestUsers($pattern);
         return ['success' => true, 'data' => ['deleted' => $deleted], 'message' => "Purged $deleted test user account(s)."];

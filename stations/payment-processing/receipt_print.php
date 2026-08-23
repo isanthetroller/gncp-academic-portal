@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../shared/backend/config/database.php';
 require_once __DIR__ . '/../../shared/backend/services/AssessmentService.php';
+require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
 
 $ref = $_GET['ref'] ?? '';
 
@@ -12,9 +13,7 @@ try {
     $pdo = Database::getInstance();
 
     // Check staff session for security
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    initSession();
     $isLoggedInStaff = false;
     $storedUser = $_SESSION['gncp_station_user'] ?? $_SESSION['gncp_admin_user'] ?? null;
     if ($storedUser) {
@@ -26,8 +25,6 @@ try {
     }
 
     if (!$isLoggedInStaff) {
-        // Also allow access if we have a temporary session token or bypass for direct verification if needed, 
-        // but for security Cashier must be logged in. We'll show access denied if not.
         die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>Error: Access Denied. Cashier authorization required.</h1>");
     }
 
@@ -125,125 +122,165 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Official Receipt - <?php echo htmlspecialchars($student['or_number']); ?></title>
+    <title>Official Receipt - <?php echo htmlspecialchars((string)($student['or_number'] ?? 'PENDING')); ?></title>
+    <link rel="stylesheet" href="../../shared/libs/bootstrap.bundle.min.js">
     <style>
+        * { box-sizing: border-box; }
         body {
             font-family: 'Courier New', Courier, monospace;
-            color: #000;
-            background-color: #fff;
+            color: #1a1a1a;
+            background-color: #f1f5f9;
             margin: 0;
-            padding: 20px;
-            font-size: 12px;
-            line-height: 1.4;
+            padding: 30px 20px;
+            font-size: 13px;
         }
-        .receipt-box {
+        .receipt-container {
             width: 100%;
-            max-width: 320px;
+            max-width: 820px;
             margin: 0 auto;
-            border: 1px solid #ccc;
-            padding: 15px;
+            background: #ffffff;
+            border: 2px solid #004A3C;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
         }
-        .header {
-            text-align: center;
-            margin-bottom: 15px;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 8px;
-        }
-        .school-name {
-            font-weight: bold;
-            font-size: 14px;
-        }
-        .title {
-            text-transform: uppercase;
-            font-weight: bold;
-            margin-top: 5px;
-        }
-        .meta-section {
-            margin-bottom: 12px;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 8px;
-        }
-        .meta-row {
+        .header-row {
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #004A3C;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
         }
-        .meta-label {
-            color: #444;
+        .school-title {
+            color: #004A3C;
+            font-family: sans-serif;
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin: 0 0 4px 0;
+            letter-spacing: 0.5px;
         }
-        .meta-value {
-            font-weight: bold;
+        .school-subtitle {
+            color: #64748b;
+            font-size: 11px;
+            font-family: sans-serif;
         }
-        .items-table {
+        .receipt-badge-title {
+            color: #cda819;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: right;
+        }
+        .or-number-badge {
+            font-family: monospace;
+            font-weight: 700;
+            color: #475569;
+            font-size: 12px;
+            text-align: right;
+        }
+        .meta-grid {
+            display: flex;
+            justify-content: space-between;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+        }
+        .meta-col {
+            flex: 1;
+        }
+        .meta-col:last-child {
+            border-left: 1px solid #cbd5e1;
+            padding-left: 16px;
+        }
+        .meta-item {
+            margin-bottom: 4px;
+        }
+        .meta-item:last-child {
+            margin-bottom: 0;
+        }
+        .particulars-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
-        .items-table th, .items-table td {
-            padding: 4px 0;
-            text-align: left;
+        .particulars-table th, .particulars-table td {
+            border: 1px solid #334155;
+            padding: 6px 10px;
         }
-        .items-table th {
-            border-bottom: 1px solid #000;
+        .particulars-table th {
+            background: #f1f5f9;
             font-weight: bold;
+            text-align: center;
         }
-        .text-right {
-            text-align: right !important;
-        }
-        .total-section {
-            border-top: 1px dashed #000;
-            padding-top: 8px;
-            margin-bottom: 15px;
-        }
-        .total-row {
+        .text-end { text-align: right !important; }
+        .text-center { text-align: center !important; }
+        .text-start { text-align: left !important; }
+        .fw-bold { font-weight: bold; }
+        .text-success { color: #008000; }
+        .text-danger { color: #dc2626; }
+        
+        .footer-row {
             display: flex;
             justify-content: space-between;
-            padding: 2px 0;
+            align-items: center;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #cbd5e1;
         }
-        .total-grand {
-            font-weight: bold;
-            font-size: 13px;
-            border-top: 1px solid #000;
-            margin-top: 4px;
-            padding-top: 4px;
-        }
-        .footer {
-            text-align: center;
+        .disclaimer-text {
             font-size: 10px;
-            margin-top: 15px;
-            border-top: 1px dashed #000;
-            padding-top: 8px;
+            color: #64748b;
+            max-width: 65%;
+            line-height: 1.3;
         }
-        .stamp-area {
-            border: 2px solid #000;
-            padding: 10px;
+        .signature-box {
             text-align: center;
+            border-top: 1px solid #000;
+            padding-top: 6px;
+            width: 180px;
+        }
+        .signature-title {
+            font-size: 10px;
             font-weight: bold;
-            margin-top: 15px;
-            text-transform: uppercase;
-            color: #008000;
-            border-color: #008000;
+        }
+        .signature-sub {
+            font-size: 9px;
+            color: #64748b;
         }
         .print-btn-container {
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         .btn-print {
-            background-color: #28a745;
+            background-color: #006A4E;
             color: #fff;
             border: none;
-            padding: 6px 15px;
-            font-size: 12px;
+            padding: 8px 24px;
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
-            border-radius: 4px;
+            border-radius: 6px;
+            font-family: sans-serif;
+            box-shadow: 0 4px 10px rgba(0, 106, 78, 0.2);
         }
         @media print {
-            .print-btn-container {
-                display: none;
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
             }
-            .receipt-box {
-                border: none;
-                padding: 0;
+            .print-btn-container {
+                display: none !important;
+            }
+            .receipt-container {
+                border: 1px solid #000000 !important;
+                box-shadow: none !important;
+                max-width: 100% !important;
+                border-radius: 0 !important;
+                padding: 16px !important;
             }
         }
     </style>
@@ -251,108 +288,67 @@ try {
 <body>
 
 <div class="print-btn-container">
-    <button class="btn-print" onclick="window.print()">Print Receipt</button>
+    <button class="btn-print" onclick="window.print()">Print Official Receipt</button>
 </div>
 
-<div class="receipt-box">
-    <div class="header">
-        <span class="school-name">GNCP ACADEMIC PORTAL</span><br>
-        <span class="title">Official Receipt</span><br>
-        <span style="font-size: 10px; font-family: monospace;">OR No: <?php echo htmlspecialchars($student['or_number'] ?: 'PENDING'); ?></span>
-    </div>
-
-    <div class="meta-section">
-        <div class="meta-row">
-            <span class="meta-label">Student No:</span>
-            <span class="meta-value"><?php echo htmlspecialchars($student['temp_student_id']); ?></span>
+<div class="receipt-container">
+    <div class="header-row">
+        <div>
+            <h4 class="school-title">GO-ON NATIONAL COLLEGE OF THE PHILIPPINES</h4>
+            <div class="school-subtitle">Emilio Aguinaldo Highway, Dasmariñas City, Cavite</div>
         </div>
-        <div class="meta-row">
-            <span class="meta-label">Student:</span>
-            <span class="meta-value"><?php echo htmlspecialchars($student['last_name'] . ', ' . $student['first_name']); ?></span>
-        </div>
-        <div class="meta-row">
-            <span class="meta-label">Program:</span>
-            <span class="meta-value"><?php echo htmlspecialchars($student['course_code']); ?></span>
-        </div>
-        <div class="meta-row">
-            <span class="meta-label">Date:</span>
-            <span class="meta-value"><?php echo date('d/m/Y h:i A', strtotime($student['enrolled_at'] ?: 'now')); ?></span>
+        <div>
+            <div class="receipt-badge-title">Official Receipt</div>
+            <div class="or-number-badge">OR: <?php echo htmlspecialchars((string)($student['or_number'] ?: $txnRef)); ?></div>
         </div>
     </div>
 
-    <table class="items-table">
+    <div class="meta-grid">
+        <div class="meta-col">
+            <div class="meta-item"><strong>Student Name:</strong> <?php echo htmlspecialchars($student['last_name'] . ', ' . $student['first_name'] . ' ' . $student['middle_name']); ?></div>
+            <div class="meta-item"><strong>Reference No:</strong> <?php echo htmlspecialchars($student['temp_student_id']); ?></div>
+            <div class="meta-item"><strong>Degree Course:</strong> <?php echo htmlspecialchars($student['course_code'] . ' - ' . ($student['program_name'] ?? '')); ?></div>
+        </div>
+        <div class="meta-col">
+            <div class="meta-item"><strong>Payment Date:</strong> <?php echo date('F d, Y h:i A', strtotime($student['enrolled_at'] ?: 'now')); ?></div>
+            <div class="meta-item"><strong>Payment Mode:</strong> <?php echo htmlspecialchars($paymentMode); ?></div>
+            <div class="meta-item"><strong>Cashier:</strong> <?php echo htmlspecialchars($student['cashier_name'] ?: 'Cashier Representative'); ?></div>
+        </div>
+    </div>
+
+    <table class="particulars-table">
         <thead>
             <tr>
-                <th>Description</th>
-                <th class="text-right">Amount</th>
+                <th class="text-start">Particulars</th>
+                <th>Total Assessment</th>
+                <th>Amount Paid</th>
+                <th>Outstanding Balance</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td>Tuition Fee (<?php echo $totalUnits; ?> Units)</td>
-                <td class="text-right"><?php echo number_format($tuitionFee, 2); ?></td>
+                <td class="text-start fw-bold">
+                    GNCP College Matriculation (AY 2026-2027)
+                    <div style="font-size: 11px; font-weight: normal; color: #475569; margin-top: 2px;">
+                        Tuition (<?php echo $totalUnits; ?> Units): ₱<?php echo number_format($tuitionFee, 2); ?> | Lab: ₱<?php echo number_format($totalLabFee, 2); ?> | Misc: ₱<?php echo number_format($miscFee, 2); ?> | LMS: ₱<?php echo number_format($lmsFee, 2); ?>
+                        <?php if ($discount > 0): ?> | Discount: -₱<?php echo number_format($discount, 2); ?><?php endif; ?>
+                    </div>
+                </td>
+                <td class="text-center">₱<?php echo number_format($cashTotal, 2); ?></td>
+                <td class="text-center fw-bold text-success">₱<?php echo number_format($amountPaid, 2); ?></td>
+                <td class="text-center fw-bold <?php echo $balance > 0 ? 'text-danger' : 'text-success'; ?>">₱<?php echo number_format($balance, 2); ?></td>
             </tr>
-            <tr>
-                <td>Laboratory Fee</td>
-                <td class="text-right"><?php echo number_format($totalLabFee, 2); ?></td>
-            </tr>
-            <tr>
-                <td>Miscellaneous Fee</td>
-                <td class="text-right"><?php echo number_format($miscFee, 2); ?></td>
-            </tr>
-            <tr>
-                <td>LMS Fee</td>
-                <td class="text-right"><?php echo number_format($lmsFee, 2); ?></td>
-            </tr>
-            <tr>
-                <td>OMR Fee</td>
-                <td class="text-right"><?php echo number_format($omrFee, 2); ?></td>
-            </tr>
-            <?php if ($discount > 0): ?>
-            <tr style="color: #c00;">
-                <td>Scholarship Discount</td>
-                <td class="text-right">-<?php echo number_format($discount, 2); ?></td>
-            </tr>
-            <?php endif; ?>
         </tbody>
     </table>
 
-    <div class="total-section">
-        <div class="total-row">
-            <span>TOTAL ASSESSMENT:</span>
-            <span style="font-weight: bold;"><?php echo number_format($cashTotal, 2); ?></span>
+    <div class="footer-row">
+        <div class="disclaimer-text">
+            Disclaimer: This serves as an official electronic receipt of payment validation for Go-on National College of the Philippines. Keep this copy for records.
         </div>
-        <div class="total-row">
-            <span>AMOUNT PAID:</span>
-            <span style="font-weight: bold;"><?php echo number_format($amountPaid, 2); ?></span>
+        <div class="signature-box">
+            <div class="signature-title">AUTHORIZED SIGNATURE</div>
+            <div class="signature-sub">GNCP Finance &amp; Treasury</div>
         </div>
-        <div class="total-row total-grand">
-            <span>BALANCE DUE:</span>
-            <span>₱ <?php echo number_format($balance, 2); ?></span>
-        </div>
-    </div>
-
-    <div class="meta-section" style="border-top: 1px dashed #000; padding-top: 8px;">
-        <div class="meta-row">
-            <span class="meta-label">Payment Mode:</span>
-            <span class="meta-value"><?php echo htmlspecialchars($paymentMode); ?></span>
-        </div>
-        <div class="meta-row">
-            <span class="meta-label">Ref Code:</span>
-            <span class="meta-value" style="font-family: monospace;"><?php echo htmlspecialchars($txnRef); ?></span>
-        </div>
-    </div>
-
-    <div class="stamp-area">
-        PAID ENROLLED
-        <div style="font-size: 9px; font-weight: normal; margin-top: 3px; font-family: monospace;">
-            Cashier: <?php echo htmlspecialchars($student['cashier_name'] ?: 'sbaltazar3'); ?>
-        </div>
-    </div>
-
-    <div class="footer">
-        Thank you for your payment.<br>
-        GNCP Academic Administration
     </div>
 </div>
 
