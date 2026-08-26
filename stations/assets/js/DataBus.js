@@ -17,7 +17,9 @@ class StationDataBus {
     static _memoryQueue = null;
 
     static getApiUrl(action) {
-        return `/systemtest/api/index.php?action=${action}`;
+        const isSystemtest = (typeof window !== 'undefined' && window.location && window.location.pathname && window.location.pathname.startsWith('/systemtest'));
+        const basePath = isSystemtest ? '/systemtest' : '';
+        return `${basePath}/api/index.php?action=${action}`;
     }
 
     static getQueue() {

@@ -3,19 +3,34 @@
  * GNCP Central REST API Engine Router v2.0
  * Unified Gateway with X-Request-ID Tracking & Modular Service Delegation
  */
+ini_set('display_errors', '0');
+$startTime = microtime(true);
+
+require_once __DIR__ . '/../shared/backend/utils/security_guard.php';
 require_once __DIR__ . '/../shared/backend/utils/logger.php';
 require_once __DIR__ . '/../shared/backend/utils/rate_limit.php';
+require_once __DIR__ . '/../shared/backend/utils/telemetry.php';
+require_once __DIR__ . '/../shared/backend/utils/student.php';
 
 $reqId = getRequestId();
 header('Content-Type: application/json; charset=utf-8');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header("Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; font-src 'self' https: data:; img-src 'self' data: blob: https:;");
+header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowedHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
-if (!empty($origin) && (str_contains($origin, $allowedHost) || str_contains($origin, 'localhost') || str_contains($origin, '127.0.0.1'))) {
-    header('Access-Control-Allow-Origin: ' . $origin);
-    header('Access-Control-Allow-Credentials: true');
-} else {
-    header('Access-Control-Allow-Origin: *');
+$rawHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$allowedHost = explode(':', $rawHost)[0];
+if (!empty($origin)) {
+    $parsed = parse_url($origin);
+    $originHost = $parsed['host'] ?? '';
+    $isAllowed = ($originHost === 'localhost' || $originHost === '127.0.0.1' || $originHost === $allowedHost || str_ends_with($originHost, '.' . $allowedHost));
+    if ($isAllowed) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Access-Control-Allow-Credentials: true');
+    }
 }
 
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Request-ID');
@@ -24,6 +39,19 @@ header('X-Request-ID: ' . $reqId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
+    exit;
+}
+
+// ── IP Firewall & Blacklist Gate ──
+if (isIpBanned()) {
+    http_response_code(403);
+    echo json_encode([
+        'success'   => false,
+        'message'   => 'Access Denied: Your IP address has been flagged for security restrictions.',
+        'code'      => 403,
+        'requestId' => $reqId
+    ]);
+    recordTelemetry($_SERVER['REQUEST_METHOD'] ?? 'GET', $_SERVER['REQUEST_URI'] ?? '', 'FIREWALL_BLOCKED', 403, (microtime(true) - $startTime) * 1000, ['blocked' => true]);
     exit;
 }
 
@@ -81,35 +109,55 @@ try {
             checkRateLimit('student_track', 20, 60);
             return (new StudentController($pdo))->track($_GET['ref'] ?? $_GET['referenceNumber'] ?? ($p['referenceNumber'] ?? ''));
         },
-        'student/documents'       => fn($p) => (new StudentController($pdo))->getDocuments($_GET['identifier'] ?? ($_GET['ref'] ?? ($_GET['studentId'] ?? ($p['identifier'] ?? ($p['studentId'] ?? ''))))),
+        'student/documents'       => fn($p) => (new StudentController($pdo))->getDocuments($_GET['identifier'] ?? ($_GET['ref'] ?? ($_GET['studentId'] ?? ($p['identifier'] ?? ($p['studentId'] ?? '')))), $_GET['pin'] ?? ($p['pin'] ?? '')),
         'student/upload_document' => fn($p) => (new StudentController($pdo))->uploadDocument($p),
-        'registrar/verify_document'=> fn($p) => (new StudentController($pdo))->verifyDocument($p),
-        'student/cleanup_test_records'=> fn($p) => (new StudentController($pdo))->cleanupTestRecords($p),
+        'registrar/verify_document'=> function($p) use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN']);
+            return (new StudentController($pdo))->verifyDocument($p);
+        },
+        'student/cleanup_test_records'=> function($p) use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['ADMIN', 'SUPER_ADMIN']);
+            return (new StudentController($pdo))->cleanupTestRecords($p);
+        },
 
         'stations/update'         => fn($p) => (new StationController($pdo))->updateStudent($p),
         'update_student'          => fn($p) => (new StationController($pdo))->updateStudent($p),
         'stations/next_student_id'=> function() use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['IT_CENTER', 'ADMIN', 'SUPER_ADMIN', 'REGISTRAR']);
             require_once __DIR__ . '/../shared/backend/utils/student.php';
             return ['success' => true, 'data' => ['nextStudentId' => generateUniqueStudentId($pdo, '2026')]];
         },
         'get_next_student_id'     => function() use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['IT_CENTER', 'ADMIN', 'SUPER_ADMIN', 'REGISTRAR']);
             require_once __DIR__ . '/../shared/backend/utils/student.php';
             return ['success' => true, 'data' => ['nextStudentId' => generateUniqueStudentId($pdo, '2026')]];
         },
         'upload_photo'            => fn($p) => (new AuthController($pdo))->uploadAvatar($p),
         'stations/stats'          => function() use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['REGISTRAR', 'HELPDESK', 'MEDICAL', 'CASHIER', 'IT_CENTER', 'ADMIN', 'SUPER_ADMIN']);
             require_once __DIR__ . '/../stations/backend/services/QueueService.php';
             return ['success' => true, 'data' => QueueService::getEnrollmentStats($pdo)];
         },
         'get_enrollment_stats'    => function() use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['REGISTRAR', 'HELPDESK', 'MEDICAL', 'CASHIER', 'IT_CENTER', 'ADMIN', 'SUPER_ADMIN']);
             require_once __DIR__ . '/../stations/backend/services/QueueService.php';
             return ['success' => true, 'data' => QueueService::getEnrollmentStats($pdo)];
         },
         'stations/student_accounts'=> function() use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['IT_CENTER', 'ADMIN', 'SUPER_ADMIN']);
             require_once __DIR__ . '/../stations/backend/services/QueueService.php';
             return ['success' => true, 'data' => QueueService::fetchStudentAccounts($pdo)];
         },
         'fetch_student_accounts'  => function() use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['IT_CENTER', 'ADMIN', 'SUPER_ADMIN']);
             require_once __DIR__ . '/../stations/backend/services/QueueService.php';
             return ['success' => true, 'data' => QueueService::fetchStudentAccounts($pdo)];
         },
@@ -185,8 +233,13 @@ try {
         },
         'payments/paymongo_webhook' => function($p) {
             require_once __DIR__ . '/../shared/backend/services/PayMongoService.php';
-            // Live webhook signature handler
             $rawPayload = file_get_contents('php://input');
+            $sigHeader  = $_SERVER['HTTP_PAYMONGO_SIGNATURE'] ?? $_SERVER['HTTP_X_PAYMONGO_SIGNATURE'] ?? '';
+
+            if (empty($sigHeader) || !PayMongoService::verifyWebhookSignature($rawPayload, $sigHeader)) {
+                return ['success' => false, 'message' => 'Unauthorized: Invalid or missing PayMongo webhook signature.', 'code' => 401];
+            }
+
             $event = json_decode($rawPayload, true);
             $eventType = $event['data']['attributes']['type'] ?? '';
 
@@ -203,7 +256,87 @@ try {
                 }
             }
 
-            return ['success' => true, 'message' => 'Webhook received'];
+            return ['success' => true, 'message' => 'Webhook processed successfully.'];
+        },
+
+        // ── Developer Monitoring & Telemetry APIs ──
+        'monitoring/stats' => function($p) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['ADMIN', 'SUPER_ADMIN', 'DEVELOPER']);
+            return ['success' => true, 'data' => getTelemetryStats()];
+        },
+        'monitoring/requests' => function($p) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['ADMIN', 'SUPER_ADMIN', 'DEVELOPER']);
+            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 100;
+            $ip = $_GET['ip'] ?? '';
+            $status = isset($_GET['status']) && $_GET['status'] !== '' ? (int)$_GET['status'] : null;
+            $search = $_GET['search'] ?? '';
+            return ['success' => true, 'data' => getRecentTelemetry($limit, $ip, $status, $search)];
+        },
+        'monitoring/rate_limits' => function($p) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['ADMIN', 'SUPER_ADMIN', 'DEVELOPER']);
+            return ['success' => true, 'data' => getActiveRateLimitsState()];
+        },
+        'monitoring/banned_ips' => function($p) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['ADMIN', 'SUPER_ADMIN', 'DEVELOPER']);
+            return ['success' => true, 'data' => getBannedIps()];
+        },
+        'monitoring/ban_ip' => function($p) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['ADMIN', 'SUPER_ADMIN', 'DEVELOPER']);
+            $ip = trim($p['ip'] ?? '');
+            $reason = trim($p['reason'] ?? 'Manual Security Block');
+            $bannedBy = $_SESSION['gncp_admin_user']['username'] ?? ($_SESSION['gncp_developer_user']['username'] ?? 'Developer');
+            $duration = (int)($p['duration'] ?? 0);
+            if (empty($ip)) {
+                return ['success' => false, 'message' => 'IP address is required.', 'code' => 400];
+            }
+            $ok = banIp($ip, $reason, $bannedBy, $duration);
+            return $ok ? ['success' => true, 'message' => "IP {$ip} successfully banned."] : ['success' => false, 'message' => 'Failed to ban IP address.'];
+        },
+        'monitoring/unban_ip' => function($p) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['ADMIN', 'SUPER_ADMIN', 'DEVELOPER']);
+            $ip = trim($p['ip'] ?? '');
+            if (empty($ip)) {
+                return ['success' => false, 'message' => 'IP address is required.', 'code' => 400];
+            }
+            $ok = unbanIp($ip);
+            return $ok ? ['success' => true, 'message' => "IP {$ip} unbanned."] : ['success' => false, 'message' => 'Failed to unban IP.'];
+        },
+        'monitoring/clear_rate_limit' => function($p) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['ADMIN', 'SUPER_ADMIN', 'DEVELOPER']);
+            $key = $p['key'] ?? '';
+            $ok = clearRateLimitState($key);
+            return ['success' => true, 'message' => 'Rate limit state cleared successfully.'];
+        },
+        'monitoring/system_health' => function($p) use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['ADMIN', 'SUPER_ADMIN', 'DEVELOPER']);
+            $dbOk = false;
+            $dbVersion = 'Unknown';
+            try {
+                $v = $pdo->query('SELECT VERSION() as v')->fetch();
+                $dbVersion = $v['v'] ?? 'Connected';
+                $dbOk = true;
+            } catch (Exception $e) {}
+
+            return [
+                'success' => true,
+                'data' => [
+                    'php_version'    => PHP_VERSION,
+                    'server_time'    => date('Y-m-d H:i:s T'),
+                    'memory_usage'   => round(memory_get_usage(true) / 1024 / 1024, 2) . ' MB',
+                    'memory_peak'    => round(memory_get_peak_usage(true) / 1024 / 1024, 2) . ' MB',
+                    'database'       => ['connected' => $dbOk, 'version' => $dbVersion],
+                    'error_log_size' => file_exists(__DIR__ . '/../shared/backend/logs/app_errors.log') ? round(filesize(__DIR__ . '/../shared/backend/logs/app_errors.log') / 1024, 2) . ' KB' : '0 KB',
+                    'telemetry_size' => file_exists(getTelemetryLogPath()) ? round(filesize(getTelemetryLogPath()) / 1024, 2) . ' KB' : '0 KB'
+                ]
+            ];
         }
     ];
 
@@ -216,6 +349,7 @@ try {
         $ifNoneMatch = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
         if ($ifNoneMatch && (trim($ifNoneMatch) === trim($etag) || trim($ifNoneMatch, '"') === trim($etag, '"'))) {
             http_response_code(304);
+            recordTelemetry($method, $_SERVER['REQUEST_URI'] ?? '', $action, 304, (microtime(true) - $startTime) * 1000);
             exit;
         }
 
@@ -225,13 +359,17 @@ try {
         $response = $routes[$action]($payload);
     }
 
-
     $httpCode = $response['code'] ?? ($response['success'] ? 200 : 400);
     http_response_code($httpCode);
+    $durationMs = (microtime(true) - $startTime) * 1000;
+    recordTelemetry($method, $_SERVER['REQUEST_URI'] ?? '', $action, $httpCode, $durationMs);
+
     echo json_encode(array_merge($response, ['requestId' => $reqId]), JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
+    $durationMs = (microtime(true) - $startTime) * 1000;
     logAppError("Central API Error: " . $e->getMessage(), ['action' => $action, 'trace' => $e->getTraceAsString()]);
+    recordTelemetry($_SERVER['REQUEST_METHOD'] ?? 'GET', $_SERVER['REQUEST_URI'] ?? '', $action, 500, $durationMs, ['error' => $e->getMessage()]);
     http_response_code(500);
     echo json_encode([
         'success'   => false,

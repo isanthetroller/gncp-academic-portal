@@ -68,6 +68,31 @@ class AnnouncementService {
         }
     }
 
+    /**
+     * Sanitizes rich text HTML content to eliminate XSS vectors while preserving allowed formatting tags.
+     */
+    public static function sanitizeHtmlContent(string $raw): string {
+        if (empty($raw)) return '';
+
+        // Remove script tags and contents
+        $clean = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $raw);
+        // Remove iframe, object, embed, form, style, svg tags
+        $clean = preg_replace('/<(iframe|object|embed|form|input|button|style|link|meta|svg|math)\b[^>]*>(.*?)<\/\1>/is', '', $clean);
+        $clean = preg_replace('/<(iframe|object|embed|form|input|button|style|link|meta|svg|math)\b[^>]*\/?>/is', '', $clean);
+
+        // Strip all dangerous tags except safe whitelisted formatting tags
+        $allowedTags = '<p><br><strong><b><em><i><u><ul><ol><li><a><span><h1><h2><h3><h4><h5><h6><blockquote>';
+        $clean = strip_tags($clean, $allowedTags);
+
+        // Strip all inline javascript: / data: / vbscript: URI schemes
+        $clean = preg_replace('/href\s*=\s*["\']\s*(javascript|data|vbscript):[^"\']*["\']/i', 'href="#"', $clean);
+
+        // Strip any on* event handler attributes (onerror, onclick, onload, etc.)
+        $clean = preg_replace('/\s*on[a-zA-Z]+\s*=\s*(["\'][^"\']*["\']|[^\s>]+)/i', '', $clean);
+
+        return trim($clean);
+    }
+
     public static function saveAnnouncement(PDO $pdo, array $payload): array {
         $admin = self::checkAdminAuth();
         if (!$admin) {
@@ -77,7 +102,7 @@ class AnnouncementService {
         $id             = isset($payload['id']) ? (int)$payload['id'] : 0;
         $title          = trim($payload['title'] ?? '');
         $category       = strtoupper(trim($payload['category'] ?? 'GENERAL'));
-        $content        = trim($payload['content'] ?? '');
+        $content        = self::sanitizeHtmlContent($payload['content'] ?? '');
         $imageUrl       = trim($payload['image_url'] ?? '');
         $targetAudience = strtoupper(trim($payload['target_audience'] ?? 'ALL'));
         $isPinned       = !empty($payload['is_pinned']) ? 1 : 0;

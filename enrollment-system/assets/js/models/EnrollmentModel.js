@@ -1,16 +1,9 @@
-/**
- * GNCP Enrollment Portal — EnrollmentModel Module
- *
- * Model layer managing static catalogs, tuition calculations, validation rules,
- * and presentation text formatting helpers.
- */
 (function (global) {
     let colleges = [
         { code: 'COIT', name: 'Information Technology' },
         { code: 'COBA', name: 'Business Administration' },
         { code: 'COHS', name: 'College of Nursing' }
     ];
-
     let courses = [
         { code: 'BSIT', college: 'COIT', name: 'BS in Information Technology', duration: '4 Years' },
         { code: 'BSCS', college: 'COIT', name: 'BS in Computer Science', duration: '4 Years' },
@@ -18,13 +11,11 @@
         { code: 'BSBA', college: 'COBA', name: 'BS in Business Administration', duration: '4 Years' },
         { code: 'BSN', college: 'COHS', name: 'BS in Nursing', duration: '4 Years' }
     ];
-
     const admissionTypes = [
         { value: 'FRESHMAN',  label: 'Incoming Freshman',  desc: 'Graduated SHS and entering college for the first time.' },
         { value: 'TRANSFEREE',label: 'College Transferee', desc: 'Enrolling from another college/university.' },
         { value: 'RETURNING', label: 'Returning Student',  desc: 'GNCP student returning after leave of absence.' }
     ];
-
     const nstpOptions = [
         {
             value: 'ROTC',
@@ -48,13 +39,11 @@
             icon: 'fas fa-book-open-reader'
         }
     ];
-
     const paymentModes = [
         { value: 'CASH', label: 'Cash Payment Plan',        desc: 'Single cash payment with 5% discount.' },
         { value: 'SEMI', label: 'Semi-Annual Installment',  desc: '30% downpayment, balance in 2 installments.' },
         { value: 'QUAD', label: 'Quarterly Installment',    desc: '30% downpayment, balance in 3 installments.' }
     ];
-
     const medicalConditionOptions = [
         'Asthma / Respiratory Condition',
         'Diabetes',
@@ -67,13 +56,11 @@
         'Mental Health Condition',
         'Other (specify in allergies/notes)'
     ];
-
     const EnrollmentModel = {
         getColleges() { return colleges; },
         getCourses() { return courses; },
         setPrograms(programsList) {
             const parsedCourses = [];
-
             programsList.forEach(prog => {
                 const dept = (prog.department || '').toLowerCase();
                 let collegeCode = 'COIT';
@@ -82,7 +69,6 @@
                 } else if (dept.includes('health') || dept.includes('cohs') || dept.includes('nursing') || dept.includes('chs')) {
                     collegeCode = 'COHS';
                 }
-
                 parsedCourses.push({
                     code: prog.code,
                     college: collegeCode,
@@ -90,7 +76,6 @@
                     duration: '4 Years'
                 });
             });
-
             if (parsedCourses.length > 0) {
                 colleges.length = 0;
                 const src = window.GNCP_DEPARTMENTS || [
@@ -99,7 +84,6 @@
                     { code: 'COHS', name: 'College of Nursing' }
                 ];
                 src.forEach(c => colleges.push(c));
-
                 courses.length = 0;
                 parsedCourses.forEach(c => courses.push(c));
             }
@@ -116,7 +100,6 @@
             if (text.startsWith('original certificate of good moral')) return 'goodMoral';
             return text.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
         },
-
         getRequirements(studentType, educationPathway = 'REGULAR') {
             if (studentType === 'FRESHMAN') {
                 if (educationPathway === 'ALS') {
@@ -157,36 +140,29 @@
                 ];
             }
         },
-
         calculateFees(form) {
-            const tuition = 21 * 1200; // Fixed 21 units at 1200 per unit
-            const misc = 8500;         // Standard institutional misc fees
-            
+            const tuition = 21 * 1200; 
+            const misc = 8500;         
             let discount = 0;
             if (form.scholarship === 'HONOR') discount = tuition * 0.20;
             else if (form.scholarship === 'ATHLETIC') discount = tuition * 0.15;
             else if (form.scholarship === 'FINANCIAL') discount = tuition * 0.10;
-
             let cashDiscount = 0;
             if (form.paymentMode === 'CASH') {
                 const subtotal = tuition + misc - discount;
                 cashDiscount = subtotal * 0.05;
             }
-
             const total = tuition + misc - discount - cashDiscount;
-
             let downpayment = total;
             if (form.paymentMode !== 'CASH') {
                 downpayment = total * 0.30;
             }
-
             let installmentAmount = 0;
             if (form.paymentMode !== 'CASH') {
                 const remaining = total - downpayment;
                 if (form.paymentMode === 'SEMI') installmentAmount = remaining / 2;
                 else if (form.paymentMode === 'QUAD') installmentAmount = remaining / 3;
             }
-
             return {
                 tuition,
                 misc,
@@ -197,20 +173,16 @@
                 installmentAmount
             };
         },
-
         validateStep(step, form, errors) {
-            // Reset errors for current step
             for (let key in errors) {
                 errors[key] = '';
             }
             let isValid = true;
-
             if (step === 1) {
                 if (!form.studentType) {
                     errors.studentType = 'Please select your admission type.';
                     isValid = false;
                 }
-                // RETURNING students must verify their existing student record by Full Name before advancing
                 if (form.studentType === 'RETURNING') {
                     if (!form.existingStudentName || !form.existingStudentName.trim()) {
                         errors.existingStudentId = 'Please enter your official GNCP Full Name.';
@@ -233,20 +205,15 @@
                     isValid = false;
                 }
             }
-
-
             if (step === 2) {
                 if (!form.firstName.trim()) { errors.firstName = 'First name is required.'; isValid = false; }
                 if (!form.lastName.trim())  { errors.lastName  = 'Last name is required.'; isValid = false; }
-
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (!form.email.trim())              { errors.email = 'Email address is required.'; isValid = false; }
                 else if (!emailRegex.test(form.email)){ errors.email = 'Please enter a valid email address.'; isValid = false; }
-
                 const phoneRegex = /^\d{9}$/;
                 if (!form.phone.trim())               { errors.phone = 'Mobile number is required.'; isValid = false; }
                 else if (!phoneRegex.test(form.phone)){ errors.phone = 'Please enter exactly the remaining 9 digits.'; isValid = false; }
-
                 if (!form.birthDate) {
                     errors.birthDate = 'Birth date is required.';
                     isValid = false;
@@ -254,7 +221,6 @@
                     const birthDateObj = new Date(form.birthDate);
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    
                     if (birthDateObj >= today) {
                         errors.birthDate = 'Birth date must be in the past.';
                         isValid = false;
@@ -269,11 +235,9 @@
                         }
                     }
                 }
-
                 if (!form.gender)          { errors.gender  = 'Please select your gender.'; isValid = false; }
                 if (!form.address.trim())  { errors.address = 'Residential address is required.'; isValid = false; }
             }
-
             if (step === 3) {
                 if (form.studentType === 'TRANSFEREE') {
                     if (!form.previousCollege || !form.previousCollege.trim()) {
@@ -298,7 +262,6 @@
                     }
                 }
             }
-
             if (step === 4) {
                 if (!form.emergencyContactName.trim()) {
                     errors.emergencyContactName = 'Emergency contact name is required.';
@@ -313,35 +276,27 @@
                     isValid = false;
                 }
             }
-
             return isValid;
         },
-
-        // Text view helpers
         formatPrice(value) {
             return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         },
-
         getCourseName(code) {
             const c = courses.find(x => x.code === code);
             return c ? c.name : code;
         },
-
         getNstpLabel(value) {
             const opt = nstpOptions.find(n => n.value === value);
             return opt ? `${opt.label} — ${opt.fullName}` : value;
         },
-
         getStudentTypeLabel(value) {
             const t = admissionTypes.find(x => x.value === value);
             return t ? t.label : value;
         },
-
         getPaymentModeLabel(value) {
             const m = paymentModes.find(x => x.value === value);
             return m ? m.label : value;
         },
-
         getScholarshipLabel(value) {
             if (value === 'HONOR')    return 'Academic Honor (20%)';
             if (value === 'ATHLETIC') return 'Athletic Varsity (15%)';
@@ -349,6 +304,5 @@
             return 'None / Standard tuition';
         }
     };
-
     global.EnrollmentModel = EnrollmentModel;
 })(typeof window !== 'undefined' ? window : this);

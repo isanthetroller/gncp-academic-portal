@@ -1,14 +1,6 @@
-/**
- * GNCP Academic & Enrollment System — Pure Vue 3 + Vue Router Application (No Build Step)
- * Single Source of Truth from MySQL REST API (api/index.php)
- */
-
 const { createApp, ref, reactive, onMounted, watch, computed } = Vue;
 const { createRouter, createWebHashHistory } = VueRouter;
-
-// REST API Helper
 const API_BASE = 'api/index.php';
-
 async function apiFetch(action, method = 'GET', body = null) {
   const url = `${API_BASE}?action=${action}`;
   const options = {
@@ -21,19 +13,13 @@ async function apiFetch(action, method = 'GET', body = null) {
   const response = await fetch(url, options);
   return await response.json();
 }
-
-// ------------------------------------------------------------------
-// 1. VIEW COMPONENTS
-// ------------------------------------------------------------------
-
-// Landing View Component
 const LandingView = {
   template: `
     <div class="container py-5 text-center">
       <div class="card shadow-lg border-0 p-5 rounded-4 my-4 bg-light">
         <h1 class="display-4 fw-bold text-primary mb-3"><i class="fa fa-university me-2"></i> GNCP Academic System</h1>
         <p class="lead text-secondary mb-4">
-          MVCR Single Source of Truth Architecture (Vue 3 + Vue Router + REST API)
+          Empowering Academic Excellence &amp; Seamless Digital Admissions
         </p>
         <div class="row g-4 justify-content-center mt-3">
           <div class="col-md-3">
@@ -61,8 +47,6 @@ const LandingView = {
     </div>
   `
 };
-
-// Register View Component
 const RegisterView = {
   template: `
     <div class="container py-4">
@@ -157,7 +141,6 @@ const RegisterView = {
     const loading = ref(false);
     const error = ref(null);
     const successData = ref(null);
-
     const handleRegister = async () => {
       loading.value = true;
       error.value = null;
@@ -177,8 +160,6 @@ const RegisterView = {
     return { form, loading, error, successData, handleRegister };
   }
 };
-
-// Tracker View Component
 const TrackerView = {
   template: `
     <div class="container py-4">
@@ -223,7 +204,6 @@ const TrackerView = {
     const loading = ref(false);
     const error = ref(null);
     const student = ref(null);
-
     const track = async () => {
       loading.value = true;
       error.value = null;
@@ -241,7 +221,6 @@ const TrackerView = {
         loading.value = false;
       }
     };
-
     const getBadgeClass = (status) => {
       switch (status) {
         case 'COMPLETED': return 'bg-success';
@@ -251,12 +230,9 @@ const TrackerView = {
         default: return 'bg-dark';
       }
     };
-
     return { refNo, loading, error, student, track, getBadgeClass };
   }
 };
-
-// Login View Component
 const LoginComponent = {
   template: `
     <div class="container py-5">
@@ -293,7 +269,6 @@ const LoginComponent = {
     const loading = ref(false);
     const error = ref(null);
     const router = VueRouter.useRouter();
-
     const handleLogin = async () => {
       loading.value = true;
       error.value = null;
@@ -318,12 +293,9 @@ const LoginComponent = {
         loading.value = false;
       }
     };
-
     return { username, password, loading, error, handleLogin };
   }
 };
-
-// Admin Dashboard Component
 const AdminDashboardComponent = {
   template: `
     <div class="container-fluid py-4">
@@ -331,14 +303,12 @@ const AdminDashboardComponent = {
         <h2><i class="fa fa-dashboard me-2"></i> System Administrator Control Panel</h2>
         <button @click="logout" class="btn btn-outline-danger btn-sm"><i class="fa fa-sign-out me-1"></i> Logout</button>
       </div>
-
       <ul class="nav nav-tabs mb-4">
         <li class="nav-item"><button class="nav-link" :class="{ active: activeTab === 'programs' }" @click="activeTab = 'programs'">Programs</button></li>
         <li class="nav-item"><button class="nav-link" :class="{ active: activeTab === 'subjects' }" @click="activeTab = 'subjects'">Subjects</button></li>
         <li class="nav-item"><button class="nav-link" :class="{ active: activeTab === 'sections' }" @click="activeTab = 'sections'">Sections</button></li>
         <li class="nav-item"><button class="nav-link" :class="{ active: activeTab === 'terms' }" @click="activeTab = 'terms'">Terms</button></li>
       </ul>
-
       <div v-if="loading" class="text-center py-5"><div class="spinner-border text-primary"></div></div>
       <div v-else>
         <div v-if="activeTab === 'programs'" class="card shadow-sm border-0 p-3">
@@ -398,7 +368,6 @@ const AdminDashboardComponent = {
     const terms = ref([]);
     const loading = ref(true);
     const router = VueRouter.useRouter();
-
     onMounted(async () => {
       try {
         const [cRes, sRes, tRes] = await Promise.all([
@@ -418,18 +387,14 @@ const AdminDashboardComponent = {
         loading.value = false;
       }
     });
-
     const logout = async () => {
       await apiFetch('auth/logout', 'POST');
       sessionStorage.removeItem('gncp_user');
       router.push('/login');
     };
-
     return { activeTab, catalog, sections, terms, loading, logout };
   }
 };
-
-// Registrar Component
 const RegistrarComponent = {
   template: `
     <div class="container-fluid py-4">
@@ -477,16 +442,13 @@ const RegistrarComponent = {
     const loading = ref(true);
     const submitting = ref(false);
     const router = VueRouter.useRouter();
-
     const fetchQueue = async () => {
       loading.value = true;
       const res = await apiFetch('stations/queue');
       if (res.success) queue.value = res.data;
       loading.value = false;
     };
-
     onMounted(fetchQueue);
-
     const approve = async () => {
       if (!selected.value) return;
       submitting.value = true;
@@ -503,18 +465,14 @@ const RegistrarComponent = {
       await fetchQueue();
       submitting.value = false;
     };
-
     const logout = async () => {
       await apiFetch('auth/logout', 'POST');
       sessionStorage.removeItem('gncp_user');
       router.push('/login');
     };
-
     return { queue, selected, loading, submitting, approve, logout };
   }
 };
-
-// Generic Workstation Component (Helpdesk, Medical, Cashier, IT Center)
 const StationComponent = {
   props: ['stationType'],
   template: `
@@ -579,7 +537,6 @@ const StationComponent = {
     const orNumber = ref('OR-2026-1001');
     const studentId = ref('2026-1001');
     const router = VueRouter.useRouter();
-
     const stationTitle = computed(() => {
       switch (props.stationType) {
         case 'helpdesk': return 'TLC Helpdesk — Academic Advising Workstation';
@@ -589,16 +546,13 @@ const StationComponent = {
         default: return 'Station Workstation';
       }
     });
-
     const fetchQueue = async () => {
       loading.value = true;
       const res = await apiFetch('stations/queue');
       if (res.success) queue.value = res.data;
       loading.value = false;
     };
-
     onMounted(fetchQueue);
-
     const process = async () => {
       if (!selected.value) return;
       submitting.value = true;
@@ -606,43 +560,34 @@ const StationComponent = {
       if (props.stationType === 'medical') targetStepId = 4;
       else if (props.stationType === 'cashier') targetStepId = 6;
       else if (props.stationType === 'it-center') targetStepId = 7;
-
       const updatedRoadmap = selected.value.roadmap.map(s => {
         if (s.id === targetStepId) return { ...s, status: 'COMPLETED' };
         if (s.id === targetStepId + 1) return { ...s, status: 'IN_PROGRESS' };
         return s;
       });
-
       const payload = {
         roadmap: updatedRoadmap,
         status: props.stationType === 'it-center' ? 'ENROLLED' : 'IN_PROGRESS'
       };
-
       if (props.stationType === 'it-center') {
         payload.enrollment = { permanentId: studentId.value };
       }
-
       await apiFetch('stations/update', 'POST', {
         referenceNumber: selected.value.referenceNumber,
         updateData: payload
       });
-
       selected.value = null;
       await fetchQueue();
       submitting.value = false;
     };
-
     const logout = async () => {
       await apiFetch('auth/logout', 'POST');
       sessionStorage.removeItem('gncp_user');
       router.push('/login');
     };
-
     return { queue, selected, loading, submitting, sectionCode, medicalResult, orNumber, studentId, stationTitle, process, logout };
   }
 };
-
-// Student Portal Component
 const StudentPortalComponent = {
   template: `
     <div class="container py-4">
@@ -660,11 +605,6 @@ const StudentPortalComponent = {
     </div>
   `
 };
-
-// ------------------------------------------------------------------
-// 2. ROUTER & AUTH GUARDS
-// ------------------------------------------------------------------
-
 const routes = [
   { path: '/', component: LandingView },
   { path: '/register', component: RegisterView },
@@ -678,12 +618,10 @@ const routes = [
   { path: '/stations/it-center', component: StationComponent, props: { stationType: 'it-center' }, meta: { requiresAuth: true, roles: ['IT_CENTER', 'ADMIN'] } },
   { path: '/student-portal', component: StudentPortalComponent }
 ];
-
 const router = createRouter({
   history: createWebHashHistory(),
   routes
 });
-
 router.beforeEach((to, from, next) => {
   const user = JSON.parse(sessionStorage.getItem('gncp_user') || 'null');
   if (to.meta.requiresAuth) {
@@ -692,11 +630,6 @@ router.beforeEach((to, from, next) => {
   }
   next();
 });
-
-// ------------------------------------------------------------------
-// 3. MOUNT VUE APP
-// ------------------------------------------------------------------
-
 const RootApp = {
   template: `
     <div class="d-flex flex-column min-vh-100">
@@ -731,7 +664,6 @@ const RootApp = {
     return { currentUser };
   }
 };
-
 const app = createApp(RootApp);
 app.use(router);
 app.mount('#app');

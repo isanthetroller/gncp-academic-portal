@@ -54,7 +54,7 @@ a { text-decoration: none; }
 /* Shell */
 .shell, .dashboard-shell {
     display: grid;
-    grid-template-columns: 256px 1fr;
+    grid-template-columns: 280px 1fr;
     height: 100vh;
     overflow: hidden;
 }
@@ -374,6 +374,13 @@ a { text-decoration: none; }
 .status-badge.rejected { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
 .status-badge.archived { background: #F3F4F6; color: #4B5563; border: 1px solid #E5E7EB; }
 .status-badge.pre-registered { background: #F5F3FF; color: #5B21B6; border: 1px solid #DDD6FE; }
+/* Pipeline statuses — previously missing, causing unstyled plain-text display */
+.status-badge.verified { background: #ECFDF5; color: #065F46; border: 1px solid #6EE7B7; }
+.status-badge.advised { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+.status-badge.medical-cleared { background: #F0FDF4; color: #15803D; border: 1px solid #86EFAC; }
+.status-badge.paid { background: #D1FAE5; color: #065F46; border: 1px solid #34D399; }
+.status-badge.partial { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+.status-badge.promoted { background: #D1FAE5; color: #065F46; border: 1px solid #A7F3D0; }
 
 /* Applications view */
 .applications-layout { display: flex; flex-direction: column; gap: 14px; }
@@ -860,3 +867,263 @@ a { text-decoration: none; }
     box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.15);
     outline: none;
 }
+
+/* ==========================================================================
+   STUDENT DIRECTORY PROFILE MODAL REDESIGN
+   ========================================================================== */
+.student-profile-dialog {
+    max-width: 1050px;
+}
+.student-profile-modal-content {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    background: #ffffff;
+}
+
+/* Header Banner */
+.student-profile-header {
+    background: linear-gradient(135deg, #004D38 0%, #006A4E 60%, #065f46 100%);
+    padding: 1.25rem 1.75rem;
+    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.student-profile-avatar-wrap {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 2.5px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.student-profile-avatar-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.student-profile-title {
+    color: #ffffff;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    margin-bottom: 0.25rem;
+}
+.student-profile-tagline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.student-profile-tagline .badge-brand {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.student-profile-tagline .badge-status {
+    background: rgba(255, 255, 255, 0.92);
+    color: #004D38;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 0.25rem 0.65rem;
+    border-radius: 20px;
+    border: 1px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+/* Stat Metrics Bar */
+.profile-stat-tile {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 100%;
+}
+.profile-stat-tile:hover {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+}
+.profile-stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+.profile-stat-icon.icon-id {
+    background: #ecfdf5;
+    color: #059669;
+}
+.profile-stat-icon.icon-program {
+    background: #eff6ff;
+    color: #2563eb;
+}
+.profile-stat-icon.icon-year {
+    background: #fdf4ff;
+    color: #a855f7;
+}
+.profile-stat-icon.icon-status {
+    background: #fffbeb;
+    color: #d97706;
+}
+.profile-stat-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    margin-bottom: 2px;
+}
+.profile-stat-val {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+/* Section Cards */
+.profile-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.15rem 1.25rem;
+    margin-bottom: 1.15rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s ease;
+}
+.profile-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+}
+.profile-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.9rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.profile-card-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+.profile-card-title i {
+    color: #006A4E;
+    font-size: 0.95rem;
+}
+
+/* Key-Value Pair Units */
+.profile-field {
+    margin-bottom: 0.75rem;
+}
+.profile-field:last-child {
+    margin-bottom: 0;
+}
+.profile-field-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.profile-field-label i {
+    font-size: 0.65rem;
+    color: #94a3b8;
+}
+.profile-field-value {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #1e293b;
+    word-break: break-word;
+}
+
+/* Roadmap Stepper Vertical */
+.profile-roadmap-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+.profile-roadmap-step {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    transition: all 0.15s ease;
+}
+.profile-roadmap-step:hover {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+}
+.profile-roadmap-step.is-completed {
+    border-left: 3.5px solid #10b981;
+    background: #f0fdf4;
+}
+.profile-roadmap-step.is-active {
+    border-left: 3.5px solid #f59e0b;
+    background: #fffbeb;
+}
+.profile-roadmap-step.is-locked {
+    border-left: 3.5px solid #94a3b8;
+    opacity: 0.75;
+}
+
+/* Verified Documents List in Profile */
+.profile-doc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+.profile-doc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.85rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    gap: 0.5rem;
+    transition: all 0.15s ease;
+}
+.profile-doc-row:hover {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+

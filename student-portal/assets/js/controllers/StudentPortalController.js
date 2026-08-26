@@ -578,18 +578,31 @@ window.StudentPortalController = {
             }
         };
 
-        const confirmLogout = async () => {
+        const confirmLogout = () => {
             showLogoutConfirm.value = false;
             stopLiveSync();
-            try {
-                await StudentApiService.logout();
-            } catch (e) {
-                console.warn('[StudentPortal::Auth] Logout API call exception:', e);
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Signing Out...',
+                    text: 'Ending your student session...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
             }
+
+            try {
+                fetch('backend/api.php?action=logout', { method: 'POST', keepalive: true }).catch(() => {});
+            } catch (e) {}
+
             currentStudent.value = null;
             sessionStorage.removeItem('gncp_portal_student');
             localStorage.removeItem('gncp_portal_student');
-            window.location.replace('login.html?clear=true&logout=true');
+            window.location.replace('login?clear=true&logout=true');
         };
 
         // Announcements State & Methods

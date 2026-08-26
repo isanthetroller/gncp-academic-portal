@@ -40,10 +40,17 @@
 
         async loadInitialData() {
             const response = await ApiService.fetchAllData();
-            if (response.success) {
+            if (response && response.success && response.data) {
                 return response.data;
             }
-            throw new Error('Failed to load initial registrar data');
+            if (response && response.meta && response.meta.code === 401) {
+                return {
+                    programs: [], subjects: [], curriculum: [], academicPeriods: [],
+                    subjectSections: [], feeSchedule: [], students: [], enrollments: [],
+                    pendingApplications: [], sections: []
+                };
+            }
+            throw new Error(response ? (response.error || response.message || 'Failed to load initial registrar data') : 'Failed to load initial registrar data');
         },
 
         // Programs CRUD

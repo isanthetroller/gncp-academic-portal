@@ -113,7 +113,7 @@ h1, h2, h3, h4, h5, h6,
 
 /* ── Sidebar Component (Human-Crafted SIS Executive Aesthetic) ── */
 .sidebar {
-    width: 256px;
+    width: 280px;
     background: var(--sidebar-bg, linear-gradient(185deg, #003D2B 0%, #002217 100%));
     color: #ffffff;
     display: flex;

@@ -1667,4 +1667,457 @@ h1, h2, h3, h4, h5, h6 {
     flex-shrink: 0;
 }
 
+/* ==========================================================================
+   📱 GNCP Mobile-First Responsive Architecture & Touch Ergonomics
+   ========================================================================== */
+
+/* ── Global Layout & Typography Resets ── */
+html, body {
+    max-width: 100%;
+    overflow-x: hidden !important;
+    touch-action: pan-y;
+    -webkit-tap-highlight-color: transparent;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+.section-title {
+    font-size: clamp(1.5rem, 3.5vw + 0.5rem, 2.3rem);
+    line-height: 1.25;
+}
+
+.section-tagline {
+    font-size: clamp(0.72rem, 1.5vw, 0.85rem);
+    letter-spacing: 1.5px;
+}
+
+/* ── Tablet & Mobile Shared Rules (Max Width: 991.98px) ── */
+@media (max-width: 991.98px) {
+    /* Navbar & Mobile Off-Canvas Drawer */
+    .main-navbar {
+        padding: 8px 0;
+    }
+    
+    .navbar-toggler {
+        border: 2px solid var(--light-accent-green);
+        border-radius: 10px;
+        padding: 8px 12px;
+        outline: none !important;
+        box-shadow: none !important;
+        transition: var(--transition-smooth);
+    }
+    
+    .navbar-toggler:focus,
+    .navbar-toggler:hover {
+        background-color: var(--light-accent-green);
+        border-color: var(--primary-green);
+    }
+    
+    .navbar-collapse {
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid rgba(0, 106, 78, 0.12);
+        box-shadow: 0 16px 40px rgba(0, 61, 43, 0.12);
+        margin-top: 12px;
+        padding: 16px 18px 22px 18px;
+    }
+    
+    .navbar-nav .nav-link-custom {
+        padding: 12px 16px !important;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 46px;
+    }
+    
+    .navbar-nav .nav-link-custom:hover,
+    .navbar-nav .nav-link-custom.active {
+        background-color: var(--light-accent-green);
+        color: var(--primary-green) !important;
+    }
+    
+    .navbar-nav .dropdown-menu {
+        background: rgba(0, 106, 78, 0.04);
+        border-radius: 12px;
+        border-left: 3px solid var(--primary-green);
+        margin: 4px 0 10px 12px;
+        padding: 6px 0;
+    }
+    
+    .navbar-nav .dropdown-item {
+        padding: 10px 16px !important;
+        font-size: 0.88rem;
+        border-radius: 8px;
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .navbar-nav .dropdown-item:hover,
+    .navbar-nav .dropdown-item.active {
+        background-color: var(--light-accent-green);
+        color: var(--primary-green);
+        font-weight: 700;
+    }
+    
+    .w-100-mobile {
+        width: 100% !important;
+        display: block !important;
+        text-align: center;
+    }
+    
+    .w-100-mobile .btn {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 0.95rem;
+        font-weight: 800;
+    }
+
+    /* About Collage on Tablets */
+    .about-section {
+        padding: 60px 0;
+    }
+    
+    .about-collage-container {
+        padding: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    
+    .collage-img-main {
+        width: 90%;
+        max-width: 480px;
+        margin: 0 auto;
+        display: block;
+    }
+    
+    .collage-img-sub {
+        width: 50%;
+        max-width: 240px;
+        right: 5%;
+        bottom: -15px;
+    }
+    
+    .dot-grid-pattern,
+    .diagonal-stripes-pattern {
+        opacity: 0.15;
+    }
+
+    /* Admissions Readiness Box */
+    .adm-readiness-box {
+        position: static;
+        margin-top: 30px;
+    }
+}
+
+/* ── Mobile Devices (Max Width: 767.98px) ── */
+@media (max-width: 767.98px) {
+    /* Hero Slider on Mobile */
+    .hero-slider-section {
+        height: auto;
+        min-height: 520px;
+        padding: 40px 0 60px 0;
+    }
+    
+    .hero-content-container {
+        padding: 0 16px;
+    }
+    
+    .hero-title {
+        font-size: clamp(1.6rem, 7vw + 0.2rem, 2.6rem);
+        line-height: 1.15;
+        margin-bottom: 0.8rem;
+    }
+    
+    .hero-subtext {
+        font-size: clamp(0.92rem, 3.5vw, 1.2rem);
+        margin-bottom: 1.4rem;
+        padding: 0 10px;
+    }
+    
+    .hero-content-container .btn {
+        width: 100%;
+        max-width: 280px;
+        margin: 0 auto 10px auto !important;
+        display: block;
+        padding: 12px 18px;
+    }
+    
+    .hero-nav-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 0.9rem;
+        background-color: rgba(0, 0, 0, 0.4);
+    }
+    
+    .hero-nav-left { left: 8px; }
+    .hero-nav-right { right: 8px; }
+    
+    .hero-controls {
+        bottom: 55px;
+        gap: 8px;
+    }
+    
+    .hero-dot {
+        width: 10px;
+        height: 10px;
+    }
+    
+    .wave-divider-wrapper svg {
+        height: 45px;
+    }
+
+    /* Feature Cards on Mobile */
+    .section-cards {
+        margin-top: 15px;
+        padding-bottom: 30px;
+    }
+    
+    .feature-card {
+        padding: 26px 20px;
+        border-radius: 14px;
+    }
+    
+    .feature-card-icon {
+        font-size: 2.2rem;
+        margin-bottom: 14px;
+    }
+    
+    .feature-card-title {
+        min-height: auto;
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+
+    /* Campus Feed Section on Mobile */
+    .campus-section {
+        padding: 60px 0 80px 0;
+    }
+    
+    .campus-tabs {
+        justify-content: flex-start;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 6px 12px;
+        margin-bottom: 30px;
+        gap: 8px;
+        scrollbar-width: none;
+    }
+    
+    .campus-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .campus-tab-btn {
+        padding: 7px 18px;
+        font-size: 0.78rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    
+    .news-card-img-wrapper {
+        height: 180px;
+    }
+    
+    .news-card-body {
+        padding: 18px;
+    }
+
+    /* Countdown Section on Mobile */
+    .countdown-section {
+        padding: 50px 0;
+    }
+    
+    .countdown-date-title {
+        font-size: 1.35rem;
+    }
+    
+    .countdown-subtitle {
+        font-size: 0.95rem;
+        margin-bottom: 25px;
+    }
+    
+    .countdown-shapes {
+        display: none;
+    }
+
+    /* History Timeline on Mobile */
+    .timeline-container::before {
+        left: 20px;
+    }
+    
+    .timeline-item::after {
+        left: 20px;
+        top: 16px;
+        width: 16px;
+        height: 16px;
+    }
+    
+    .timeline-item {
+        text-align: left !important;
+        margin-bottom: 32px !important;
+    }
+    
+    .timeline-item .row {
+        margin-left: 36px;
+    }
+    
+    .timeline-card {
+        padding: 16px !important;
+    }
+    
+    .timeline-year {
+        font-size: 0.82rem !important;
+        padding: 4px 10px !important;
+    }
+
+    /* Subpage Banners on Mobile */
+    .subpage-banner {
+        padding: 45px 16px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .subpage-banner-title {
+        font-size: clamp(1.4rem, 5.5vw, 2.2rem);
+    }
+    
+    .content-card {
+        padding: 22px 18px !important;
+    }
+
+    /* Footer Mobile Optimization */
+    .main-footer {
+        padding: 50px 0 20px 0;
+        text-align: center;
+    }
+    
+    .footer-column-title::after {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    .footer-contact-info li {
+        justify-content: center;
+        text-align: center;
+    }
+    
+    .footer-social-link {
+        width: 44px;
+        height: 44px;
+        font-size: 1.1rem;
+    }
+    
+    .footer-bottom {
+        margin-top: 35px;
+    }
+}
+
+/* ── Small Mobile Screens (Max Width: 575.98px) ── */
+@media (max-width: 575.98px) {
+    .school-logo-img {
+        height: 44px;
+        width: 44px;
+    }
+    
+    .brand-main-text {
+        font-size: 1.15rem;
+    }
+    
+    .brand-sub-text {
+        font-size: 0.58rem;
+    }
+    
+    .hero-slide-badge {
+        width: 65px;
+        height: 65px;
+        margin-bottom: 10px !important;
+    }
+    
+    .collage-img-sub {
+        width: 45%;
+        max-width: 160px;
+        border-width: 3px;
+        bottom: -10px;
+        right: 0;
+    }
+    
+    /* Responsive Countdown Grid for Narrow Displays */
+    .countdown-timer-grid {
+        gap: 6px;
+    }
+    
+    .countdown-time-unit {
+        min-width: 52px;
+    }
+    
+    .countdown-number {
+        font-size: clamp(1.7rem, 6vw, 2.2rem);
+        margin-bottom: 2px;
+    }
+    
+    .countdown-label {
+        font-size: 0.62rem;
+    }
+    
+    .countdown-divider {
+        font-size: 1.6rem;
+        margin-top: 2px;
+    }
+    
+    .adm-flow-step {
+        gap: 12px;
+    }
+    
+    .adm-flow-marker {
+        width: 44px;
+        height: 44px;
+        font-size: 0.95rem;
+        border-radius: 12px;
+    }
+    
+    .adm-flow-content {
+        padding: 14px 16px;
+    }
+    
+    .value-card {
+        padding: 20px 16px;
+    }
+    
+    .value-card-icon {
+        width: 55px;
+        height: 55px;
+        font-size: 1.4rem;
+    }
+}
+
+/* ── Micro Screens (Max Width: 375px) ── */
+@media (max-width: 375px) {
+    .countdown-timer-grid {
+        gap: 3px;
+    }
+    
+    .countdown-time-unit {
+        min-width: 44px;
+    }
+    
+    .countdown-number {
+        font-size: 1.45rem;
+    }
+    
+    .countdown-divider {
+        font-size: 1.3rem;
+    }
+    
+    .countdown-label {
+        font-size: 0.58rem;
+    }
+}
+
+
 

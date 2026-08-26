@@ -119,15 +119,30 @@
                 const result = [];
                 for (let i = 0; i < queue.length; i++) {
                     const student = queue[i];
-                    // Only show students who have reached/completed the IT Center step
-                    const step = student.roadmap ? student.roadmap.find(r => r.stepId === 'it_activation' || r.stepId === 'id_email_final') : null;
-                    if (!step || step.status === 'PENDING') {
-                        continue;
+                    if (typeof StationPipeline !== 'undefined') {
+                        if (!StationPipeline.isAtOrPastStation('it', student)) continue;
+                    } else {
+                        const statusUpper = String(student.status || '').toUpperCase();
+                        const isAtOrPastIT = ['PAID', 'ENROLLED', 'PROMOTED', 'ACTIVE'].includes(statusUpper);
+                        if (!isAtOrPastIT) continue;
                     }
+
                     const padId = String(student.id || (i + 1)).padStart(3, '0');
-                    student.queueTicket = (student.queueTickets && student.queueTickets.it_center) ? student.queueTickets.it_center : ('ITC-' + padId);
-                    student.arrivedAt = (student.stationArrivals && student.stationArrivals.it_center) ? student.stationArrivals.it_center : (student.createdAt || student.datePreRegistered || '');
-                    result.push(student);
+
+                    // Normalize via StationPipeline for consistent field shape
+                    const normalized = (typeof StationPipeline !== 'undefined')
+                        ? StationPipeline.normalizeStudent(student, i, 'it')
+                        : student;
+
+                    // Override IT-specific ticket & arrival fields
+                    normalized.queueTicket = (student.queueTickets && student.queueTickets.it_center)
+                        ? student.queueTickets.it_center
+                        : ('ITC-' + padId);
+                    normalized.arrivedAt = (student.stationArrivals && student.stationArrivals.it_center)
+                        ? student.stationArrivals.it_center
+                        : (student.createdAt || student.datePreRegistered || '');
+
+                    result.push(normalized);
                 }
                 studentsList.value = result;
                 fetchDashboardStats();
@@ -154,6 +169,21 @@
                 localStorage.removeItem('gncp_station_user');
                 localStorage.removeItem('gncp_admin_user');
 
+                // Optimistically load session from tab-scoped sessionStorage for 0ms initial render
+                const cachedRaw = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user');
+                if (cachedRaw) {
+                    try {
+                        const parsed = JSON.parse(cachedRaw);
+                        if (parsed && ['IT_CENTER', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                            currentUser.value = parsed;
+                        }
+                    } catch (e) {}
+                }
+
+                // Immediately load queue & stats in parallel with background session check
+                loadQueue();
+                fetchDashboardStats();
+
                 try {
                     const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
                     if (res.ok) {
@@ -168,26 +198,26 @@
                                 window.PasswordChangeGuard.checkAndPrompt(result.data, function() {
                                     loadQueue();
                                 });
-                            } else {
-                                loadQueue();
                             }
                             return;
                         }
                     }
                 } catch (e) {
-                    console.error('[IT Center] Session check error:', e);
+                    console.warn('[IT Center] Session check warning:', e);
                 }
 
-                if (typeof window.SessionExpirationGuard !== 'undefined') {
-                    window.SessionExpirationGuard.handleExpiredSession({
-                        title: 'Session Expired',
-                        message: 'Your IT Center workstation session has expired. Please sign in again to continue account activations.',
-                        reason: 'expired'
-                    });
-                } else {
-                    sessionStorage.removeItem('gncp_station_user');
-                    sessionStorage.removeItem('gncp_admin_user');
-                    window.location.href = '../../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                if (!currentUser.value) {
+                    if (typeof window.SessionExpirationGuard !== 'undefined') {
+                        window.SessionExpirationGuard.handleExpiredSession({
+                            title: 'Session Expired',
+                            message: 'Your IT Center workstation session has expired. Please sign in again to continue account activations.',
+                            reason: 'expired'
+                        });
+                    } else {
+                        sessionStorage.removeItem('gncp_station_user');
+                        sessionStorage.removeItem('gncp_admin_user');
+                        window.location.href = '../../?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                    }
                 }
             };
 
@@ -243,16 +273,31 @@
                 showLogoutConfirm.value = false;
                 stopLiveSync();
                 currentUser.value = null;
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Signing Out...',
+                        text: 'Ending your session...',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                }
+
                 sessionStorage.removeItem('gncp_station_user');
                 sessionStorage.removeItem('gncp_admin_user');
                 localStorage.removeItem('gncp_station_user');
                 localStorage.removeItem('gncp_admin_user');
 
-                fetch('../../api/index.php?action=auth/logout', { method: 'POST' })
-                    .catch(() => {})
-                    .finally(() => {
-                        window.location.replace('../../index.html?clear=true&logout=true');
-                    });
+                // Dispatch non-blocking logout with keepalive
+                try {
+                    fetch('../../api/index.php?action=auth/logout', { method: 'POST', keepalive: true }).catch(() => {});
+                } catch (e) {}
+
+                window.location.replace('../../?clear=true&logout=true');
             };
 
             // Metrics
@@ -484,7 +529,11 @@
                         updatePayload.roadmap[itStepIdx].updatedAt = new Date().toISOString();
                     }
 
-                    const response = await fetch('/systemtest/api/index.php?action=stations/update', {
+                    const apiUrl = (typeof StationDataBus !== 'undefined' && StationDataBus.getApiUrl)
+                        ? StationDataBus.getApiUrl('stations/update')
+                        : (window.location.pathname.startsWith('/systemtest') ? '/systemtest/api/index.php?action=stations/update' : '/api/index.php?action=stations/update');
+
+                    const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -510,12 +559,12 @@
                     StationDataBus.updateStudent(student.referenceNumber, (s) => {
                         s.enrollment = enrollmentData;
                         s.status = 'ENROLLED';
-                        const itStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r.stepId === 'it_activation' || r.stepId === 'id_email_final') : -1;
+                        const itStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r && (r.stepId === 'it_activation' || r.stepId === 'id_email_final' || r.name === 'IT Center ID' || r.title === 'Student Portal Account Activation')) : -1;
                         if (itStepIdx !== -1) {
                             s.roadmap[itStepIdx].status = 'COMPLETED';
                             s.roadmap[itStepIdx].updatedAt = new Date().toISOString();
                         }
-                    });
+                    }, ['enrollment', 'roadmap', 'status']);
 
                     corDetails.value = {
                         student: { ...student, enrollment: enrollmentData }
@@ -537,9 +586,15 @@
             };
 
             const getItStepStatus = (student) => {
-                if (!student || !student.roadmap) return 'PENDING';
-                const step = student.roadmap.find(r => r.stepId === 'it_activation' || r.stepId === 'id_email_final');
-                return step ? step.status : 'PENDING';
+                if (typeof StationPipeline !== 'undefined') {
+                    return StationPipeline.getStepStatus('it', student);
+                }
+                if (!student) return 'PENDING';
+                const statusUpper = String(student.status || '').toUpperCase();
+                if (['ENROLLED', 'PROMOTED', 'ACTIVE'].includes(statusUpper)) {
+                    return 'COMPLETED';
+                }
+                return 'PENDING';
             };
 
             const getStepIcon = (index) => {

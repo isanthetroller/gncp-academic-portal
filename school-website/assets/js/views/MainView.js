@@ -10,7 +10,7 @@ window.MainView = {
                         <span><i class="fas fa-phone-alt text-white me-2"></i>{{ navigation.topInfo.phone }}</span>
                     </div>
                     <div class="d-flex align-items-center">
-                        <input type="text" placeholder="Search..." class="search-pill">
+                        <span class="text-white-50" style="font-size: 0.82rem;"><i class="fas fa-location-dot me-1.5 text-warning"></i>Emilio Aguinaldo Highway, Cavite</span>
                     </div>
                 </div>
             </div>
@@ -20,25 +20,39 @@ window.MainView = {
     NavBar: {
         props: ['navigation', 'currentPage', 'enrollNowUrl'],
         emits: ['navigate'],
+        methods: {
+            onNav(page) {
+                this.$emit('navigate', page);
+                const navCollapse = document.getElementById('mainNavbarContent');
+                if (navCollapse && navCollapse.classList.contains('show')) {
+                    try {
+                        const bsCollapse = bootstrap.Collapse.getInstance(navCollapse) || new bootstrap.Collapse(navCollapse, { toggle: false });
+                        bsCollapse.hide();
+                    } catch (e) {
+                        navCollapse.classList.remove('show');
+                    }
+                }
+            }
+        },
         template: `
             <nav class="navbar navbar-expand-lg main-navbar sticky-top">
                 <div class="container">
-                    <a class="navbar-brand d-flex align-items-center" href="#" @click.prevent="$emit('navigate', 'home')">
+                    <a class="navbar-brand d-flex align-items-center" href="#" @click.prevent="onNav('home')">
                         <img :src="navigation.brand.logo" alt="Logo" class="school-logo-img me-2">
                         <div class="d-flex flex-column ms-2">
                             <span class="brand-main-text">GO-ON</span>
                             <span class="brand-sub-text d-none d-sm-inline-block">NATIONAL COLLEGE</span>
                         </div>
                     </a>
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbarContent">
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbarContent" aria-controls="mainNavbarContent" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>
                     </button>
                     <div class="collapse navbar-collapse" id="mainNavbarContent">
-                        <ul class="navbar-nav mx-auto mb-2 mb-lg-0 align-items-lg-center">
+                        <ul class="navbar-nav mx-auto mb-3 mb-lg-0 align-items-lg-center">
                             <li v-for="item in navigation.menuItems" :key="item.text" class="nav-item" :class="{ dropdown: item.dropdown.length > 0 }">
                                 <a v-if="item.dropdown.length === 0" class="nav-link nav-link-custom" 
                                    :class="{ active: currentPage === item.page }" 
-                                   href="#" @click.prevent="$emit('navigate', item.page)">{{ item.text }}</a>
+                                   href="#" @click.prevent="onNav(item.page)">{{ item.text }}</a>
                                 <template v-else>
                                     <a class="nav-link nav-link-custom dropdown-toggle" 
                                        :class="{ active: item.dropdown.some(sub => sub.page === currentPage) }"
@@ -47,14 +61,14 @@ window.MainView = {
                                         <li v-for="sub in item.dropdown" :key="sub.page">
                                             <a class="dropdown-item py-2 px-3" 
                                                :class="{ active: currentPage === sub.page }"
-                                               href="#" @click.prevent="$emit('navigate', sub.page)">{{ sub.text }}</a>
+                                               href="#" @click.prevent="onNav(sub.page)">{{ sub.text }}</a>
                                         </li>
                                     </ul>
                                 </template>
                             </li>
                         </ul>
-                        <div class="d-flex align-items-center mt-3 mt-lg-0">
-                            <a :href="enrollNowUrl" class="btn btn-pill btn-pill-green shadow-sm">
+                        <div class="d-flex align-items-center mt-3 mt-lg-0 w-100-mobile">
+                            <a :href="enrollNowUrl" class="btn btn-pill btn-pill-green shadow-sm w-100-mobile">
                                 <i class="fas fa-user-plus me-2"></i>{{ navigation.cta.text }}
                             </a>
                         </div>

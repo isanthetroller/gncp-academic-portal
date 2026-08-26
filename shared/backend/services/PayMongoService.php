@@ -292,4 +292,52 @@ class PayMongoService {
             'isFullPayment'  => ($newBalance <= 0.00)
         ];
     }
+
+    /**
+     * Verifies the cryptographic HMAC signature of an incoming PayMongo webhook request.
+     *
+     * @param string $rawPayload Raw request body string
+     * @param string $signatureHeader Value of Paymongo-Signature header (format: t=TIMESTAMP,te=TEST_SIG,li=LIVE_SIG)
+     * @return bool True if valid HMAC-SHA256 signature matches
+     */
+    public static function verifyWebhookSignature(string $rawPayload, string $signatureHeader): bool {
+        if (empty($rawPayload) || empty($signatureHeader)) {
+            return false;
+        }
+
+        $config = self::getConfig();
+        $secret = $config['webhook_secret'] ?? '';
+        if (empty($secret)) {
+            return false;
+        }
+
+        // Parse signature header key-value pairs (e.g. t=1614761234,te=abc12345,li=...)
+        $parts = explode(',', $signatureHeader);
+        $parsed = [];
+        foreach ($parts as $part) {
+            $kv = explode('=', trim($part), 2);
+            if (count($kv) === 2) {
+                $parsed[$kv[0]] = $kv[1];
+            }
+        }
+
+        $timestamp = $parsed['t'] ?? '';
+        $testSig   = $parsed['te'] ?? '';
+        $liveSig   = $parsed['li'] ?? '';
+        $sig       = $parsed['s'] ?? ($testSig ?: $liveSig);
+
+        if (empty($timestamp) || empty($sig)) {
+            return false;
+        }
+
+        // Prevent replay attacks (reject webhooks older than 10 minutes / 600s)
+        if (abs(time() - (int)$timestamp) > 600) {
+            return false;
+        }
+
+        // PayMongo signature formula: HMAC-SHA256(timestamp . "." . rawPayload, webhookSecret)
+        $expectedSignature = hash_hmac('sha256', $timestamp . '.' . $rawPayload, $secret);
+
+        return hash_equals($expectedSignature, $sig);
+    }
 }

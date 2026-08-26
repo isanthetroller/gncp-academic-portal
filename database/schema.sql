@@ -12,13 +12,6 @@
 --  This script is safe to re-run. All statements use
 --  IF NOT EXISTS / INSERT WHERE NOT EXISTS guards.
 -- ============================================================
-
-CREATE DATABASE IF NOT EXISTS `gncp_portal`
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
-
-USE `gncp_portal`;
-
 -- ============================================================
 --  TABLE 1: pre_enrollments
 --  Central student application queue shared by all stations.
@@ -110,7 +103,8 @@ INSERT INTO `station_users` (`username`, `password`, `role`, `name`, `email`, `s
 ('tristan',    '$2y$10$cd78oR8qYsKcNff4/dpdq.qEh.1CdPlchqvD1Dj/3r/khfbsQByb.', 'HELPDESK',    'Tristan Helpdesk Officer', 'tristan@gncp.edu.ph',    'ACTIVE', 0),
 ('ethan',      '$2y$10$a19sAND.7ilrsfBrZ7uY0e0j.nu3bP8GLadkSN1s3pcoM9kkhReXu', 'MEDICAL',     'Dr. Ethan Medical Doctor', 'ethan@gncp.edu.ph',      'ACTIVE', 0),
 ('cashier',    '$2y$10$eU8Mlw7SMSnOH.9u1Cy54edUu1MN7Kss01/qyTFwiwJQvNUX6hGS.', 'CASHIER',     'Cashier Officer',          'cashier@gncp.edu.ph',    'ACTIVE', 0),
-('it_officer', '$2y$10$mqcRBKBCst7FSiXbCbO5hemMvt/DweLALcB2iqvm9LI83/gqke20e', 'IT_CENTER',   'IT Center Officer',        'it_officer@gncp.edu.ph', 'ACTIVE', 0)
+('it_officer', '$2y$10$mqcRBKBCst7FSiXbCbO5hemMvt/DweLALcB2iqvm9LI83/gqke20e', 'IT_CENTER',   'IT Center Officer',        'it_officer@gncp.edu.ph', 'ACTIVE', 0),
+('developer',  '$2y$10$oY753sX7q5l/m4.67J28oObv6fC1/gR5H.h0K7hV183N592aM3hqe', 'DEVELOPER',   'Lead Developer',           'developer@gncp.edu.ph',  'ACTIVE', 0)
 ON DUPLICATE KEY UPDATE `password`=VALUES(`password`), `role`=VALUES(`role`), `name`=VALUES(`name`), `status`='ACTIVE', `must_change_password`=0;
 
 -- ============================================================

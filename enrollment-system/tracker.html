@@ -4,22 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GNCP — Student Enrollment Tracker Portal</title>
-    
-    <!-- Google Fonts -->
+
     <link rel="stylesheet" href="../shared/libs/fonts/fonts.css">
-    
-    <!-- Bootstrap 5 CSS -->
+
     <link href="../shared/libs/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- FontAwesome Icons -->
+
     <link rel="stylesheet" href="../shared/libs/font-awesome/css/all.min.css">
-    
-    <!-- Custom CSS -->
+
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
     <div id="tracker-app" v-cloak>
-        <!-- Navbar -->
+        
         <nav class="navbar navbar-expand-lg portal-navbar shadow-sm sticky-top">
             <div class="container">
                 <a class="navbar-brand d-flex align-items-center" href="../school-website/index.html">
@@ -38,9 +34,7 @@
         </nav>
 
         <main class="container my-5">
-            <!-- ═══════════════════════════════════════════════════════════════════
-                 VIEW 1: LOGIN FORM
-                 ═══════════════════════════════════════════════════════════════════ -->
+            
             <div v-if="currentView === 'LOGIN'" class="row justify-content-center py-4">
                 <div class="col-md-7 col-lg-5">
                     <div class="card wizard-card shadow-lg border-0">
@@ -92,21 +86,14 @@
                 </div>
             </div>
 
-            <!-- ═══════════════════════════════════════════════════════════════════
-                 VIEW 2: LOADING STATE
-                 ═══════════════════════════════════════════════════════════════════ -->
             <div v-if="currentView === 'LOADING'" class="text-center py-5">
                 <div class="spinner-border text-success mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
                 <h5 class="fw-bold text-dark">Loading your enrollment status...</h5>
             </div>
 
-            <!-- ═══════════════════════════════════════════════════════════════════
-                 VIEW 3: DASHBOARD
-                 ═══════════════════════════════════════════════════════════════════ -->
             <div v-if="currentView === 'DASHBOARD' && enrollmentData" class="row justify-content-center">
                 <div class="col-xl-10">
-                    
-                    <!-- Student Profile Header Banner -->
+
                     <div class="tracker-profile-header card shadow-sm border-0 mb-4 p-4 rounded-4">
                         <div class="row align-items-center g-3">
                             <div class="col-md-8 text-center text-md-start">
@@ -136,7 +123,6 @@
                         </div>
                     </div>
 
-                    <!-- Enrolled Credentials Card -->
                     <div class="card shadow-sm border-0 mb-4 p-4 rounded-4" style="background-color: rgba(25, 135, 84, 0.08); border-left: 5px solid #198754 !important;" v-if="enrollmentData.status === 'ENROLLED'">
                         <div class="d-flex align-items-start gap-3">
                             <div class="bg-white p-3 rounded-circle text-success shadow-sm">
@@ -164,7 +150,6 @@
                         </div>
                     </div>
 
-                    <!-- Rejection Reason Card -->
                     <div class="card shadow-sm border-0 mb-4 p-4 rounded-4" style="background-color: rgba(239, 68, 68, 0.08); border-left: 5px solid #dc2626 !important;" v-if="enrollmentData.status === 'Rejected'">
                         <div class="d-flex align-items-start gap-3">
                             <div class="bg-white p-3 rounded-circle text-danger shadow-sm">
@@ -182,7 +167,6 @@
                         </div>
                     </div>
 
-                    <!-- Progress Bar Summary Card -->
                     <div class="card shadow-sm border-0 mb-4 p-4 rounded-4">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="fw-bold text-dark mb-0"><i class="fas fa-chart-line me-2 text-primary-green"></i>Campus Verification Progress</h6>
@@ -200,7 +184,7 @@
                                 {{ enrollmentData.status === 'Rejected' ? 'Application Terminated' : progressPercent + '% Complete' }}
                             </span>
                         </div>
-                    <!-- Enrollment Completed & Student Portal Credentials Card -->
+                    
                     <div class="card shadow-lg border-0 mb-4 p-4 p-md-5 rounded-4 text-white position-relative overflow-hidden" 
                          style="background: linear-gradient(135deg, #006A4E 0%, #004D38 100%);"
                          v-if="progressPercent === 100 || enrollmentData.status === 'ENROLLED' || enrollmentData.status === 'ACTIVATED'">
@@ -215,7 +199,6 @@
                                     Congratulations! All campus workstations have cleared your admission. Your official student portal credentials are ready below.
                                 </p>
 
-                                <!-- Credentials Grid -->
                                 <div class="row g-3 mb-4">
                                     <div class="col-12 col-md-4">
                                         <div class="p-3 rounded-3 h-100 d-flex flex-column justify-content-center" style="background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(12px);">
@@ -246,7 +229,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Direct Portal Access Action Button -->
                                 <a :href="enrollmentData.portalLoginUrl || '../student-portal/index.html'" class="btn btn-lg px-4 py-3 rounded-3 shadow-sm font-heading fw-bold d-inline-flex align-items-center gap-2" style="background: #ffffff; color: #006A4E; transition: transform 0.2s;">
                                     <i class="fa-solid fa-right-to-bracket"></i>
                                     Access Student Portal Now
@@ -260,7 +242,6 @@
                         </div>
                     </div>
 
-                    <!-- Live Campus Queue Status Card -->
                     <div v-if="enrollmentData.queuePosition && enrollmentData.status !== 'ENROLLED' && enrollmentData.status !== 'Rejected'" 
                          class="card shadow-sm border-0 mb-4 p-4 rounded-4 text-white"
                          style="background: linear-gradient(135deg, #065f46 0%, #047857 100%);">
@@ -296,7 +277,6 @@
                         </div>
                     </div>
 
-                    <!-- Next Step Spotlight Card (hidden if application is rejected) -->
                     <div class="card shadow-sm border-0 mb-4 p-4 rounded-4" style="background-color: var(--primary-green-light); border-left: 5px solid var(--primary-green) !important;" v-if="nextPendingStep && enrollmentData.status !== 'Rejected'">
                         <div class="d-flex align-items-start gap-3">
                             <div class="bg-white p-3 rounded-circle text-success shadow-sm">
@@ -313,14 +293,13 @@
                                     <a :href="'../shared/paymongo/checkout.html?ref=' + encodeURIComponent(enrollmentData.referenceNumber) + '&amount=' + encodeURIComponent(enrollmentData.payment?.balance || 3000) + '&desc=' + encodeURIComponent('Tuition Assessment - ' + (enrollmentData.form?.firstName || '') + ' ' + (enrollmentData.form?.lastName || '')) + '&return_url=' + encodeURIComponent(currentUrl)" 
                                        target="_blank" 
                                        class="btn btn-primary fw-bold px-3 py-2 rounded-3 shadow-sm d-inline-flex align-items-center gap-2" style="font-size: 0.85rem;">
-                                        <i class="fa-solid fa-bolt"></i> Pay Online via PayMongo (GCash / Maya / Card)
+                                        <i class="fa-solid fa-credit-card"></i> Pay Online (GCash / Maya / Card)
                                     </a>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Admission Document Requirements & Undertakings Card -->
                     <div class="card shadow-sm border-0 mb-4 p-4 p-md-5 rounded-4" v-if="enrollmentData.requirements && enrollmentData.requirements.length">
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <div>
@@ -364,7 +343,6 @@
                         </div>
                     </div>
 
-                    <!-- Full Roadmap Live Timeline -->
                     <div class="card shadow-sm border-0 p-4 p-md-5 rounded-4">
                         <h5 class="fw-bold text-dark mb-4"><i class="fas fa-list-check me-2 text-primary-green"></i>Detailed Station Status Timeline</h5>
 
@@ -376,8 +354,7 @@
                                      'station-active': step.status === 'IN_PROGRESS' && enrollmentData.status !== 'Rejected',
                                      'opacity-50': enrollmentData.status === 'Rejected' && step.status !== 'COMPLETED'
                                  }">
-                                
-                                <!-- Status Marker Circle -->
+
                                 <div class="station-marker" :class="{
                                     'marker-done': step.status === 'COMPLETED' && enrollmentData.status !== 'Rejected',
                                     'bg-warning text-dark border-warning': step.status === 'IN_PROGRESS' && enrollmentData.status !== 'Rejected',
@@ -388,12 +365,10 @@
                                     <span v-else>{{ idx + 1 }}</span>
                                 </div>
 
-                                <!-- Step Details Content -->
                                 <div class="station-content">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <div class="station-badge">{{ step.station }} · {{ step.location }}</div>
-                                        
-                                        <!-- Status Pill -->
+
                                         <span class="badge rounded-pill px-3 py-1" :class="{
                                             'bg-success-subtle text-success': step.status === 'COMPLETED' && enrollmentData.status !== 'Rejected',
                                             'bg-warning-subtle text-dark': step.status === 'IN_PROGRESS' && enrollmentData.status !== 'Rejected',
@@ -412,17 +387,16 @@
 
                                     <h6 class="station-name fs-6 mb-1">{{ step.title }}</h6>
                                     <p class="station-desc text-muted mb-2">{{ step.description }}</p>
-                                    
-                                    <!-- Direct Pay Button if at Cashier Step -->
+
                                     <div v-if="step.stepId === 'cashier_payment' && step.status === 'IN_PROGRESS' && enrollmentData.status !== 'Rejected'" class="mt-2 mb-3 p-3 bg-light rounded-3 border border-primary-subtle d-flex flex-wrap align-items-center justify-content-between gap-2">
                                         <div>
-                                            <div class="fw-bold text-dark small"><i class="fa-solid fa-bolt text-primary me-1"></i>Pay Online via PayMongo Gateway</div>
+                                            <div class="fw-bold text-dark small"><i class="fa-solid fa-credit-card text-primary me-1"></i>Secure Online Payment</div>
                                             <div class="text-muted" style="font-size: 0.75rem;">Settle your tuition instantly via GCash, Maya, QR Ph, or Debit/Credit Card.</div>
                                         </div>
                                         <a :href="'../shared/paymongo/checkout.html?ref=' + encodeURIComponent(enrollmentData.referenceNumber) + '&amount=' + encodeURIComponent(enrollmentData.payment?.balance || 3000) + '&desc=' + encodeURIComponent('Tuition Assessment - ' + (enrollmentData.form?.firstName || '') + ' ' + (enrollmentData.form?.lastName || '')) + '&return_url=' + encodeURIComponent(currentUrl)" 
                                            target="_blank" 
                                            class="btn btn-sm btn-primary fw-bold px-3 py-1.5 rounded-pill shadow-sm">
-                                            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Pay with PayMongo
+                                            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Pay Online Now
                                         </a>
                                     </div>
 
@@ -439,13 +413,10 @@
         </main>
     </div>
 
-    <!-- Vue 3 Global Build from CDN -->
     <script src="../shared/libs/vue.global.js"></script>
 
-    <!-- ApiService Abstraction -->
     <script src="assets/js/services/ApiService.js"></script>
 
-    <!-- Tracker App JS -->
     <script src="assets/js/TrackerApp.js"></script>
 </body>
 </html>

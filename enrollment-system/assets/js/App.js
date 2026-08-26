@@ -1,30 +1,22 @@
-// Go-on National College of the Philippines — Enrollment UI Service
-// Controller layer orchestrating wizard state, form submissions, and template actions
 (function () {
     const createApp = Vue.createApp;
     const ref = Vue.ref;
     const reactive = Vue.reactive;
     const computed = Vue.computed;
     const watch = Vue.watch;
-
     const Model = window.EnrollmentModel;
-
     createApp({
         setup() {
             const urlParams = new URLSearchParams(window.location.search);
             const deptParam = urlParams.get('dept') || localStorage.getItem('gncp_selected_dept') || '';
             const hasDeptParam = urlParams.has('dept') || !!localStorage.getItem('gncp_selected_dept');
             const selectedCollege = ref('');
-
             const collegeSelectLabel = computed(() => {
                 return hasDeptParam ? 'Select Department' : 'Select College';
             });
-
             const collegeSelectPlaceholder = computed(() => {
                 return hasDeptParam ? 'Select Department' : 'Choose a department...';
             });
-
-            // Steps Config — Step 7 is the confirmation screen (not shown in stepper)
             const steps = [
                 { number: 1, title: 'Program & NSTP', icon: 'fas fa-university' },
                 { number: 2, title: 'Personal Info',  icon: 'fas fa-user' },
@@ -33,33 +25,23 @@
                 { number: 5, title: 'Payment Term',   icon: 'fas fa-coins' },
                 { number: 6, title: 'Review & Submit',icon: 'fas fa-check-double' }
             ];
-
             const currentStep = ref(1);
-
-            // Async Submission & Account State
             const isSubmitting = ref(false);
             const submitError = ref('');
             const tempAccount = ref(null);
             const copiedField = ref('');
             const showPin = ref(false);
             const isLocalFile = ref(window.location.protocol === 'file:');
-
-            // ── Form Fields State ──────────────────────────────────────────────────
             const form = reactive({
-                // Step 1 — Program & NSTP
                 studentType: 'FRESHMAN',
                 educationPathway: 'REGULAR',
                 courseCode: '',
                 nstp: '',
-
-                // Step 1 — Returning student verification
-                existingStudentId: '',              // Official GNCP ID resolved after verification
-                existingStudentIdentifier: '',       // Email entered by returnee for verification
-                yearLevelApplied: '',               // Year level they are re-enrolling at
-                returningStudentVerified: false,    // true after successful API lookup
-                returningStudentData: null,         // Hydrated student record from the lookup API
-
-                // Step 2 — Personal Info
+                existingStudentId: '',              
+                existingStudentIdentifier: '',       
+                yearLevelApplied: '',               
+                returningStudentVerified: false,    
+                returningStudentData: null,         
                 firstName: '',
                 middleName: '',
                 lastName: '',
@@ -68,17 +50,13 @@
                 birthDate: '',
                 gender: '',
                 address: '',
-
-                // Step 3 — Academic Background
                 elementarySchool: '',
                 juniorHighSchool: '',
                 seniorHighSchool: '',
                 previousCollege: '',
                 shsTrack: '',
                 honors: '',
-
-                // Step 4 — Medical Pre-Screening
-                healthStatus: 'GOOD',          // GOOD | FAIR | POOR
+                healthStatus: 'GOOD',          
                 medicalConditions: [],
                 allergies: '',
                 currentMedication: false,
@@ -86,19 +64,15 @@
                 fitnessParticipation: true,
                 emergencyContactName: '',
                 emergencyContactPhone: '',
-
-                // Step 5 — Payment
-                paymentMode: 'CASH',           // CASH | SEMI | QUAD
-                scholarship: 'NONE'            // NONE | HONOR | ATHLETIC | FINANCIAL
+                paymentMode: 'CASH',           
+                scholarship: 'NONE'            
             });
-
-            // ── Validation Errors State ────────────────────────────────────────────
             const errors = reactive({
                 studentType: '',
                 courseCode: '',
                 nstp: '',
-                existingStudentId: '',   // RETURNING: ID field validation
-                yearLevelApplied: '',    // RETURNING: year level selection
+                existingStudentId: '',   
+                yearLevelApplied: '',    
                 firstName: '',
                 lastName: '',
                 email: '',
@@ -114,13 +88,9 @@
                 emergencyContactPhone: '',
                 softCopyDocs: ''
             });
-
-            // ── Returning Student Lookup State ────────────────────────────────────────
-            const isLookingUp   = Vue.ref(false);  // Spinner flag for Verify button
-            const lookupError   = Vue.ref('');     // Error message from failed lookup
-            const lookupSuccess = Vue.ref(false);  // true = show green confirmation banner
-
-            // ── Draft Persistence Logic ────────────────────────────────────────────
+            const isLookingUp   = Vue.ref(false);  
+            const lookupError   = Vue.ref('');     
+            const lookupSuccess = Vue.ref(false);  
             const saveDraft = () => {
                 const draft = {
                     currentStep: currentStep.value,
@@ -128,7 +98,6 @@
                 };
                 localStorage.setItem('gncp_enrollment_draft', JSON.stringify(draft));
             };
-
             const loadDraft = () => {
                 const stored = localStorage.getItem('gncp_enrollment_draft');
                 if (stored) {
@@ -147,20 +116,13 @@
                     }
                 }
             };
-
-            // Restore from draft before registering watchers
             loadDraft();
-
-            // Watch state changes to auto-save draft
             watch(currentStep, saveDraft);
             watch(form, saveDraft, { deep: true });
-
-            // ── Option Catalogs (Delegated to Model) ───────────────────────────────
             const colleges = ref(Model.getColleges());
             const courses = ref(Model.getCourses());
             const activePeriodInfo = ref(null);
             const programsLoadError = ref('');
-
             const fetchActivePrograms = () => {
                 window.ApiService.getActivePrograms()
                     .then(res => {
@@ -169,15 +131,12 @@
                                 Model.setPrograms(res.data.programs);
                                 colleges.value = Model.getColleges();
                                 courses.value = Model.getCourses();
-                                
-                                // Restore selectedCollege from draft courseCode if exists
                                 if (form.courseCode) {
                                     const matchedCourse = courses.value.find(c => c.code === form.courseCode);
                                     if (matchedCourse) {
                                         selectedCollege.value = matchedCourse.college;
                                     }
                                 } else {
-                                    // Otherwise restore from URL parameter or localStorage
                                     const matchedDept = ['COIT', 'COBA', 'COHS'].includes(deptParam.toUpperCase()) ? deptParam.toUpperCase() : '';
                                     if (matchedDept) {
                                         selectedCollege.value = matchedDept;
@@ -198,9 +157,7 @@
                         programsLoadError.value = 'Failed to connect to server for active programs.';
                     });
             };
-
             fetchActivePrograms();
-
             const admissionTypes = (Model && typeof Model.getAdmissionTypes === 'function') ? Model.getAdmissionTypes() : [];
             const nstpOptions = (Model && typeof Model.getNstpOptions === 'function') ? Model.getNstpOptions() : [];
             const paymentModes = (Model && typeof Model.getPaymentModes === 'function') ? Model.getPaymentModes() : [];
@@ -216,28 +173,20 @@
                 'Mental Health Condition',
                 'Other (specify in allergies/notes)'
             ];
-
-
-
-            // Calculate yesterday's date as the maximum birth date allowed
             const maxBirthDate = computed(() => {
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
                 const yyyy = yesterday.getFullYear();
-                
                 let mm = yesterday.getMonth() + 1;
                 if (mm < 10) {
                     mm = '0' + mm;
                 }
-                
                 let dd = yesterday.getDate();
                 if (dd < 10) {
                     dd = '0' + dd;
                 }
-                
                 return yyyy + '-' + mm + '-' + dd;
             });
-
             const filteredCourses = computed(() => {
                 if (!selectedCollege.value) return [];
                 const result = [];
@@ -248,11 +197,9 @@
                 }
                 return result;
             });
-
             const onCollegeChange = () => {
                 form.courseCode = '';
             };
-
             const onPathwayChange = () => {
                 form.juniorHighSchool = '';
                 form.seniorHighSchool = '';
@@ -260,27 +207,21 @@
                 errors.juniorHighSchool = '';
                 errors.seniorHighSchool = '';
             };
-
-            // ── Returning Student: Lookup & Pre-fill ────────────────────────────────
             const lookupReturningStudent = () => {
                 const identifier = (form.existingStudentIdentifier || '').trim();
                 if (!identifier) {
                     lookupError.value = 'Please enter your email address before verifying.';
                     return;
                 }
-
-                // Basic client-side email format check
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
                     lookupError.value = 'Please enter a valid email address (e.g. juan.delacruz@gncp.edu.ph).';
                     return;
                 }
-
                 isLookingUp.value             = true;
                 lookupError.value             = '';
                 lookupSuccess.value           = false;
                 form.returningStudentVerified = false;
                 form.returningStudentData     = null;
-
                 window.ApiService.lookupReturningStudent(identifier)
                     .then(res => {
                         isLookingUp.value = false;
@@ -289,23 +230,18 @@
                             form.returningStudentData     = res.data;
                             form.existingStudentId        = res.data.id;
                             lookupSuccess.value           = true;
-
                             form.firstName  = res.data.firstName  || '';
                             form.middleName = res.data.middleName || '';
                             form.lastName   = res.data.lastName   || '';
                             form.email      = res.data.email      || '';
-
                             const rawPhone = res.data.phone || '';
                             form.phone = rawPhone.startsWith('09') ? rawPhone.slice(2) : rawPhone;
-
                             form.birthDate = res.data.birthDate || '';
                             form.gender    = res.data.gender    || '';
                             form.address   = res.data.address   || '';
-
                             if (res.data.year_level && !form.yearLevelApplied) {
                                 form.yearLevelApplied = res.data.year_level;
                             }
-
                             errors.existingStudentId = '';
                             errors.yearLevelApplied  = '';
                         } else {
@@ -318,8 +254,6 @@
                         lookupError.value = 'An unexpected error occurred. Please try again.';
                     });
             };
-
-            // Reset verification state whenever the email identifier field is edited
             watch(() => form.existingStudentIdentifier, (newVal, oldVal) => {
                 if (newVal !== oldVal && form.returningStudentVerified) {
                     form.returningStudentVerified = false;
@@ -327,8 +261,6 @@
                     lookupSuccess.value           = false;
                 }
             });
-
-
             const toggleCondition = (condition) => {
                 const idx = form.medicalConditions.indexOf(condition);
                 if (idx === -1) {
@@ -337,8 +269,6 @@
                     form.medicalConditions.splice(idx, 1);
                 }
             };
-
-            // ── Dynamic Pricing calculations (Delegated to Model) ──────────────────
             const fees = computed(() => {
                 return Model.calculateFees(form);
             });
@@ -349,14 +279,10 @@
             const calcTotal = computed(() => fees.value.total);
             const calcDownpayment = computed(() => fees.value.downpayment);
             const calcInstallmentAmount = computed(() => fees.value.installmentAmount);
-
-            // ── Requirement Matrix & Soft Copy Uploads ────────────────────────────
             const getRequirements = computed(() => {
                 return Model.getRequirements(form.studentType, form.educationPathway);
             });
-
             const documentFiles = reactive({});
-
             const getDocKey = (item) => {
                 if (Model && typeof Model.getDocKey === 'function') {
                     return Model.getDocKey(item);
@@ -368,7 +294,6 @@
                 if (text.startsWith('original certificate of good moral')) return 'goodMoral';
                 return text.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
             };
-
             const requiredDocList = computed(() => {
                 const rawList = Model.getRequirements(form.studentType, form.educationPathway);
                 return rawList.map(item => ({
@@ -376,11 +301,9 @@
                     label: item
                 }));
             });
-
             const onFileChange = (key, event) => {
                 const file = event.target.files && event.target.files[0];
                 if (!file) return;
-
                 if (file.size > 5 * 1024 * 1024) {
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
@@ -395,7 +318,6 @@
                     event.target.value = '';
                     return;
                 }
-
                 const allowed = ['pdf', 'jpg', 'jpeg', 'png'];
                 const ext = file.name.split('.').pop().toLowerCase();
                 if (!allowed.includes(ext)) {
@@ -412,14 +334,11 @@
                     event.target.value = '';
                     return;
                 }
-
                 documentFiles[key] = file;
             };
-
             const removeDocFile = (key) => {
                 delete documentFiles[key];
             };
-
             const formatFileSize = (bytes) => {
                 if (!bytes) return '0 B';
                 const k = 1024;
@@ -427,12 +346,10 @@
                 const i = Math.floor(Math.log(bytes) / Math.log(k));
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
             };
-
             const triggerFileInput = (inputId) => {
                 const el = document.getElementById(inputId);
                 if (el) el.click();
             };
-
             const getFileTypeClass = (fileName) => {
                 if (!fileName) return 'file-type-doc';
                 const ext = fileName.split('.').pop().toLowerCase();
@@ -440,7 +357,6 @@
                 if (['jpg', 'jpeg', 'png'].includes(ext)) return 'file-type-img';
                 return 'file-type-doc';
             };
-
             const getFileIcon = (fileName) => {
                 if (!fileName) return 'fa-file-lines';
                 const ext = fileName.split('.').pop().toLowerCase();
@@ -448,8 +364,6 @@
                 if (['jpg', 'jpeg', 'png'].includes(ext)) return 'fa-file-image';
                 return 'fa-file-lines';
             };
-
-            // ── Step Validation (Delegated to Model) ───────────────────────────────
             const validateCurrentStep = () => {
                 if (currentStep.value === 3) {
                     if (form.educationPathway === 'ALS') {
@@ -470,10 +384,6 @@
                             form.shsTrack = 'OLD_CURRICULUM';
                         }
                     }
-
-                    // Soft Copy Upload Validation Rule:
-                    // If user uploaded at least 1 soft copy, ALL required documents become mandatory.
-                    // If user uploaded 0 soft copies, soft copy uploads remain 100% optional.
                     const uploadedCount = Object.keys(documentFiles).length;
                     if (uploadedCount > 0) {
                         const requiredKeys = requiredDocList.value.map(d => d.key);
@@ -488,7 +398,6 @@
                 }
                 return Model.validateStep(currentStep.value, form, errors);
             };
-
             const nextStep = () => {
                 if (!validateCurrentStep()) {
                     setTimeout(() => {
@@ -499,34 +408,26 @@
                     }, 100);
                     return;
                 }
-
-                // On Step 6 (Review & Submit), trigger backend API registration via standard Promise .then()
                 if (currentStep.value === 6) {
                     isSubmitting.value = true;
                     submitError.value = '';
-
-                    // Clone form data and prefix the phone numbers with '09' for storage
                     const payload = JSON.parse(JSON.stringify(form));
                     payload.phone = '09' + form.phone;
                     payload.emergencyContactPhone = '09' + form.emergencyContactPhone;
-
-                    // Send via FormData to support file attachments
                     const formData = new FormData();
                     formData.append('form_data', JSON.stringify(payload));
-
                     Object.keys(documentFiles).forEach(key => {
                         if (documentFiles[key]) {
                             formData.append('doc_' + key, documentFiles[key]);
                         }
                     });
-
                     window.ApiService.submitEnrollment(formData)
                         .then(res => {
                             isSubmitting.value = false;
                             if (res.success) {
                                 localStorage.removeItem('gncp_enrollment_draft');
                                 tempAccount.value = res.data;
-                                currentStep.value = 7; // Advance to confirmation screen
+                                currentStep.value = 7; 
                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                             } else {
                                 submitError.value = res.error || 'Failed to submit registration.';
@@ -542,14 +443,12 @@
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             };
-
             const prevStep = () => {
                 if (currentStep.value > 1 && currentStep.value <= 6) {
                     currentStep.value--;
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             };
-
             const copyToClipboard = (text, fieldName) => {
                 navigator.clipboard.writeText(text).then(() => {
                     copiedField.value = fieldName;
@@ -558,15 +457,12 @@
                     console.error('Copy failed:', err);
                 });
             };
-
-            // Expose view formatting helpers directly from Model
             const formatPrice = Model.formatPrice;
             const getCourseName = Model.getCourseName;
             const getNstpLabel = Model.getNstpLabel;
             const getStudentTypeLabel = Model.getStudentTypeLabel;
             const getPaymentModeLabel = Model.getPaymentModeLabel;
             const getScholarshipLabel = Model.getScholarshipLabel;
-
             return {
                 steps,
                 currentStep,

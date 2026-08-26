@@ -81,35 +81,96 @@ class EnrollmentService {
             }
         }
 
-        // Check if all steps in the roadmap are completed or skipped & validate sequential order
-        $allDone = true;
+        // Roadmap Normalization and Sequential Validation
         $roadmapSteps = $updateData['roadmap'] ?? json_decode($existingRecord['roadmap'] ?? '[]', true) ?? [];
-        if (empty($roadmapSteps)) {
-            $allDone = false;
-        } else {
-            $prevDone = true;
-            foreach ($roadmapSteps as $idx => $step) {
-                $statusVal = strtoupper($step['status'] ?? '');
-                if ($statusVal === 'COMPLETED' && !$prevDone) {
-                    throw new DomainException("Roadmap step '" . ($step['stepId'] ?? $idx) . "' cannot be completed out of order.");
+        $incomingStatus = $updateData['status'] ?? null;
+        $currentDbStatus = strtoupper($existingRecord['status'] ?? '');
+        $targetStatus = !empty($incomingStatus) ? strtoupper($incomingStatus) : $currentDbStatus;
+
+        // Auto-complete preceding steps and unlock downstream steps based on stage advancement
+        $stageOrder = ['PRE_REGISTERED' => 0, 'VERIFIED' => 1, 'APPROVED' => 1, 'ADVISED' => 2, 'MEDICAL_CLEARED' => 3, 'PAID' => 4, 'ENROLLED' => 5];
+        $currentStageLevel = $stageOrder[$targetStatus] ?? 0;
+
+        foreach ($roadmapSteps as &$step) {
+            $sid = $step['stepId'] ?? '';
+            // Online Pre-Registration
+            if (in_array($sid, ['online_prereg', 'online_registration']) && $currentStageLevel >= 1) {
+                if (($step['status'] ?? '') !== 'COMPLETED') {
+                    $step['status'] = 'COMPLETED';
+                    $step['updatedAt'] = $step['updatedAt'] ?? date('c');
                 }
-                if ($statusVal !== 'COMPLETED' && $statusVal !== 'SKIPPED') {
-                    $prevDone = false;
-                    $allDone = false;
+            }
+            // Registrar Verification
+            if ($sid === 'registrar_verification') {
+                if ($currentStageLevel >= 1 && in_array(strtoupper($step['status'] ?? ''), ['PENDING', 'LOCKED', ''])) {
+                    $step['status'] = $currentStageLevel >= 2 ? 'COMPLETED' : 'IN_PROGRESS';
+                    $step['updatedAt'] = $step['updatedAt'] ?? date('c');
+                } elseif ($currentStageLevel >= 2) {
+                    $step['status'] = 'COMPLETED';
+                    $step['updatedAt'] = $step['updatedAt'] ?? date('c');
+                }
+            }
+            // Academic Advising
+            if (in_array($sid, ['advising_assessment', 'academic_advising'])) {
+                if ($currentStageLevel === 1 && in_array(strtoupper($step['status'] ?? ''), ['PENDING', 'LOCKED', ''])) {
+                    $step['status'] = 'IN_PROGRESS';
+                    $step['updatedAt'] = $step['updatedAt'] ?? date('c');
+                } elseif ($currentStageLevel >= 2) {
+                    $step['status'] = 'COMPLETED';
+                    $step['updatedAt'] = $step['updatedAt'] ?? date('c');
+                }
+            }
+            // Clinic Medical Clearance
+            if (in_array($sid, ['clinic_checkup', 'medical_checkup'])) {
+                if ($currentStageLevel === 2 && in_array(strtoupper($step['status'] ?? ''), ['PENDING', 'LOCKED', ''])) {
+                    $step['status'] = 'IN_PROGRESS';
+                    $step['updatedAt'] = $step['updatedAt'] ?? date('c');
+                } elseif ($currentStageLevel >= 3) {
+                    $step['status'] = 'COMPLETED';
+                    $step['updatedAt'] = $step['updatedAt'] ?? date('c');
+                }
+            }
+            // Cashier Payment
+            if (in_array($sid, ['cashier_payment'])) {
+                if ($currentStageLevel === 3 && in_array(strtoupper($step['status'] ?? ''), ['PENDING', 'LOCKED', ''])) {
+                    $step['status'] = 'IN_PROGRESS';
+                    $step['updatedAt'] = $step['updatedAt'] ?? date('c');
+                } elseif ($currentStageLevel >= 4) {
+                    $step['status'] = 'COMPLETED';
+                    $step['updatedAt'] = $step['updatedAt'] ?? date('c');
+                }
+            }
+            // IT Center Account Activation
+            if (in_array($sid, ['it_activation', 'id_email_final'])) {
+                if ($currentStageLevel === 4 && in_array(strtoupper($step['status'] ?? ''), ['PENDING', 'LOCKED', ''])) {
+                    $step['status'] = 'IN_PROGRESS';
+                    $step['updatedAt'] = $step['updatedAt'] ?? date('c');
+                } elseif ($currentStageLevel >= 5) {
+                    $step['status'] = 'COMPLETED';
+                    $step['updatedAt'] = $step['updatedAt'] ?? date('c');
                 }
             }
         }
+        unset($step);
 
-        $incomingStatus = $updateData['status'] ?? null;
+        $allDone = !empty($roadmapSteps);
+        foreach ($roadmapSteps as $step) {
+            $statusVal = strtoupper($step['status'] ?? '');
+            if ($statusVal !== 'COMPLETED' && $statusVal !== 'SKIPPED') {
+                $allDone = false;
+                break;
+            }
+        }
+
         $overallStatus = $existingRecord['status'];
         if (!empty($incomingStatus)) {
             $overallStatus = $incomingStatus;
         }
-        if ($allDone) {
+        if ($allDone && $targetStatus === 'ENROLLED') {
             $overallStatus = 'ENROLLED';
         }
 
-        $roadmapJson = isset($updateData['roadmap']) ? json_encode($updateData['roadmap']) : $existingRecord['roadmap'];
+        $roadmapJson = !empty($roadmapSteps) ? json_encode($roadmapSteps) : $existingRecord['roadmap'];
         $enrollmentJson = isset($updateData['enrollment']) ? json_encode($updateData['enrollment']) : $existingRecord['enrollment_data'];
 
         // Begin atomic PDO transaction

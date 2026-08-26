@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
     <title>Employee Portal Gateway — Go-on National College of the Philippines</title>
     <meta name="description" content="Official administrative and operator login portal for Go-on National College of the Philippines.">
-    
-    <!-- Synchronous Session Redirect Gating (Avoids UI Flashes) -->
+
     <script>
         (function() {
             try {
@@ -33,15 +33,16 @@
 
                 if (user && user.role && !user.must_change_password) {
                     const roleRedirects = {
-                        'SUPER_ADMIN': 'admin/index.html',
-                        'ADMIN': 'admin/index.html',
-                        'REGISTRAR': 'registrar/index.html',
-                        'HELPDESK': 'stations/tlc-helpdesk/index.html',
-                        'MEDICAL': 'stations/medical-checkup/index.html',
-                        'CASHIER': 'stations/payment-processing/index.html',
-                        'IT_CENTER': 'stations/it-center/index.html'
+                        'SUPER_ADMIN': 'admin/',
+                        'ADMIN': 'admin/',
+                        'REGISTRAR': 'registrar/',
+                        'HELPDESK': 'stations/tlc-helpdesk/',
+                        'MEDICAL': 'stations/medical-checkup/',
+                        'CASHIER': 'stations/payment-processing/',
+                        'IT_CENTER': 'stations/it-center/',
+                        'DEVELOPER': 'monitoring/'
                     };
-                    const target = roleRedirects[user.role];
+                    const target = roleRedirects[user.role] || 'admin/';
                     if (target) {
                         window.location.replace(target);
                     }
@@ -55,7 +56,6 @@
         })();
     </script>
 
-    <!-- Google Fonts & Icons -->
     <link rel="stylesheet" href="shared/libs/fonts/fonts.css">
     <link rel="stylesheet" href="shared/libs/bootstrap.min.css">
     <link rel="stylesheet" href="shared/libs/font-awesome/css/all.min.css">
@@ -654,8 +654,7 @@
 </head>
 <body>
     <div id="app" class="portal-container" v-cloak>
-        
-        <!-- Left Banner Pane -->
+
         <div class="info-pane">
             <div class="info-header">
                 <img src="school-website/assets/images/logo-removebg-preview.png" alt="GNCP Seal" class="school-logo">
@@ -678,24 +677,20 @@
             </div>
         </div>
 
-        <!-- Right Content Pane -->
         <div class="right-pane">
-            
-            <!-- Redirecting State (If Authenticated) -->
+
             <div v-if="currentUser" class="d-flex flex-column align-items-center justify-content-center py-5 text-center" style="min-height: 400px;">
                 <div class="spinner-border text-success mb-4" role="status" style="width: 3rem; height: 3rem; border-width: 0.25em; border-color: var(--primary-green) transparent var(--primary-green) transparent;"></div>
                 <h3 class="fw-bold" style="color: var(--primary-green); font-family: var(--font-heading);">Redirecting to Workstation</h3>
                 <p class="text-muted" style="max-width: 300px;">Please wait while we establish your workstation session and load your dashboard...</p>
             </div>
 
-            <!-- Login Form Screen (If NOT Authenticated) -->
             <div v-else>
                 <div class="login-header">
                     <h2 class="login-title">Employee Sign In</h2>
                     <p class="login-subtitle">Please enter your staff or operator credentials</p>
                 </div>
 
-                <!-- Session Expired Notice Banner -->
                 <transition name="fade-slide">
                     <div v-if="sessionExpiredNotice" class="session-expired-banner">
                         <i class="fa-solid fa-clock-rotate-left" style="font-size: 1.1rem; color: #D97706;"></i>
@@ -704,7 +699,6 @@
                     </div>
                 </transition>
 
-                <!-- Smooth Error Banner with Transition & Shake -->
                 <transition name="fade-slide">
                     <div v-if="loginError" :key="errorKey" class="error-banner">
                         <i class="fas fa-triangle-exclamation" style="margin-top:2px;"></i>
@@ -758,16 +752,15 @@
                     </div>
 
                     <button type="submit" class="login-btn" :disabled="isLoggingIn" style="min-height:48px;">
-                        <span v-if="isLoggingIn">
-                            <i class="fas fa-spinner fa-spin me-2"></i> Verifying...
+                        <span v-if="isLoggingIn" class="d-inline-flex align-items-center justify-content-center">
+                            <i class="fas fa-circle-notch fa-spin me-2"></i> {{ loginStatusText }}
                         </span>
-                        <span v-else>
-                            <i class="fas fa-right-to-bracket"></i> Login Operator
+                        <span v-else class="d-inline-flex align-items-center justify-content-center">
+                            <i class="fas fa-right-to-bracket me-2"></i> Login Operator
                         </span>
                     </button>
                 </form>
 
-                <!-- Student Escape Hatch (Secondary Action) -->
                 <div class="student-escape-hatch">
                     <p>Not an employee? <a href="student-portal/index.html">Student? Access the Student Portal →</a></p>
                 </div>
@@ -777,7 +770,6 @@
 
     </div>
 
-    <!-- Vue 3 Global Build from CDN & App JS -->
     <script src="shared/libs/vue.global.js"></script>
     <script>
         const { createApp, ref, reactive, computed, onMounted } = Vue;
@@ -804,6 +796,7 @@
                 const loginError = ref('');
                 const errorKey = ref(0);
                 const isLoggingIn = ref(false);
+                const loginStatusText = ref('Verifying...');
                 const showPassword = ref(false);
                 
                 const hadPriorSession = !!(
@@ -844,64 +837,66 @@
                         name: "Super Admin Console",
                         description: "Manage courses, offerings, and departments",
                         icon: "fas fa-shield-halved",
-                        url: "admin/index.html",
+                        url: "admin/",
                         roles: ["SUPER_ADMIN", "ADMIN"]
                     },
                     {
                         name: "Registrar Dashboard",
                         description: "Evaluate applications and clean queues",
                         icon: "fas fa-folder-open",
-                        url: "registrar/index.html",
+                        url: "registrar/",
                         roles: ["SUPER_ADMIN", "ADMIN", "REGISTRAR"]
                     },
                     {
                         name: "Station 1: Advising & Evaluation",
                         description: "TLC helpdesk for unit evaluation and NSTP lock-in",
                         icon: "fas fa-chalkboard-user",
-                        url: "stations/tlc-helpdesk/index.html",
+                        url: "stations/tlc-helpdesk/",
                         roles: ["SUPER_ADMIN", "ADMIN", "HELPDESK"]
                     },
                     {
                         name: "Station 2: Medical Clearance",
                         description: "School Clinic for fitness pre-screening checks",
                         icon: "fas fa-file-medical",
-                        url: "stations/medical-checkup/index.html",
+                        url: "stations/medical-checkup/",
                         roles: ["SUPER_ADMIN", "ADMIN", "MEDICAL"]
                     },
                     {
                         name: "Station 3: Payment Processing",
                         description: "Treasury window for processing downpayments",
                         icon: "fas fa-money-check-dollar",
-                        url: "stations/payment-processing/index.html",
+                        url: "stations/payment-processing/",
                         roles: ["SUPER_ADMIN", "ADMIN", "CASHIER"]
                     },
                     {
                         name: "Station 5: Student Portal Account Activation",
                         description: "Activate permanent credentials and official student portal access",
                         icon: "fas fa-id-card",
-                        url: "stations/it-center/index.html",
+                        url: "stations/it-center/",
                         roles: ["SUPER_ADMIN", "ADMIN", "IT_CENTER"]
                     }
                 ];
 
                 const getRoleRedirectUrl = (role) => {
-                    if (role === 'SUPER_ADMIN' || role === 'ADMIN') return 'admin/index.html';
-                    if (role === 'REGISTRAR') return 'registrar/index.html';
-                    if (role === 'HELPDESK') return 'stations/tlc-helpdesk/index.html';
-                    if (role === 'MEDICAL') return 'stations/medical-checkup/index.html';
-                    if (role === 'CASHIER') return 'stations/payment-processing/index.html';
-                    if (role === 'IT_CENTER') return 'stations/it-center/index.html';
-                    return '';
+                    if (role === 'SUPER_ADMIN' || role === 'ADMIN') return 'admin/';
+                    if (role === 'REGISTRAR') return 'registrar/';
+                    if (role === 'HELPDESK') return 'stations/tlc-helpdesk/';
+                    if (role === 'MEDICAL') return 'stations/medical-checkup/';
+                    if (role === 'CASHIER') return 'stations/payment-processing/';
+                    if (role === 'IT_CENTER') return 'stations/it-center/';
+                    if (role === 'DEVELOPER') return 'monitoring/';
+                    return 'admin/';
                 };
 
                 const roleAllowedWorkstations = {
-                    'SUPER_ADMIN': ['admin/index.html', 'registrar/index.html', 'stations/tlc-helpdesk/index.html', 'stations/medical-checkup/index.html', 'stations/payment-processing/index.html', 'stations/it-center/index.html'],
-                    'ADMIN':       ['admin/index.html', 'registrar/index.html', 'stations/tlc-helpdesk/index.html', 'stations/medical-checkup/index.html', 'stations/payment-processing/index.html', 'stations/it-center/index.html'],
-                    'REGISTRAR':   ['registrar/index.html'],
-                    'HELPDESK':    ['stations/tlc-helpdesk/index.html'],
-                    'MEDICAL':     ['stations/medical-checkup/index.html'],
-                    'CASHIER':     ['stations/payment-processing/index.html'],
-                    'IT_CENTER':   ['stations/it-center/index.html']
+                    'SUPER_ADMIN': ['admin', 'registrar', 'stations/tlc-helpdesk', 'stations/medical-checkup', 'stations/payment-processing', 'stations/it-center', 'monitoring'],
+                    'ADMIN':       ['admin', 'registrar', 'stations/tlc-helpdesk', 'stations/medical-checkup', 'stations/payment-processing', 'stations/it-center', 'monitoring'],
+                    'REGISTRAR':   ['registrar'],
+                    'HELPDESK':    ['stations/tlc-helpdesk'],
+                    'MEDICAL':     ['stations/medical-checkup'],
+                    'CASHIER':     ['stations/payment-processing'],
+                    'IT_CENTER':   ['stations/it-center'],
+                    'DEVELOPER':   ['monitoring']
                 };
 
                 const resolveTarget = (role, redirectParam) => {
@@ -911,9 +906,9 @@
                     clean = clean.replace(/^https?:\/\/[^\/]+/i, '');
                     clean = clean.replace(/^\/?systemtest\//i, '');
                     clean = clean.replace(/^\/+/, '');
-                    const cleanPath = clean.split('?')[0];
+                    const cleanPath = clean.split('?')[0].replace(/\/index\.html$/i, '').replace(/\/+$/, '');
                     const allowed = roleAllowedWorkstations[role] || [];
-                    if (allowed.some(p => cleanPath.toLowerCase().endsWith(p.toLowerCase()))) {
+                    if (allowed.some(p => cleanPath.toLowerCase().endsWith(p.toLowerCase()) || cleanPath.toLowerCase() === p.toLowerCase())) {
                         return clean;
                     }
                     return defaultUrl;
@@ -947,15 +942,13 @@
 
                     if (user && user.role) {
                         currentUser.value = user;
-                        const target = resolveTarget(user.role, urlParams.get('redirect'));
-                        if (user.must_change_password) {
+                        const target = resolveTarget(user.role, urlParams.get('redirect')) || getRoleRedirectUrl(user.role) || 'admin/';
+                        if (user.must_change_password && typeof PasswordChangeGuard !== 'undefined' && typeof PasswordChangeGuard.checkAndPrompt === 'function') {
                             PasswordChangeGuard.checkAndPrompt(user, function() {
-                                if (target) window.location.replace(target);
+                                window.location.replace(target);
                             });
                         } else {
-                            if (target) {
-                                window.location.replace(target);
-                            }
+                            window.location.replace(target);
                         }
                     }
                 };
@@ -974,6 +967,7 @@
                 const handleLogin = () => {
                     if (isLoggingIn.value) return;
                     isLoggingIn.value = true;
+                    loginStatusText.value = 'Verifying credentials...';
 
                     fetch('shared/backend/login.php', {
                         method: 'POST',
@@ -985,8 +979,9 @@
                     })
                     .then(res => res.json())
                     .then(result => {
-                        isLoggingIn.value = false;
                         if (result.success && result.data) {
+                            isLoggingIn.value = true;
+                            loginStatusText.value = 'Access Granted! Launching...';
                             const user = {
                                 username: result.data.username,
                                 name: result.data.name,
@@ -1005,16 +1000,17 @@
                             }
 
                             const urlParams = new URLSearchParams(window.location.search);
-                            const target = resolveTarget(user.role, urlParams.get('redirect'));
+                            const target = resolveTarget(user.role, urlParams.get('redirect')) || result.data.redirectUrl || getRoleRedirectUrl(user.role) || 'admin/';
 
-                            if (user.must_change_password) {
+                            if (user.must_change_password && typeof PasswordChangeGuard !== 'undefined' && typeof PasswordChangeGuard.checkAndPrompt === 'function') {
                                 PasswordChangeGuard.checkAndPrompt(user, function() {
-                                    if (target) window.location.replace(target);
+                                    window.location.replace(target);
                                 });
-                            } else if (target) {
+                            } else {
                                 window.location.replace(target);
                             }
                         } else {
+                            isLoggingIn.value = false;
                             errorKey.value++;
                             loginError.value = result.error || 'Authentication failed. Please check your credentials.';
                         }
@@ -1043,6 +1039,7 @@
                     sessionExpiredNotice,
                     errorKey,
                     isLoggingIn,
+                    loginStatusText,
                     showPassword,
                     currentUser,
                     workstations,

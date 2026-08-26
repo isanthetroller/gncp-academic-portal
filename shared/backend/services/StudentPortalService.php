@@ -515,6 +515,9 @@ class StudentPortalService {
             return ['success' => false, 'message' => 'Student ID or Email address is required.', 'code' => 400];
         }
 
+        // Rate limit: max 5 password reset attempts per IP per 10 minutes
+        checkRateLimit('student_password_reset', 5, 600);
+
         $stmt = $pdo->prepare("
             SELECT * FROM `students` 
             WHERE `id` = :id 
@@ -567,9 +570,17 @@ class StudentPortalService {
                 $targetEmail = $pre['email'] ?? '';
             }
         }
-
         if (!$targetEmail) {
-            return ['success' => false, 'message' => 'No account found matching that Student ID or Email address.', 'code' => 404];
+            // Neutralize account enumeration: return uniform generic response
+            $dummyMasked = 's*****@gncp.edu.ph';
+            return [
+                'success' => true,
+                'data'    => [
+                    'maskedEmail' => $dummyMasked,
+                    'studentId'   => $identifier
+                ],
+                'message' => "If an account matching that identifier exists in our records, a verification code has been dispatched."
+            ];
         }
 
         $pdo->exec("
@@ -578,6 +589,7 @@ class StudentPortalService {
                 `email`      VARCHAR(150) NOT NULL,
                 `token`      VARCHAR(255) NOT NULL,
                 `code`       VARCHAR(6) NOT NULL,
+                `attempts`   INT DEFAULT 0,
                 `user_type`  VARCHAR(20) DEFAULT 'STUDENT',
                 `expires_at` DATETIME NOT NULL,
                 `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -588,12 +600,12 @@ class StudentPortalService {
 
         $pdo->prepare("DELETE FROM `password_resets` WHERE `email` = :email")->execute(['email' => $targetEmail]);
 
-        $resetCode  = sprintf('%06d', rand(100000, 999999));
+        $resetCode  = sprintf('%06d', random_int(100000, 999999));
         $resetToken = bin2hex(random_bytes(16));
 
         $insStmt = $pdo->prepare("
-            INSERT INTO `password_resets` (`email`, `token`, `code`, `user_type`, `expires_at`)
-            VALUES (:email, :token, :code, 'STUDENT', DATE_ADD(NOW(), INTERVAL 30 MINUTE))
+            INSERT INTO `password_resets` (`email`, `token`, `code`, `attempts`, `user_type`, `expires_at`)
+            VALUES (:email, :token, :code, 0, 'STUDENT', DATE_ADD(NOW(), INTERVAL 30 MINUTE))
         ");
         $insStmt->execute([
             'email' => $targetEmail,
@@ -602,19 +614,14 @@ class StudentPortalService {
         ]);
 
         $mailResult = EmailService::sendPasswordResetCode($targetEmail, $studentName ?: 'Student', $resetCode);
-        if (!$mailResult['success']) {
-            return ['success' => false, 'message' => 'Failed to dispatch password reset email via SMTP: ' . ($mailResult['message'] ?? 'SMTP Error'), 'code' => 500];
-        }
-
         $masked = self::maskEmailAddress($targetEmail);
         return [
             'success' => true,
             'data'    => [
                 'maskedEmail' => $masked,
-                'studentId'   => $studentId,
-                'targetEmail' => $targetEmail
+                'studentId'   => $studentId
             ],
-            'message' => "Password reset verification code has been sent to $masked. Please check your email inbox."
+            'message' => "If an account matching that identifier exists in our records, a verification code has been dispatched to $masked."
         ];
     }
 
@@ -636,34 +643,32 @@ class StudentPortalService {
             WHERE `id` = :id 
                OR `email` = :email 
                OR `temp_reference_no` = :ref 
-               OR JSON_UNQUOTE(JSON_EXTRACT(`personal_info`, '$.email')) = :pemail
             LIMIT 1
         ");
-        $stmt->execute(['id' => $identifier, 'email' => $identifier, 'ref' => $identifier, 'pemail' => $identifier]);
+        $stmt->execute(['id' => $identifier, 'email' => $identifier, 'ref' => $identifier]);
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $emailsToCheck = [];
         if ($student) {
-            if (!empty($student['email'])) $emailsToCheck[] = trim($student['email']);
+            if (!empty($student['email'])) $emailsToCheck[] = $student['email'];
             $pInfo = json_decode($student['personal_info'] ?? '{}', true) ?: [];
-            if (!empty($pInfo['email'])) $emailsToCheck[] = trim($pInfo['email']);
-            
-            $peQuery = $pdo->prepare("SELECT `email` FROM `pre_enrollments` WHERE `existing_student_id` = :sid OR `temp_student_id` = :ref LIMIT 1");
-            $peQuery->execute(['sid' => $student['id'], 'ref' => $student['temp_reference_no'] ?? $student['id']]);
-            $peRow = $peQuery->fetch(PDO::FETCH_ASSOC);
-            if ($peRow && !empty($peRow['email'])) {
-                $emailsToCheck[] = trim($peRow['email']);
-            }
+            if (!empty($pInfo['email'])) $emailsToCheck[] = $pInfo['email'];
         } else {
-            $peStmt = $pdo->prepare("SELECT * FROM `pre_enrollments` WHERE `temp_student_id` = :ref OR `email` = :email LIMIT 1");
-            $peStmt->execute(['ref' => $identifier, 'email' => $identifier]);
+            $peStmt = $pdo->prepare("
+                SELECT * FROM `pre_enrollments` 
+                WHERE `temp_student_id` = :ref 
+                   OR `email` = :email 
+                   OR `existing_student_id` = :sid 
+                LIMIT 1
+            ");
+            $peStmt->execute(['ref' => $identifier, 'email' => $identifier, 'sid' => $identifier]);
             $pre = $peStmt->fetch(PDO::FETCH_ASSOC);
             if ($pre && !empty($pre['email'])) {
-                $emailsToCheck[] = trim($pre['email']);
+                $emailsToCheck[] = $pre['email'];
             }
         }
 
-        $emailsToCheck = array_values(array_unique(array_filter($emailsToCheck)));
+        $emailsToCheck = array_unique(array_filter($emailsToCheck));
 
         if (empty($emailsToCheck)) {
             return ['success' => false, 'message' => 'Student account record not found.', 'code' => 404];
@@ -672,14 +677,26 @@ class StudentPortalService {
         $placeholders = implode(',', array_fill(0, count($emailsToCheck), '?'));
         $chkStmt = $pdo->prepare("
             SELECT * FROM `password_resets` 
-            WHERE `email` IN ($placeholders) AND `code` = ? AND `expires_at` > NOW()
+            WHERE `email` IN ($placeholders) AND `expires_at` > NOW()
             ORDER BY `id` DESC LIMIT 1
         ");
-        $chkStmt->execute(array_merge($emailsToCheck, [$code]));
+        $chkStmt->execute($emailsToCheck);
         $resetRow = $chkStmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$resetRow) {
-            return ['success' => false, 'message' => 'Invalid or expired 6-digit verification code. Please request a new code.', 'code' => 400];
+            return ['success' => false, 'message' => 'Invalid or expired verification code. Please request a new code.', 'code' => 400];
+        }
+
+        // Throttle failed brute force attempts (max 5)
+        if (($resetRow['attempts'] ?? 0) >= 5) {
+            $pdo->prepare("DELETE FROM `password_resets` WHERE `id` = :id")->execute(['id' => $resetRow['id']]);
+            return ['success' => false, 'message' => 'Too many failed verification attempts. This code has been invalidated for security.', 'code' => 429];
+        }
+
+        if (!hash_equals($resetRow['code'], $code)) {
+            $pdo->prepare("UPDATE `password_resets` SET `attempts` = `attempts` + 1 WHERE `id` = :id")->execute(['id' => $resetRow['id']]);
+            $remaining = 5 - (($resetRow['attempts'] ?? 0) + 1);
+            return ['success' => false, 'message' => "Invalid 6-digit verification code. ($remaining attempt(s) remaining)", 'code' => 400];
         }
 
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);

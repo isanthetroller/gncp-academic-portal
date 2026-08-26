@@ -121,12 +121,8 @@ class StudentPortalController {
 
     public function getDocuments(array $params = []): array {
         $studentId = $params['studentId'] ?? ($params['id'] ?? ($params['ref'] ?? ''));
-        $model = new StudentModel($this->pdo);
-        $data = $model->getStudentRequirements($studentId);
-        if (!$data) {
-            return ['success' => false, 'message' => 'Student document requirements record not found.', 'code' => 404];
-        }
-        return ['success' => true, 'data' => $data, 'message' => 'Document requirements loaded successfully.'];
+        $ctrl = new StudentController($this->pdo);
+        return $ctrl->getDocuments($studentId);
     }
 
     public function uploadDocument(array $data = []): array {

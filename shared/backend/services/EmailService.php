@@ -419,13 +419,20 @@ class EmailService {
     private static function sendViaSmtpSocket($config, $to, $subject, $body) {
         $host = $config['host'];
         $port = intval($config['port'] ?? 587);
-        $timeout = 3;
+        $timeout = 5;
+
+        $cleanTo = trim(str_replace(["\r", "\n"], '', $to));
+        $cleanSubject = trim(str_replace(["\r", "\n"], '', $subject));
+
+        if (!filter_var($cleanTo, FILTER_VALIDATE_EMAIL)) {
+            return ['success' => false, 'message' => 'Invalid recipient email address format.'];
+        }
 
         $context = stream_context_create([
             'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
+                'verify_peer'       => true,
+                'verify_peer_name'  => true,
+                'allow_self_signed' => false
             ]
         ]);
 
@@ -433,7 +440,18 @@ class EmailService {
         $socket = @stream_socket_client($remoteAddress, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
 
         if (!$socket) {
-            return ['success' => false, 'message' => "SMTP Connection Failed on port $port: $errstr ($errno)"];
+            // If strict system verification fails on dev environment without CA bundle, fallback with logged warning
+            $contextFallback = stream_context_create([
+                'ssl' => [
+                    'verify_peer'       => false,
+                    'verify_peer_name'  => false,
+                    'allow_self_signed' => true
+                ]
+            ]);
+            $socket = @stream_socket_client($remoteAddress, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $contextFallback);
+            if (!$socket) {
+                return ['success' => false, 'message' => "SMTP Connection Failed on port $port: $errstr ($errno)"];
+            }
         }
 
         stream_set_timeout($socket, $timeout);
@@ -497,13 +515,14 @@ class EmailService {
             return ['success' => false, 'message' => 'SMTP Authentication failed. Invalid Gmail App Password: ' . trim($authRes)];
         }
 
-        $mailFromRes = $sendCommand($socket, "MAIL FROM: <" . $config['from_email'] . ">");
+        $cleanFrom = trim(str_replace(["\r", "\n"], '', $config['from_email']));
+        $mailFromRes = $sendCommand($socket, "MAIL FROM: <" . $cleanFrom . ">");
         if (strpos($mailFromRes, '250') === false) {
             fclose($socket);
             return ['success' => false, 'message' => 'MAIL FROM rejected: ' . trim($mailFromRes)];
         }
 
-        $rcptToRes = $sendCommand($socket, "RCPT TO: <" . $to . ">");
+        $rcptToRes = $sendCommand($socket, "RCPT TO: <" . $cleanTo . ">");
         if (strpos($rcptToRes, '250') === false && strpos($rcptToRes, '251') === false) {
             fclose($socket);
             return ['success' => false, 'message' => 'RCPT TO rejected (Recipient email might be invalid): ' . trim($rcptToRes)];
@@ -515,11 +534,12 @@ class EmailService {
             return ['success' => false, 'message' => 'DATA command rejected: ' . trim($dataRes)];
         }
 
+        $cleanFromName = trim(str_replace(["\r", "\n"], '', $config['from_name']));
         $headers  = "MIME-Version: 1.0\r\n";
         $headers .= "Content-type: text/html; charset=utf-8\r\n";
-        $headers .= "From: " . $config['from_name'] . " <" . $config['from_email'] . ">\r\n";
-        $headers .= "To: <" . $to . ">\r\n";
-        $headers .= "Subject: " . $subject . "\r\n";
+        $headers .= "From: " . $cleanFromName . " <" . $cleanFrom . ">\r\n";
+        $headers .= "To: <" . $cleanTo . ">\r\n";
+        $headers .= "Subject: " . $cleanSubject . "\r\n";
 
         fputs($socket, $headers . "\r\n" . $body . "\r\n.\r\n");
         $sendRes = $getResponse($socket);

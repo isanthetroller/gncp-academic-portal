@@ -36,26 +36,15 @@ window.app = createApp({
         });
 
         const getHelpdeskStepStatus = (s) => {
+            if (typeof StationPipeline !== 'undefined') {
+                return StationPipeline.getStepStatus('helpdesk', s);
+            }
             if (!s) return 'PENDING';
             const help = s.helpdesk || {};
-            if (help.status === 'COMPLETED' || help.status === 'ADVISED' || help.status === 'CLEARED') {
-                return 'COMPLETED';
-            }
-            if (help.status === 'FLAGGED') {
-                return 'FLAGGED';
-            }
-            if (s.roadmap && Array.isArray(s.roadmap)) {
-                const step = s.roadmap.find(r => r.stepId === 'advising_assessment' || r.name === 'Academic Advising' || r.id === 3);
-                if (step) {
-                    if (step.status === 'COMPLETED') return 'COMPLETED';
-                    if (step.status === 'FLAGGED') return 'FLAGGED';
-                    if (step.status === 'IN_PROGRESS') return 'PENDING';
-                }
-            }
-            if (['ADVISED', 'MEDICAL_CLEARED', 'PAID', 'ENROLLED', 'APPROVED'].includes(String(s.status).toUpperCase())) {
-                return 'COMPLETED';
-            }
-            return help.status || 'PENDING';
+            if (['COMPLETED', 'ADVISED', 'CLEARED'].includes(String(help.status || '').toUpperCase())) return 'COMPLETED';
+            if (String(help.status || '').toUpperCase() === 'FLAGGED') return 'FLAGGED';
+            if (['ADVISED', 'MEDICAL_CLEARED', 'PAID', 'ENROLLED', 'PROMOTED'].includes(String(s.status || '').toUpperCase())) return 'COMPLETED';
+            return 'PENDING';
         };
 
         const loadQueue = () => {
@@ -63,40 +52,36 @@ window.app = createApp({
             const result = [];
             for (let i = 0; i < queue.length; i++) {
                 const s = queue[i];
-                // Enforce sequential station workflow
-                const step = s.roadmap ? s.roadmap.find(r => r.stepId === 'advising_assessment' || r.name === 'Academic Advising' || r.id === 3) : null;
-                if (!step || step.status === 'PENDING') {
-                    continue;
+                if (typeof StationPipeline !== 'undefined') {
+                    if (!StationPipeline.isAtOrPastStation('helpdesk', s)) continue;
+                } else {
+                    const statusUpper = String(s.status || '').toUpperCase();
+                    const isAtOrPast = ['VERIFIED', 'APPROVED', 'ADVISED', 'MEDICAL_CLEARED', 'PAID', 'ENROLLED', 'PROMOTED'].includes(statusUpper);
+                    if (!isAtOrPast) continue;
                 }
+
+                const normalized = (typeof StationPipeline !== 'undefined')
+                    ? StationPipeline.normalizeStudent(s, i, 'helpdesk')
+                    : {
+                        id: s.referenceNumber || s.id,
+                        referenceNumber: s.referenceNumber || s.id,
+                        name: s.name || 'Applicant',
+                        program: s.program || '---',
+                        studentType: s.studentType || 'REGULAR',
+                        roadmap: s.roadmap,
+                        medical: s.medical,
+                        payment: s.payment,
+                        form: s.form,
+                        prospectusSubjects: s.prospectusSubjects || [],
+                        availableSections: s.availableSections || []
+                    };
+
                 const help = s.helpdesk || {};
-                const studentName = s.name || s.fullName || (s.firstName ? [s.firstName, s.middleName, s.lastName].filter(Boolean).join(' ') : '') || (s.form ? [s.form.firstName, s.form.middleName, s.form.lastName].filter(Boolean).join(' ') : '') || 'Applicant';
-                const studentProg = s.program || s.courseCode || (s.form ? s.form.courseCode : '') || '---';
+                normalized.nstp = help.nstp || s.nstp || (s.form ? s.form.nstp : 'ROTC') || 'ROTC';
+                normalized.tlcNotes = help.tlcNotes || '';
+                normalized.status = getHelpdeskStepStatus(s);
 
-                const padId = String(s.id || (i + 1)).padStart(3, '0');
-                const queueTicket = (s.queueTickets && s.queueTickets.helpdesk) ? s.queueTickets.helpdesk : ('ADV-' + padId);
-                const arrivedAt = (s.stationArrivals && s.stationArrivals.helpdesk) ? s.stationArrivals.helpdesk : (s.createdAt || s.datePreRegistered || '');
-
-                const flatStudent = {
-                    id: s.referenceNumber || s.id,
-                    referenceNumber: s.referenceNumber || s.id,
-                    queueTicket: queueTicket,
-                    arrivedAt: arrivedAt,
-                    createdAt: s.createdAt,
-                    name: studentName,
-                    program: studentProg,
-                    studentType: s.studentType || (s.form ? s.form.studentType : 'REGULAR'),
-                    roadmap: s.roadmap,
-                    medical: s.medical,
-                    payment: s.payment,
-                    form: s.form,
-                    // Flatten helpdesk specific properties safely
-                    nstp: help.nstp || s.nstp || (s.form ? s.form.nstp : 'ROTC') || 'ROTC',
-                    tlcNotes: help.tlcNotes || '',
-                    status: getHelpdeskStepStatus(s),
-                    prospectusSubjects: s.prospectusSubjects || [],
-                    availableSections: s.availableSections || []
-                };
-                result.push(flatStudent);
+                result.push(normalized);
             }
             students.value = result;
         };
@@ -122,6 +107,20 @@ window.app = createApp({
             localStorage.removeItem('gncp_station_user');
             localStorage.removeItem('gncp_admin_user');
 
+            // Optimistically load session from tab-scoped sessionStorage for 0ms initial render
+            const cachedRaw = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user');
+            if (cachedRaw) {
+                try {
+                    const parsed = JSON.parse(cachedRaw);
+                    if (parsed && ['HELPDESK', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                        currentUser.value = parsed;
+                    }
+                } catch (e) {}
+            }
+
+            // Immediately load queue in parallel with background session check
+            loadQueue();
+
             try {
                 const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
                 if (res.ok) {
@@ -136,26 +135,26 @@ window.app = createApp({
                             window.PasswordChangeGuard.checkAndPrompt(result.data, function() {
                                 loadQueue();
                             });
-                        } else {
-                            loadQueue();
                         }
                         return;
                     }
                 }
             } catch (e) {
-                console.error('[Helpdesk] Session check error:', e);
+                console.warn('[Helpdesk] Session check warning:', e);
             }
 
-            if (typeof window.SessionExpirationGuard !== 'undefined') {
-                window.SessionExpirationGuard.handleExpiredSession({
-                    title: 'Session Expired',
-                    message: 'Your helpdesk advising session has expired. Please sign in again to continue student evaluation.',
-                    reason: 'expired'
-                });
-            } else {
-                sessionStorage.removeItem('gncp_station_user');
-                sessionStorage.removeItem('gncp_admin_user');
-                window.location.href = '../../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            if (!currentUser.value) {
+                if (typeof window.SessionExpirationGuard !== 'undefined') {
+                    window.SessionExpirationGuard.handleExpiredSession({
+                        title: 'Session Expired',
+                        message: 'Your helpdesk advising session has expired. Please sign in again to continue student evaluation.',
+                        reason: 'expired'
+                    });
+                } else {
+                    sessionStorage.removeItem('gncp_station_user');
+                    sessionStorage.removeItem('gncp_admin_user');
+                    window.location.href = '../../?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                }
             }
         };
 
@@ -197,16 +196,31 @@ window.app = createApp({
             showLogoutConfirm.value = false;
             stopLiveSync();
             currentUser.value = null;
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Signing Out...',
+                    text: 'Ending your session...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            }
+
             sessionStorage.removeItem('gncp_station_user');
             sessionStorage.removeItem('gncp_admin_user');
             localStorage.removeItem('gncp_station_user');
             localStorage.removeItem('gncp_admin_user');
 
-            fetch('../../api/index.php?action=auth/logout', { method: 'POST' })
-                .catch(() => {})
-                .finally(() => {
-                    window.location.replace('../../index.html?clear=true&logout=true');
-                });
+            // Dispatch non-blocking logout with keepalive
+            try {
+                fetch('../../api/index.php?action=auth/logout', { method: 'POST', keepalive: true }).catch(() => {});
+            } catch (e) {}
+
+            window.location.replace('../../?clear=true&logout=true');
         };
 
         const toggleSort = (field) => {
@@ -363,7 +377,7 @@ window.app = createApp({
                 s.helpdesk.tlcNotes = student.tlcNotes;
 
                 // Sync global roadmap advising step
-                const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r.stepId === 'advising_assessment' || r.name === 'Academic Advising' || r.id === 3) : -1;
+                const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r && (r.stepId === 'advising_assessment' || r.stepId === 'academic_advising' || r.name === 'Academic Advising' || r.title === 'Academic Advising & Block Sectioning' || r.id === 3)) : -1;
                 if (currentStepIdx !== -1) {
                     if (student.status === 'COMPLETED') {
                         s.roadmap[currentStepIdx].status = 'COMPLETED';
@@ -397,7 +411,7 @@ window.app = createApp({
                         s.helpdesk.advisedSubjects = subjects;
 
                         // Auto-open next step (Medical Clearance)
-                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING' || r.status === 'LOCKED');
+                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r && (['PENDING', 'LOCKED'].includes(String(r.status || '').toUpperCase()) || r.stepId === 'clinic_checkup' || r.stepId === 'medical_checkup' || r.name === 'Medical Clearance'));
                         if (nextStep) {
                             nextStep.status = 'IN_PROGRESS';
                             nextStep.updatedAt = new Date().toISOString();
@@ -408,6 +422,8 @@ window.app = createApp({
                     } else {
                         s.roadmap[currentStepIdx].status = 'IN_PROGRESS';
                     }
+                } else if (student.status === 'COMPLETED') {
+                    s.status = 'ADVISED';
                 }
             }, ['helpdesk', 'payment', 'roadmap', 'status']);
             loadQueue();

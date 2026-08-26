@@ -7,6 +7,7 @@
 /**
  * Fetches mapped curriculum subjects, units, and fees for a given program, year level, and semester.
  */
+if (!function_exists('getCurriculumSubjects')) {
 function getCurriculumSubjects($pdo, $programCode, $yearLevel = '1st Year', $semester = '1st Semester', $curriculumVersion = null) {
     $aliasMap = [
         'BSCPE' => 'BS Computer Engineering',
@@ -61,10 +62,12 @@ function getCurriculumSubjects($pdo, $programCode, $yearLevel = '1st Year', $sem
 
     return $results;
 }
+}
 
 /**
  * Returns requirements array for a given student type and SHS track.
  */
+if (!function_exists('getRequirementsForType')) {
 function getRequirementsForType($studentType, $shsTrack = '') {
     $studentType = strtoupper($studentType);
     if ($studentType === 'FRESHMAN') {
@@ -106,10 +109,12 @@ function getRequirementsForType($studentType, $shsTrack = '') {
         ];
     }
 }
+}
 
 /**
  * Generates a collision-free sequential student ID based on existing records for the academic year.
  */
+if (!function_exists('generateUniqueStudentId')) {
 function generateUniqueStudentId($pdo, $year = '2026') {
     $stmt = $pdo->prepare("SELECT MAX(CAST(SUBSTRING_INDEX(id, '-', -1) AS UNSIGNED)) as max_num FROM `students` WHERE `id` LIKE :pattern");
     $stmt->execute(['pattern' => "$year-%"]);
@@ -122,11 +127,13 @@ function generateUniqueStudentId($pdo, $year = '2026') {
     
     return "$year-1001";
 }
+}
 
 /**
  * Promotes a pre-enrollment queue record to a permanent student profile.
  * Creates credentials, seeds directories, logs enrollment, and cleans up staging queues.
  */
+if (!function_exists('promotePreEnrollmentToStudent')) {
 function promotePreEnrollmentToStudent($pdo, $record, $refNum, $roadmapJson, $itData = []) {
     $startedTx = false;
     if (!$pdo->inTransaction()) {
@@ -324,4 +331,5 @@ function promotePreEnrollmentToStudent($pdo, $record, $refNum, $roadmapJson, $it
         }
         throw $e;
     }
+}
 }

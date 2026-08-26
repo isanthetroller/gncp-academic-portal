@@ -1,0 +1,128 @@
+# ==============================================================================
+# GNCP Academic & Enrollment System — Production Server Configuration & Caching
+# ==============================================================================
+
+DirectoryIndex index.html index.php
+
+# ------------------------------------------------------------------------------
+# 1. URL Rewriting: Hide .html and index.html for clean, modern URLs
+# ------------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # A. Redirect /folder/index.html to /folder/ (trailing slash)
+    RewriteCond %{THE_REQUEST} \s/+(.*?)/index\.html[?\s] [NC]
+    RewriteRule ^ /%1/ [R=301,L,NE]
+
+    # B. Redirect root /index.html to /
+    RewriteCond %{THE_REQUEST} \s/+index\.html[?\s] [NC]
+    RewriteRule ^ / [R=301,L,NE]
+
+    # C. Redirect /path/file.html to /path/file (Hide .html extension on GET requests)
+    RewriteCond %{THE_REQUEST} \s/+([^?]+)\.html[\s?] [NC]
+    RewriteRule ^ /%1 [R=301,L,NE]
+
+    # D. Internally resolve extensionless URL to .html if file exists
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME}.html -f
+    RewriteRule ^(.*)$ $1.html [L,QSA]
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# 2. Enable GZIP & Deflate Compression (Reduces payload size by up to 75%)
+# ------------------------------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript
+    AddOutputFilterByType DEFLATE application/javascript application/x-javascript application/json
+    AddOutputFilterByType DEFLATE application/xml application/xhtml+xml application/rss+xml
+    AddOutputFilterByType DEFLATE image/svg+xml font/ttf font/otf font/woff font/woff2
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# 3. Browser Cache-Control & Expiration Policy (Instant repeat page loads)
+# ------------------------------------------------------------------------------
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresDefault "access plus 1 day"
+
+    # Static CSS and JavaScript (Cached for 7 days)
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType text/javascript "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType application/x-javascript "access plus 7 days"
+
+    # Images and Media (Cached for 1 month)
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType image/x-icon "access plus 1 month"
+
+    # Web Fonts (Cached for 1 year)
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType font/otf "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+
+    # Dynamic HTML and JSON APIs (No cache to ensure real-time accuracy)
+    ExpiresByType text/html "access plus 0 seconds"
+    ExpiresByType application/json "access plus 0 seconds"
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# 4. HTTP Header Optimizations & Security
+# ------------------------------------------------------------------------------
+# Disable Directory Index Browsing
+Options -Indexes
+
+<IfModule mod_headers.c>
+    # Strip Server & Language Fingerprints
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
+
+    # Static Assets Cache-Control Headers
+    <FilesMatch "\.(ico|jpe?g|png|gif|webp|svg|woff2?|ttf|otf|eot)$">
+        Header set Cache-Control "max-age=2592000, public"
+    </FilesMatch>
+
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "max-age=604800, public, must-revalidate"
+    </FilesMatch>
+
+    # Protect sensitive files from direct download
+    <FilesMatch "(\.(sql|log|git|env|md|jsonl|ini|conf|bak|sh|bat)|composer\.(json|lock)|package\.(json|lock)|database\.php|mail\.php)$">
+        <IfModule mod_authz_core.c>
+            Require all denied
+        </IfModule>
+        <IfModule !mod_authz_core.c>
+            Order allow,deny
+            Deny from all
+        </IfModule>
+    </FilesMatch>
+
+    # Block all hidden dotfiles (e.g. .git, .env, .htaccess)
+    <FilesMatch "^\.">
+        <IfModule mod_authz_core.c>
+            Require all denied
+        </IfModule>
+        <IfModule !mod_authz_core.c>
+            Order allow,deny
+            Deny from all
+        </IfModule>
+    </FilesMatch>
+
+    # Security Headers
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# 5. UTF-8 Default Charset
+# ------------------------------------------------------------------------------
+AddDefaultCharset UTF-8

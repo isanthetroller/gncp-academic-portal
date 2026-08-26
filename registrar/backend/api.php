@@ -72,9 +72,14 @@ try {
             $enrollments = $pdo->query("SELECT * FROM `enrollments` ORDER BY `id` DESC")->fetchAll(PDO::FETCH_ASSOC);
 
             $preEnrollments = $pdo->query("SELECT * FROM `pre_enrollments` ORDER BY `created_at` ASC")->fetchAll(PDO::FETCH_ASSOC);
+            if (!function_exists('getRequirementsForType')) {
+                require_once __DIR__ . '/../../shared/backend/utils/student.php';
+            }
             $pendingApplications = array_map(function($row) {
                 $fullName = trim($row['first_name'] . ' ' . ($row['middle_name'] ? $row['middle_name'] . ' ' : '') . $row['last_name']);
-                $requirements = getRequirementsForType($row['student_type'] ?? 'FRESHMAN', $row['shs_track'] ?? '');
+                $requirements = function_exists('getRequirementsForType')
+                    ? getRequirementsForType($row['student_type'] ?? 'FRESHMAN', $row['shs_track'] ?? '')
+                    : ['Form 138 / Report Card', 'Certificate of Good Moral Character', 'PSA Birth Certificate', '2x2 Pictures'];
                 $requirementsData = json_decode((string)($row['requirements_data'] ?? ''), true) ?: [
                     'status' => 'PENDING',
                     'docs' => ['psa' => 'not-submitted', 'reportCard' => 'not-submitted', 'goodMoral' => 'not-submitted'],

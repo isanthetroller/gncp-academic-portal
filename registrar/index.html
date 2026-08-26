@@ -4,28 +4,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
     <title>Registrar Dashboard | Go-on National College</title>
     <meta name="description"
         content="Registrar dashboard for student records, course sections, and enrollment management.">
     <link rel="stylesheet" href="../shared/libs/fonts/fonts.css">
     <link href="../shared/libs/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../shared/libs/font-awesome/css/all.min.css">
-    <link rel="stylesheet" href="assets/css/style.css?v=20260822_v5">
-    <link rel="stylesheet" href="../shared/css/admin_workstation_theme.css?v=20260822_swal">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260825_v6">
+    <link rel="stylesheet" href="../shared/css/admin_workstation_theme.css?v=20260825_light">
     <link rel="stylesheet" href="../shared/css/sidebar.css?v=10">
-    <link rel="stylesheet" href="../shared/libs/login.css">
     <!-- Core Libraries -->
     <script src="../shared/libs/bootstrap.bundle.min.js" defer></script>
     <script src="../shared/libs/vue.global.js" defer></script>
     <script src="../shared/libs/sweetalert2.all.min.js" defer></script>
-    <script src="../shared/js/SessionExpirationGuard.js" defer></script>
-    <script src="../shared/js/PasswordChangeGuard.js" defer></script>
-    <script src="../shared/js/components/EmployeeSidebar.js?v=10" defer></script>
+    <script src="../shared/js/SessionExpirationGuard.js?v=20260826_v9" defer></script>
+    <script src="../shared/js/PasswordChangeGuard.js?v=20260826_v9" defer></script>
+    <script src="../shared/js/components/EmployeeSidebar.js?v=20260826_v9" defer></script>
+    <script src="../shared/js/StationPipeline.js?v=20260826_v9" defer></script>
     <!-- Application MVC & Service Layer -->
-    <script src="assets/js/services/RegistrarApiService.js?v=16" defer></script>
-    <script src="assets/js/models/RegistrarModel.js?v=16" defer></script>
-    <script src="assets/js/views/RegistrarView.js?v=16" defer></script>
-    <script src="assets/js/controllers/RegistrarController.js?v=20260822_swal" defer></script>
+    <script src="assets/js/services/RegistrarApiService.js?v=20260826_v9" defer></script>
+    <script src="assets/js/models/RegistrarModel.js?v=20260826_v9" defer></script>
+    <script src="assets/js/views/RegistrarView.js?v=20260826_v9" defer></script>
+    <script src="assets/js/controllers/RegistrarController.js?v=20260826_v9" defer></script>
     <style>
         [v-cloak] {
             display: none !important;
@@ -365,197 +366,210 @@
                         <h5 class="modal-title" id="applicationModalLabel">{{ selectedApplication ? 'Review Enrollment Application' : 'Application Details' }}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body" v-if="selectedApplication">
-                        <div class="row g-4">
-                            <!-- Conditional Undertaking Promissory Banner -->
-                            <div class="col-12" v-if="hasActiveUndertakings()">
-                                <div class="alert alert-warning d-flex align-items-center gap-3 p-3 rounded-3 shadow-sm border-warning-subtle mb-0" style="background: rgba(245,158,11,0.09); border-left: 4px solid #f59e0b;">
-                                    <i class="fa-solid fa-triangle-exclamation fs-4 text-warning flex-shrink-0"></i>
-                                    <div>
-                                        <div class="fw-bold text-dark" style="font-size:0.88rem;">Conditional Admission: Student Has Documents Under Promissory Undertaking</div>
-                                        <div class="text-muted small">Student must comply with all promissory obligations on or before the agreed deadline. Approval grants conditional station clearance.</div>
+                    <div class="modal-body p-4" v-if="selectedApplication">
+                        <!-- Conditional Undertaking Promissory Banner -->
+                        <div v-if="hasActiveUndertakings()" class="mb-4">
+                            <div class="alert alert-warning d-flex align-items-center gap-3 p-3 rounded-3 shadow-sm border-warning-subtle mb-0" style="background: rgba(245,158,11,0.09); border-left: 4px solid #f59e0b;">
+                                <i class="fa-solid fa-triangle-exclamation fs-4 text-warning flex-shrink-0"></i>
+                                <div>
+                                    <div class="fw-bold text-dark" style="font-size:0.88rem;">Conditional Admission: Student Has Documents Under Promissory Undertaking</div>
+                                    <div class="text-muted small">Student must comply with all promissory obligations on or before the agreed deadline. Approval grants conditional station clearance.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Applicant Identity & Overview Card -->
+                        <div class="card p-3 border border-light-subtle rounded-3 bg-white shadow-sm mb-4">
+                            <!-- Reference Header & Status Badge -->
+                            <div class="d-flex justify-content-between align-items-center pb-2.5 mb-3 border-bottom border-light-subtle">
+                                <div>
+                                    <span class="text-uppercase text-muted fw-bold font-monospace" style="font-size: 0.70rem; letter-spacing: 0.8px;">Application Reference ID</span>
+                                    <h4 class="mb-0 fw-bold font-monospace text-success mt-0.5">{{ selectedApplication.referenceNumber }}</h4>
+                                </div>
+                                <div class="text-end">
+                                    <span class="status-badge" :class="selectedApplication.status.toLowerCase().replace(/[\s_]+/g, '-')">{{ selectedApplication.status }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Personal & Contact Information -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6 border-end-md">
+                                    <h6 class="fw-bold text-dark mb-2" style="font-size: 0.82rem;"><i class="fa-solid fa-user me-1.5 text-success"></i>Personal Information</h6>
+                                    <div class="d-flex flex-column gap-1" style="font-size: 0.82rem;">
+                                        <div><span class="text-muted">Name:</span> <strong class="text-dark">{{ selectedApplication.applicantName }}</strong></div>
+                                        <div><span class="text-muted">Birth Date:</span> <span class="text-dark">{{ selectedApplication.personalInfo ? selectedApplication.personalInfo.birthDate : 'N/A' }}</span></div>
+                                        <div><span class="text-muted">Gender:</span> <span class="text-dark">{{ selectedApplication.personalInfo ? selectedApplication.personalInfo.gender : 'N/A' }}</span></div>
+                                        <div><span class="text-muted">Address:</span> <span class="text-dark">{{ selectedApplication.personalInfo ? selectedApplication.personalInfo.address : 'N/A' }}</span></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 ps-md-4">
+                                    <h6 class="fw-bold text-dark mb-2" style="font-size: 0.82rem;"><i class="fa-solid fa-address-book me-1.5 text-success"></i>Contact Information</h6>
+                                    <div class="d-flex flex-column gap-1" style="font-size: 0.82rem;">
+                                        <div><span class="text-muted">Email:</span> <span class="text-dark font-monospace">{{ selectedApplication.contactInfo ? selectedApplication.contactInfo.email : 'N/A' }}</span></div>
+                                        <div><span class="text-muted">Phone:</span> <span class="text-dark font-monospace">{{ selectedApplication.contactInfo ? selectedApplication.contactInfo.phone : 'N/A' }}</span></div>
+                                        <div><span class="text-muted">Guardian:</span> <span class="text-dark">{{ selectedApplication.contactInfo ? selectedApplication.contactInfo.guardian : 'N/A' }}</span></div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-12">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <p class="eyebrow mb-1">Reference Number</p>
-                                        <h4 class="mb-0">{{ selectedApplication.referenceNumber }}</h4>
-                                    </div>
-                                    <span class="status-badge"
-                                        :class="selectedApplication.status.toLowerCase().replace(/[\s_]+/g, '-')">{{ selectedApplication.status }}</span>
+                            <!-- Academic Metadata Row -->
+                            <div class="row g-2 pt-2.5 border-top border-light-subtle bg-light bg-opacity-50 p-2 rounded-3 align-items-center">
+                                <div class="col-6 col-md-3">
+                                    <div class="text-muted text-uppercase fw-bold font-monospace" style="font-size: 0.65rem;">Preferred Program</div>
+                                    <div class="fw-bold text-dark text-truncate" style="font-size: 0.85rem;">{{ selectedApplication.program }}</div>
                                 </div>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="mb-3">Personal Information</h6>
-                                <p class="mb-1"><strong>Name:</strong> {{ selectedApplication.applicantName }}</p>
-                                <p class="mb-1"><strong>Birth Date:</strong> {{ selectedApplication.personalInfo ? selectedApplication.personalInfo.birthDate : 'N/A' }}</p>
-                                <p class="mb-1"><strong>Gender:</strong> {{ selectedApplication.personalInfo ? selectedApplication.personalInfo.gender : 'N/A' }}</p>
-                                <p class="mb-0"><strong>Address:</strong> {{ selectedApplication.personalInfo ? selectedApplication.personalInfo.address : 'N/A' }}</p>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="mb-3">Contact Information</h6>
-                                <p class="mb-1"><strong>Email:</strong> {{ selectedApplication.contactInfo ? selectedApplication.contactInfo.email : 'N/A' }}</p>
-                                <p class="mb-1"><strong>Phone:</strong> {{ selectedApplication.contactInfo ? selectedApplication.contactInfo.phone : 'N/A' }}</p>
-                                <p class="mb-0"><strong>Guardian:</strong> {{ selectedApplication.contactInfo ? selectedApplication.contactInfo.guardian : 'N/A' }}</p>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="mb-1 text-muted small text-uppercase font-monospace">Preferred Program</h6>
-                                <p class="mb-0 fw-bold">{{ selectedApplication.program }}</p>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="mb-1 text-muted small text-uppercase font-monospace">Student Type</h6>
-                                <p class="mb-0 fw-bold text-success">{{ selectedApplication.studentType }}</p>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="mb-1 text-muted small text-uppercase font-monospace">NSTP Program</h6>
-                                <p class="mb-0 fw-bold text-success">{{ selectedApplication.nstp }}</p>
-                            </div>
-
-                            <div class="col-md-4" v-if="selectedApplication.shsTrack === 'ALS'">
-                                <h6 class="mb-1 text-muted small text-uppercase font-monospace">Education Pathway</h6>
-                                <p class="mb-0 fw-bold text-primary"><i class="fas fa-graduation-cap me-1"></i>ALS Completer</p>
-                            </div>
-                            <div class="col-md-4" v-else-if="selectedApplication.shsTrack && selectedApplication.shsTrack !== 'REGULAR'">
-                                <h6 class="mb-1 text-muted small text-uppercase font-monospace">Curriculum / Strand</h6>
-                                <p class="mb-0 fw-bold text-dark">{{ selectedApplication.shsTrack }}</p>
-                            </div>
-                            <div class="col-md-4" v-if="selectedApplication.previousCollege">
-                                <h6 class="mb-1 text-muted small text-uppercase font-monospace">Previous College</h6>
-                                <p class="mb-0 fw-bold text-dark">{{ selectedApplication.previousCollege }}</p>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="mb-1 text-muted small text-uppercase font-monospace">Date Submitted</h6>
-                                <p class="mb-0 fw-bold text-dark">{{ selectedApplication.dateSubmitted }}</p>
-                            </div>
-                            <div class="col-md-4">
-                                <h6 class="mb-1 text-muted small text-uppercase font-monospace">Live Progress</h6>
-                                <p class="mb-0 font-monospace text-success fw-bold">
-                                    <i class="fas fa-bars-progress me-1"></i>
-                                    {{ selectedApplication.roadmap ? selectedApplication.roadmap.filter(s => s.status === 'COMPLETED').length : 0 }} / {{ selectedApplication.roadmap ? selectedApplication.roadmap.length : 0 }} Stations Completed
-                                </p>
-                            </div>
-
-                            <!-- Admission Requirements List & Document Management -->
-                            <div class="col-md-6">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <div>
-                                        <h6 class="mb-0 d-flex align-items-center fw-bold text-dark" style="font-size: 0.95rem;">
-                                            <i class="fas fa-file-shield text-success me-2 fs-6"></i>
-                                            Admission Requirements
-                                        </h6>
-                                        <span class="text-muted" style="font-size: 0.72rem;">Verify physical credentials &amp; digital soft copies</span>
-                                    </div>
-                                    <span class="badge req-header-pill"
-                                          :class="selectedApplication.requirements && selectedApplication.requirements.every(r => isDocVerified(r)) ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'">
-                                        <i class="fas" :class="selectedApplication.requirements && selectedApplication.requirements.every(r => isDocVerified(r)) ? 'fa-check-circle' : 'fa-clock'"></i>
-                                        {{ selectedApplication.requirements ? selectedApplication.requirements.filter(r => isDocVerified(r)).length : 0 }} of {{ selectedApplication.requirements ? selectedApplication.requirements.length : 0 }} Verified
-                                    </span>
+                                <div class="col-6 col-md-2">
+                                    <div class="text-muted text-uppercase fw-bold font-monospace" style="font-size: 0.65rem;">Student Type</div>
+                                    <div class="fw-bold text-success" style="font-size: 0.85rem;">{{ selectedApplication.studentType }}</div>
                                 </div>
-
-                                <!-- Dynamic Micro Progress Bar -->
-                                <div class="req-progress-bar">
-                                    <div class="req-progress-fill" 
-                                         :style="{ width: ((selectedApplication.requirements && selectedApplication.requirements.length > 0) ? ((selectedApplication.requirements.filter(r => isDocVerified(r)).length / selectedApplication.requirements.length) * 100) : 0) + '%' }">
+                                <div class="col-6 col-md-2">
+                                    <div class="text-muted text-uppercase fw-bold font-monospace" style="font-size: 0.65rem;">NSTP Program</div>
+                                    <div class="fw-bold text-success" style="font-size: 0.85rem;">{{ selectedApplication.nstp }}</div>
+                                </div>
+                                <div class="col-6 col-md-2" v-if="selectedApplication.shsTrack === 'ALS'">
+                                    <div class="text-muted text-uppercase fw-bold font-monospace" style="font-size: 0.65rem;">Pathway</div>
+                                    <div class="fw-bold text-primary" style="font-size: 0.85rem;">ALS Completer</div>
+                                </div>
+                                <div class="col-6 col-md-2" v-else-if="selectedApplication.shsTrack && selectedApplication.shsTrack !== 'REGULAR'">
+                                    <div class="text-muted text-uppercase fw-bold font-monospace" style="font-size: 0.65rem;">Curriculum / Strand</div>
+                                    <div class="fw-bold text-dark" style="font-size: 0.85rem;">{{ selectedApplication.shsTrack }}</div>
+                                </div>
+                                <div class="col-6 col-md-2" v-if="selectedApplication.previousCollege">
+                                    <div class="text-muted text-uppercase fw-bold font-monospace" style="font-size: 0.65rem;">Previous College</div>
+                                    <div class="fw-bold text-dark text-truncate" style="font-size: 0.85rem;">{{ selectedApplication.previousCollege }}</div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="text-muted text-uppercase fw-bold font-monospace" style="font-size: 0.65rem;">Live Station Progress</div>
+                                    <div class="fw-bold font-monospace text-success" style="font-size: 0.82rem;">
+                                        <i class="fas fa-bars-progress me-1"></i>
+                                        {{ selectedApplication.roadmap ? selectedApplication.roadmap.filter(s => s.status === 'COMPLETED').length : 0 }} / {{ selectedApplication.roadmap ? selectedApplication.roadmap.length : 0 }} Completed
                                     </div>
                                 </div>
+                            </div>
+                        </div>
 
-                                <div v-if="requirementsError"
-                                    class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-2 border-danger-subtle rounded-3 small text-danger bg-danger-subtle bg-opacity-25"
-                                    style="border-width: 1.5px;">
-                                    <i class="fas fa-triangle-exclamation"></i>
-                                    <span>{{ requirementsError }}</span>
-                                </div>
+                        <!-- Symmetrical Two-Column Core: Admission Requirements (Left) & Campus Roadmap (Right) -->
+                        <div class="row g-4 mb-4">
+                            <!-- Left: Admission Requirements List -->
+                            <div class="col-lg-6">
+                                <div class="card h-100 p-3.5 border border-light-subtle rounded-3 bg-white shadow-sm d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-light-subtle">
+                                        <div>
+                                            <h6 class="mb-0 d-flex align-items-center fw-bold text-dark" style="font-size: 0.92rem;">
+                                                <i class="fas fa-file-shield text-success me-2 fs-6"></i>
+                                                Admission Requirements
+                                            </h6>
+                                            <span class="text-muted" style="font-size: 0.70rem;">Verify physical credentials &amp; digital soft copies</span>
+                                        </div>
+                                        <span class="badge req-header-pill"
+                                              :class="selectedApplication.requirements && selectedApplication.requirements.every(r => isDocVerified(r)) ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'">
+                                            <i class="fas" :class="selectedApplication.requirements && selectedApplication.requirements.every(r => isDocVerified(r)) ? 'fa-check-circle' : 'fa-clock'"></i>
+                                            {{ selectedApplication.requirements ? selectedApplication.requirements.filter(r => isDocVerified(r)).length : 0 }} of {{ selectedApplication.requirements ? selectedApplication.requirements.length : 0 }} Verified
+                                        </span>
+                                    </div>
 
-                                <!-- Requirements Card List -->
-                                <div class="req-container custom-scrollbar" style="max-height: 480px; overflow-y: auto; overflow-x: hidden !important;">
-                                    <div v-for="(item, idx) in selectedApplication.requirements" :key="idx"
-                                        class="req-checklist-card"
-                                        :class="{'is-invalid': !isDocVerified(item) && showRequirementsValidation}">
-                                        
-                                        <!-- Top Row: Document Index, Title & Submission Badge / View Button -->
-                                        <div class="req-card-top">
-                                            <div class="req-doc-info">
-                                                <span class="req-item-index">{{ idx + 1 }}</span>
-                                                <div class="req-doc-title">
-                                                    {{ item }}
+                                    <!-- Dynamic Micro Progress Bar -->
+                                    <div class="req-progress-bar mb-3">
+                                        <div class="req-progress-fill" 
+                                             :style="{ width: ((selectedApplication.requirements && selectedApplication.requirements.length > 0) ? ((selectedApplication.requirements.filter(r => isDocVerified(r)).length / selectedApplication.requirements.length) * 100) : 0) + '%' }">
+                                        </div>
+                                    </div>
+
+                                    <div v-if="requirementsError"
+                                        class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-2 border-danger-subtle rounded-3 small text-danger bg-danger-subtle bg-opacity-25"
+                                        style="border-width: 1.5px;">
+                                        <i class="fas fa-triangle-exclamation"></i>
+                                        <span>{{ requirementsError }}</span>
+                                    </div>
+
+                                    <!-- Requirements Card List Scroll Container -->
+                                    <div class="req-container custom-scrollbar flex-grow-1" style="max-height: 420px; min-height: 360px; overflow-y: auto; overflow-x: hidden !important;">
+                                        <div v-for="(item, idx) in selectedApplication.requirements" :key="idx"
+                                            class="req-checklist-card mb-2.5"
+                                            :class="{'is-invalid': !isDocVerified(item) && showRequirementsValidation}">
+                                            
+                                            <!-- Top Row: Document Index, Title & Submission Badge / View Button -->
+                                            <div class="req-card-top">
+                                                <div class="req-doc-info">
+                                                    <span class="req-item-index">{{ idx + 1 }}</span>
+                                                    <div class="req-doc-title">
+                                                        {{ item }}
+                                                    </div>
+                                                </div>
+                                                <div class="req-doc-badges">
+                                                    <span v-if="getDocFile(item)" class="req-source-badge is-softcopy">
+                                                        <i class="fa-solid fa-cloud-arrow-up"></i> Soft Copy
+                                                    </span>
+                                                    <span v-else class="req-source-badge is-hardcopy">
+                                                        <i class="fa-regular fa-file-lines"></i> Hardcopy
+                                                    </span>
+
+                                                    <!-- View Soft Copy Trigger Button -->
+                                                    <button v-if="getDocFile(item)" type="button" 
+                                                            class="btn-doc-view" 
+                                                            @click.stop="openDocumentModal(getDocFile(item))" 
+                                                            title="View uploaded soft copy">
+                                                        <i class="fa-solid fa-eye"></i>
+                                                        <span>View</span>
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div class="req-doc-badges">
-                                                <span v-if="getDocFile(item)" class="req-source-badge is-softcopy">
-                                                    <i class="fa-solid fa-cloud-arrow-up"></i> Soft Copy Attached
-                                                </span>
-                                                <span v-else class="req-source-badge is-hardcopy">
-                                                    <i class="fa-regular fa-file-lines"></i> Physical Hardcopy
-                                                </span>
 
-                                                <!-- View Soft Copy Trigger Button -->
-                                                <button v-if="getDocFile(item)" type="button" 
-                                                        class="btn-doc-view" 
-                                                        @click.stop="openDocumentModal(getDocFile(item))" 
-                                                        title="View uploaded soft copy">
-                                                    <i class="fa-solid fa-eye"></i>
-                                                    <span>View</span>
+                                            <!-- Unified Segmented Controls -->
+                                            <div class="doc-segmented-control">
+                                                <button type="button" class="doc-segment-btn"
+                                                        :class="{'active-original': getDocStatus(item) === 'ORIGINAL'}"
+                                                        :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
+                                                        @click="setDocStatus(item, 'ORIGINAL')">
+                                                    <i class="fa-solid fa-check"></i>
+                                                    <span>Original</span>
+                                                </button>
+                                                <button type="button" class="doc-segment-btn"
+                                                        :class="{'active-photocopy': getDocStatus(item) === 'PHOTOCOPY'}"
+                                                        :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
+                                                        @click="setDocStatus(item, 'PHOTOCOPY')">
+                                                    <i class="fa-solid fa-copy"></i>
+                                                    <span>Photocopy</span>
+                                                </button>
+                                                <button type="button" class="doc-segment-btn"
+                                                        :class="{'active-undertaking': getDocStatus(item) === 'UNDERTAKING'}"
+                                                        :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
+                                                        @click="setDocStatus(item, 'UNDERTAKING')">
+                                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                                    <span>Undertaking</span>
+                                                </button>
+                                                <button type="button" class="doc-segment-btn"
+                                                        :class="{'active-missing': getDocStatus(item) === 'NOT_SUBMITTED'}"
+                                                        :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
+                                                        @click="setDocStatus(item, 'NOT_SUBMITTED')">
+                                                    <i class="fa-solid fa-xmark"></i>
+                                                    <span>Missing</span>
                                                 </button>
                                             </div>
-                                        </div>
 
-                                        <!-- Unified Segmented Controls -->
-                                        <div class="doc-segmented-control">
-                                            <button type="button" class="doc-segment-btn"
-                                                    :class="{'active-original': getDocStatus(item) === 'ORIGINAL'}"
-                                                    :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
-                                                    @click="setDocStatus(item, 'ORIGINAL')">
-                                                <i class="fa-solid fa-check"></i>
-                                                <span>Original</span>
-                                            </button>
-                                            <button type="button" class="doc-segment-btn"
-                                                    :class="{'active-photocopy': getDocStatus(item) === 'PHOTOCOPY'}"
-                                                    :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
-                                                    @click="setDocStatus(item, 'PHOTOCOPY')">
-                                                <i class="fa-solid fa-copy"></i>
-                                                <span>Photocopy</span>
-                                            </button>
-                                            <button type="button" class="doc-segment-btn"
-                                                    :class="{'active-undertaking': getDocStatus(item) === 'UNDERTAKING'}"
-                                                    :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
-                                                    @click="setDocStatus(item, 'UNDERTAKING')">
-                                                <i class="fa-solid fa-clock-rotate-left"></i>
-                                                <span>Undertaking</span>
-                                            </button>
-                                            <button type="button" class="doc-segment-btn"
-                                                    :class="{'active-missing': getDocStatus(item) === 'NOT_SUBMITTED'}"
-                                                    :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
-                                                    @click="setDocStatus(item, 'NOT_SUBMITTED')">
-                                                <i class="fa-solid fa-xmark"></i>
-                                                <span>Missing</span>
-                                            </button>
-                                        </div>
-
-                                        <!-- Promissory Note Sub-drawer -->
-                                        <div v-if="getDocStatus(item) === 'UNDERTAKING'" class="undertaking-drawer">
-                                            <div class="row g-2">
-                                                <div class="col-6">
-                                                    <label>
-                                                        <i class="fas fa-calendar-days text-warning-emphasis"></i>
-                                                        Promissory Deadline
-                                                    </label>
-                                                    <input type="date" class="form-control form-control-sm"
-                                                           :value="getDocUndertakingDeadline(item)"
-                                                           :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
-                                                           @change="setDocUndertakingDeadline(item, $event.target.value)">
-                                                </div>
-                                                <div class="col-6">
-                                                    <label>
-                                                        <i class="fas fa-comment-dots text-warning-emphasis"></i>
-                                                        Undertaking Note
-                                                    </label>
-                                                    <input type="text" class="form-control form-control-sm" placeholder="e.g. Due before prelims"
-                                                           :value="getDocRemarks(item)"
-                                                           :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
-                                                           @input="setDocRemarks(item, $event.target.value)">
+                                            <!-- Promissory Note Sub-drawer -->
+                                            <div v-if="getDocStatus(item) === 'UNDERTAKING'" class="undertaking-drawer mt-2 pt-2 border-top border-light-subtle">
+                                                <div class="row g-2">
+                                                    <div class="col-6">
+                                                        <label class="form-label small fw-bold text-dark mb-1">
+                                                            <i class="fas fa-calendar-days text-warning me-1"></i>
+                                                            Promissory Deadline
+                                                        </label>
+                                                        <input type="date" class="form-control form-control-sm"
+                                                               :value="getDocUndertakingDeadline(item)"
+                                                               :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
+                                                               @change="setDocUndertakingDeadline(item, $event.target.value)">
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label small fw-bold text-dark mb-1">
+                                                            <i class="fas fa-comment-dots text-warning me-1"></i>
+                                                            Undertaking Note
+                                                        </label>
+                                                        <input type="text" class="form-control form-control-sm" placeholder="e.g. Due before prelims"
+                                                               :value="getDocRemarks(item)"
+                                                               :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
+                                                               @input="setDocRemarks(item, $event.target.value)">
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -563,111 +577,121 @@
                                 </div>
                             </div>
 
-                            <!-- Interactive Campus Roadmap -->
-                            <div class="col-md-6">
-                                <h6 class="mb-3 d-flex align-items-center">
-                                    <i class="fas fa-route text-success me-2"></i>
-                                    Campus Enrollment Roadmap
-                                </h6>
-                                <div class="card p-3 border border-light-subtle rounded-3 bg-light bg-opacity-50 custom-scrollbar"
-                                    style="max-height: 400px; min-height: 400px; overflow-y: auto; overflow-x: hidden !important;">
-                                    <div class="roadmap-static-list">
-                                        <div v-for="(step, idx) in selectedApplication.roadmap" :key="step.stepId || step.id || idx"
-                                            class="mb-3 pb-2 border-bottom border-light-subtle">
-                                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                                <span class="fw-bold small text-dark">{{ idx + 1 }}. {{ step.title || step.name || 'Enrollment Step' }}</span>
-                                                <span
-                                                    class="badge rounded-pill font-monospace text-uppercase py-1 px-2 border"
-                                                    :class="{
-                                                      'bg-success-subtle text-success border-success-subtle': ['COMPLETED', 'Completed', 'VERIFIED', 'APPROVED'].includes(step.status),
-                                                      'bg-warning-subtle text-dark border-warning-subtle': ['IN_PROGRESS', 'PENDING', 'Pending', 'In Progress'].includes(step.status),
-                                                      'bg-secondary-subtle text-secondary border-secondary-subtle': ['LOCKED', 'Locked'].includes(step.status),
-                                                      'bg-light text-secondary border-secondary-subtle': step.status === 'SKIPPED'
-                                                  }">
-                                                    {{ step.status }}
-                                                </span>
-                                            </div>
-                                            <div class="d-flex justify-content-between text-muted"
-                                                style="font-size: 0.75rem;">
-                                                <span>{{ step.station || step.location || ('Station ' + (idx + 1)) }}</span>
+                            <!-- Right: Campus Enrollment Roadmap -->
+                            <div class="col-lg-6">
+                                <div class="card h-100 p-3.5 border border-light-subtle rounded-3 bg-white shadow-sm d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-light-subtle">
+                                        <h6 class="mb-0 d-flex align-items-center fw-bold text-dark" style="font-size: 0.92rem;">
+                                            <i class="fas fa-route text-success me-2 fs-6"></i>
+                                            Campus Enrollment Roadmap
+                                        </h6>
+                                        <span class="badge bg-light text-muted border font-monospace" style="font-size: 0.70rem;">6 Sequential Stations</span>
+                                    </div>
+                                    <div class="custom-scrollbar flex-grow-1" style="max-height: 420px; min-height: 360px; overflow-y: auto; overflow-x: hidden !important;">
+                                        <div class="roadmap-static-list">
+                                            <div v-for="(step, idx) in selectedApplication.roadmap" :key="step.stepId || step.id || idx"
+                                                class="p-2.5 mb-2 rounded-3 border transition-all"
+                                                :class="{
+                                                    'bg-success bg-opacity-10 border-success border-opacity-25': ['COMPLETED', 'Completed', 'VERIFIED', 'APPROVED'].includes(step.status),
+                                                    'bg-warning bg-opacity-10 border-warning border-opacity-25': ['IN_PROGRESS', 'PENDING', 'Pending', 'In Progress'].includes(step.status),
+                                                    'bg-light border-light-subtle text-muted': ['LOCKED', 'Locked', 'SKIPPED'].includes(step.status)
+                                                }">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="fw-bold text-dark" style="font-size: 0.84rem;">{{ idx + 1 }}. {{ step.title || step.name || 'Enrollment Step' }}</span>
+                                                    <span class="badge rounded-pill font-monospace text-uppercase py-0.5 px-2 border"
+                                                        :class="{
+                                                          'bg-success-subtle text-success border-success-subtle': ['COMPLETED', 'Completed', 'VERIFIED', 'APPROVED'].includes(step.status),
+                                                          'bg-warning-subtle text-dark border-warning-subtle': ['IN_PROGRESS', 'PENDING', 'Pending', 'In Progress'].includes(step.status),
+                                                          'bg-secondary-subtle text-secondary border-secondary-subtle': ['LOCKED', 'Locked'].includes(step.status),
+                                                          'bg-light text-secondary border-secondary-subtle': step.status === 'SKIPPED'
+                                                      }" style="font-size: 0.68rem;">
+                                                        {{ step.status }}
+                                                    </span>
+                                                </div>
+                                                <div class="d-flex justify-content-between text-muted" style="font-size: 0.73rem;">
+                                                    <span><i class="fa-solid fa-location-dot me-1 text-secondary"></i>{{ step.station || step.location || ('Station ' + (idx + 1)) }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Assigned Block Section (Required) -->
-                            <div class="col-12 mt-3"
-                                v-if="selectedApplication && selectedApplication.status !== 'ENROLLED'">
-                                <h6 class="mb-2 d-flex align-items-center fw-bold text-dark">
-                                    <i class="fas fa-layer-group text-success me-2"></i>
+                        <!-- Assigned Block Section (Required) -->
+                        <div class="card p-3.5 border border-light-subtle rounded-3 bg-white shadow-sm"
+                            v-if="selectedApplication && selectedApplication.status !== 'ENROLLED'">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-light-subtle">
+                                <h6 class="mb-0 d-flex align-items-center fw-bold text-dark" style="font-size: 0.92rem;">
+                                    <i class="fas fa-layer-group text-success me-2 fs-6"></i>
                                     Assign Block Section (Required)
                                 </h6>
-                                <div class="table-responsive border border-light-subtle rounded-3 bg-white shadow-sm mb-2"
-                                    style="max-height: 250px; overflow-y: auto;">
-                                    <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
-                                        <thead class="table-light sticky-top">
-                                            <tr>
-                                                <th style="width: 50px;" class="text-center">Select</th>
-                                                <th>Section Name</th>
-                                                <th>Adviser</th>
-                                                <th class="text-center">Enrolled</th>
-                                                <th class="text-center">Capacity</th>
-                                                <th class="text-center">Available Slots</th>
-                                                <th class="text-center" style="width: 120px;">Occupancy</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr v-for="sect in availableSectionsForApplication" :key="sect.code"
-                                                :class="{'table-success': selectedApplication.sectionCode === sect.code}"
-                                                @click="['Approved', 'APPROVED', 'REGISTRAR_APPROVED', 'ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status) ? null : selectedApplication.sectionCode = sect.code"
-                                                :style="{ cursor: ['Approved', 'APPROVED', 'REGISTRAR_APPROVED', 'ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status) ? 'default' : 'pointer' }">
-                                                <td class="text-center">
-                                                    <input class="form-check-input" type="radio"
-                                                        name="modalSectionChoice" :value="sect.code"
-                                                        :checked="selectedApplication.sectionCode === sect.code"
-                                                        :disabled="['Approved', 'APPROVED', 'REGISTRAR_APPROVED', 'ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
-                                                        @change="selectedApplication.sectionCode = sect.code">
-                                                </td>
-                                                <td>
-                                                    <div class="fw-bold text-dark">Section {{ sect.code }}</div>
-                                                    <div class="text-muted small" style="font-size: 0.72rem;">{{ sect.sectionName || (sect.program + ' ' + sect.yearLevel) }}
+                                <span class="badge bg-light text-muted border font-monospace" style="font-size: 0.70rem;">1st Year, 1st Semester</span>
+                            </div>
+                            <div class="table-responsive border border-light-subtle rounded-3 bg-white shadow-sm mb-0"
+                                style="max-height: 220px; overflow-y: auto;">
+                                <table class="table table-hover align-middle mb-0" style="font-size: 0.83rem;">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th style="width: 50px;" class="text-center">Select</th>
+                                            <th>Section Name</th>
+                                            <th>Adviser</th>
+                                            <th class="text-center">Enrolled</th>
+                                            <th class="text-center">Capacity</th>
+                                            <th class="text-center">Available Slots</th>
+                                            <th class="text-center" style="width: 120px;">Occupancy</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="sect in availableSectionsForApplication" :key="sect.code"
+                                            :class="{'table-success': selectedApplication.sectionCode === sect.code}"
+                                            @click="['Approved', 'APPROVED', 'REGISTRAR_APPROVED', 'ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status) ? null : selectedApplication.sectionCode = sect.code"
+                                            :style="{ cursor: ['Approved', 'APPROVED', 'REGISTRAR_APPROVED', 'ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status) ? 'default' : 'pointer' }">
+                                            <td class="text-center">
+                                                <input class="form-check-input" type="radio"
+                                                    name="modalSectionChoice" :value="sect.code"
+                                                    :checked="selectedApplication.sectionCode === sect.code"
+                                                    :disabled="['Approved', 'APPROVED', 'REGISTRAR_APPROVED', 'ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
+                                                    @change="selectedApplication.sectionCode = sect.code">
+                                            </td>
+                                            <td>
+                                                <div class="fw-bold text-dark">Section {{ sect.code }}</div>
+                                                <div class="text-muted small" style="font-size: 0.72rem;">{{ sect.sectionName || (sect.program + ' ' + sect.yearLevel) }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="text-secondary fw-semibold">{{ sect.adviser || 'Unassigned' }}</span>
+                                            </td>
+                                            <td class="text-center font-monospace">{{ sect.enrolledCount }}</td>
+                                            <td class="text-center font-monospace">{{ sect.capacity }}</td>
+                                            <td class="text-center font-monospace">
+                                                <span
+                                                    :class="sect.availableSlots > 0 ? 'text-success fw-bold' : 'text-danger fw-bold'">
+                                                    {{ sect.availableSlots }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="progress w-100" style="height: 6px;">
+                                                        <div class="progress-bar" role="progressbar"
+                                                            :class="{'bg-success': sect.occupancyPct < 70, 'bg-warning': sect.occupancyPct >= 70 && sect.occupancyPct < 90, 'bg-danger': sect.occupancyPct >= 90}"
+                                                            :style="{width: sect.occupancyPct + '%'}"></div>
                                                     </div>
-                                                </td>
-                                                <td>
-                                                    <span class="text-secondary fw-semibold">{{ sect.adviser || 'Unassigned' }}</span>
-                                                </td>
-                                                <td class="text-center font-monospace">{{ sect.enrolledCount }}</td>
-                                                <td class="text-center font-monospace">{{ sect.capacity }}</td>
-                                                <td class="text-center font-monospace">
-                                                    <span
-                                                        :class="sect.availableSlots > 0 ? 'text-success fw-bold' : 'text-danger fw-bold'">
-                                                        {{ sect.availableSlots }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <div class="progress w-100" style="height: 6px;">
-                                                            <div class="progress-bar" role="progressbar"
-                                                                :class="{'bg-success': sect.occupancyPct < 70, 'bg-warning': sect.occupancyPct >= 70 && sect.occupancyPct < 90, 'bg-danger': sect.occupancyPct >= 90}"
-                                                                :style="{width: sect.occupancyPct + '%'}"></div>
-                                                        </div>
-                                                        <span class="small text-muted font-monospace"
-                                                            style="font-size: 0.72rem;">{{ sect.occupancyPct }}%</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr
-                                                v-if="!availableSectionsForApplication || availableSectionsForApplication.length === 0">
-                                                <td colspan="7" class="text-center text-danger py-3">
-                                                    <i class="fas fa-exclamation-triangle me-1"></i> No active block
-                                                    sections found for program <strong>{{ selectedApplication.program }}</strong> (1st Year, 1st Semester). Please verify
-                                                    configurations in Admin.
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                    <span class="small text-muted font-monospace"
+                                                        style="font-size: 0.72rem;">{{ sect.occupancyPct }}%</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr
+                                            v-if="!availableSectionsForApplication || availableSectionsForApplication.length === 0">
+                                            <td colspan="7" class="text-center text-danger py-3">
+                                                <i class="fas fa-exclamation-triangle me-1"></i> No active block
+                                                sections found for program <strong>{{ selectedApplication.program }}</strong> (1st Year, 1st Semester). Please verify
+                                                configurations in Admin.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -697,217 +721,262 @@
         </div>
 
         <!-- ── STUDENT PROFILE MODAL ── -->
+        <!-- ── STUDENT PROFILE MODAL ── -->
         <div class="modal fade" id="studentProfileModal" tabindex="-1" aria-labelledby="studentProfileModalLabel"
             aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content" v-if="selectedStudent">
-                    <div class="modal-header">
-                        <div class="d-flex align-items-center">
-                            <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center text-success me-3"
-                                style="width: 50px; height: 50px;">
-                                <img v-if="selectedStudent.photo" :src="'../stations/uploads/' + selectedStudent.photo"
-                                    class="rounded-circle w-100 h-100 object-fit-cover">
-                                <i v-else class="fa-solid fa-user-graduate fs-4"></i>
+            <div class="modal-dialog modal-xl modal-dialog-centered student-profile-dialog">
+                <div class="modal-content student-profile-modal-content" v-if="selectedStudent">
+                    <!-- Modal Header -->
+                    <div class="student-profile-header d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="student-profile-avatar-wrap">
+                                <img v-if="selectedStudent.photo" :src="'../stations/uploads/' + selectedStudent.photo" class="rounded-circle" alt="Student Photo">
+                                <i v-else class="fa-solid fa-user-graduate fs-3 text-white"></i>
                             </div>
                             <div>
-                                <h5 class="modal-title fw-bold text-success mb-0" id="studentProfileModalLabel">{{ selectedStudent.name }}</h5>
-                                <span
-                                    class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-monospace small px-2 py-1 mt-1">GNCP
-                                    Student Directory</span>
+                                <div class="student-profile-tagline mb-1">
+                                    <span class="badge-brand"><i class="fa-solid fa-building-columns me-1"></i> GNCP Official Student Directory</span>
+                                    <span class="badge-status">{{ selectedStudent.status }}</span>
+                                </div>
+                                <h4 class="student-profile-title mb-0" id="studentProfileModalLabel">{{ selectedStudent.name }}</h4>
                             </div>
                         </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body p-4" style="max-height: 70vh; overflow-y: auto;">
-                        <div class="row g-4">
 
-                            <!-- Top Badges Cards -->
+                    <!-- Modal Body -->
+                    <div class="modal-body p-4" style="max-height: 75vh; overflow-y: auto;">
+                        <div class="row g-4">
+                            <!-- Top Metric Stat Tiles -->
                             <div class="col-12">
                                 <div class="row g-3">
-                                    <div class="col-md-3">
-                                        <div
-                                            class="card p-3 border border-light-subtle rounded-3 text-center bg-light bg-opacity-25">
-                                            <small class="text-muted d-block mb-1">Permanent Student ID</small>
-                                            <strong class="text-dark font-monospace">{{ selectedStudent.id }}</strong>
+                                    <div class="col-sm-6 col-lg-3">
+                                        <div class="profile-stat-tile">
+                                            <div class="profile-stat-icon icon-id"><i class="fa-solid fa-id-card"></i></div>
+                                            <div class="min-w-0">
+                                                <div class="profile-stat-label">Permanent ID</div>
+                                                <div class="profile-stat-val font-monospace text-truncate">{{ selectedStudent.id }}</div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
-                                        <div
-                                            class="card p-3 border border-light-subtle rounded-3 text-center bg-light bg-opacity-25">
-                                            <small class="text-muted d-block mb-1">Degree Program</small>
-                                            <strong class="text-dark">{{ selectedStudent.program }}</strong>
+                                    <div class="col-sm-6 col-lg-3">
+                                        <div class="profile-stat-tile">
+                                            <div class="profile-stat-icon icon-program"><i class="fa-solid fa-graduation-cap"></i></div>
+                                            <div class="min-w-0">
+                                                <div class="profile-stat-label">Degree Program</div>
+                                                <div class="profile-stat-val text-truncate">{{ selectedStudent.program }}</div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
-                                        <div
-                                            class="card p-3 border border-light-subtle rounded-3 text-center bg-light bg-opacity-25">
-                                            <small class="text-muted d-block mb-1">Year Level</small>
-                                            <strong class="text-dark">{{ selectedStudent.year_level || '1st Year' }}</strong>
+                                    <div class="col-sm-6 col-lg-3">
+                                        <div class="profile-stat-tile">
+                                            <div class="profile-stat-icon icon-year"><i class="fa-solid fa-layer-group"></i></div>
+                                            <div class="min-w-0">
+                                                <div class="profile-stat-label">Year Level</div>
+                                                <div class="profile-stat-val text-truncate">{{ selectedStudent.year_level || '1st Year' }}</div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
-                                        <div
-                                            class="card p-3 border border-light-subtle rounded-3 text-center bg-light bg-opacity-25">
-                                            <small class="text-muted d-block mb-1">Account Status</small>
-                                            <span class="status-badge enrolled mt-1 d-inline-block">{{ selectedStudent.status }}</span>
+                                    <div class="col-sm-6 col-lg-3">
+                                        <div class="profile-stat-tile">
+                                            <div class="profile-stat-icon icon-status"><i class="fa-solid fa-shield-halved"></i></div>
+                                            <div class="min-w-0">
+                                                <div class="profile-stat-label">Lifecycle Status</div>
+                                                <div class="profile-stat-val text-truncate">{{ selectedStudent.status }}</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Left Panel: Information Sections -->
-                            <div class="col-md-7">
-                                <!-- 1. Personal & Contact Details -->
-                                <div class="panel border border-light-subtle rounded-3 p-3 mb-4 bg-white shadow-sm">
-                                    <h6 class="mb-3 fw-bold border-bottom pb-2 text-success d-flex align-items-center">
-                                        <i class="fa-solid fa-address-card me-2"></i> Personal & Contact Info
-                                    </h6>
+                            <!-- Left Bento Column: Information Sections (col-lg-7) -->
+                            <div class="col-lg-7">
+                                <!-- 1. Personal & Contact Information -->
+                                <div class="profile-card">
+                                    <div class="profile-card-header">
+                                        <h6 class="profile-card-title"><i class="fa-solid fa-address-card"></i> Personal &amp; Contact Details</h6>
+                                        <span class="badge bg-light text-secondary border font-monospace" style="font-size:0.68rem;">Verified Identity</span>
+                                    </div>
                                     <div class="row g-3" v-if="selectedStudent.personalInfo">
-                                        <div class="col-6">
-                                            <small class="text-muted d-block">Institutional Email</small>
-                                            <span class="text-dark fw-semibold">{{ selectedStudent.email || 'N/A' }}</span>
+                                        <div class="col-sm-6">
+                                            <div class="profile-field">
+                                                <div class="profile-field-label"><i class="fa-solid fa-envelope"></i> Institutional Email</div>
+                                                <div class="profile-field-value text-break">{{ selectedStudent.email || 'N/A' }}</div>
+                                            </div>
                                         </div>
-                                        <div class="col-6">
-                                            <small class="text-muted d-block">Contact Phone</small>
-                                            <span class="text-dark fw-semibold">{{ selectedStudent.personalInfo.phone || 'N/A' }}</span>
+                                        <div class="col-sm-6">
+                                            <div class="profile-field">
+                                                <div class="profile-field-label"><i class="fa-solid fa-phone"></i> Contact Phone</div>
+                                                <div class="profile-field-value">{{ selectedStudent.personalInfo.phone || 'N/A' }}</div>
+                                            </div>
                                         </div>
-                                        <div class="col-6">
-                                            <small class="text-muted d-block">Date of Birth</small>
-                                            <span class="text-dark fw-semibold">{{ selectedStudent.personalInfo.birthDate || 'N/A' }}</span>
+                                        <div class="col-sm-6">
+                                            <div class="profile-field">
+                                                <div class="profile-field-label"><i class="fa-solid fa-cake-candles"></i> Date of Birth</div>
+                                                <div class="profile-field-value">{{ selectedStudent.personalInfo.birthDate || 'N/A' }}</div>
+                                            </div>
                                         </div>
-                                        <div class="col-6">
-                                            <small class="text-muted d-block">Gender</small>
-                                            <span class="text-dark fw-semibold">{{ selectedStudent.personalInfo.gender || 'N/A' }}</span>
+                                        <div class="col-sm-6">
+                                            <div class="profile-field">
+                                                <div class="profile-field-label"><i class="fa-solid fa-venus-mars"></i> Gender</div>
+                                                <div class="profile-field-value">{{ selectedStudent.personalInfo.gender || 'N/A' }}</div>
+                                            </div>
                                         </div>
                                         <div class="col-12">
-                                            <small class="text-muted d-block">Home Address</small>
-                                            <span class="text-dark fw-semibold">{{ selectedStudent.personalInfo.address || 'N/A' }}</span>
+                                            <div class="profile-field">
+                                                <div class="profile-field-label"><i class="fa-solid fa-location-dot"></i> Home Address</div>
+                                                <div class="profile-field-value">{{ selectedStudent.personalInfo.address || 'N/A' }}</div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="text-muted py-2" v-else>No detailed personal info transferred.</div>
+                                    <div class="text-muted small py-2 text-center" v-else>No detailed personal info transferred.</div>
                                 </div>
 
                                 <!-- 2. Academic Background -->
-                                <div class="panel border border-light-subtle rounded-3 p-3 mb-4 bg-white shadow-sm">
-                                    <h6 class="mb-3 fw-bold border-bottom pb-2 text-success d-flex align-items-center">
-                                        <i class="fa-solid fa-graduation-cap me-2"></i> Academic Background
-                                    </h6>
+                                <div class="profile-card">
+                                    <div class="profile-card-header">
+                                        <h6 class="profile-card-title"><i class="fa-solid fa-school"></i> Academic Background</h6>
+                                    </div>
                                     <div class="row g-3" v-if="selectedStudent.academicInfo">
                                         <div class="col-12">
-                                            <small class="text-muted d-block">Senior High School</small>
-                                            <span class="text-dark fw-semibold">{{ selectedStudent.academicInfo.seniorHighSchool || 'N/A' }}</span>
+                                            <div class="profile-field">
+                                                <div class="profile-field-label"><i class="fa-solid fa-graduation-cap"></i> Senior High School</div>
+                                                <div class="profile-field-value">{{ selectedStudent.academicInfo.seniorHighSchool || 'N/A' }}</div>
+                                            </div>
                                         </div>
-                                        <div class="col-6">
-                                            <small class="text-muted d-block">Track/Strand</small>
-                                            <span class="text-dark fw-semibold">{{ selectedStudent.academicInfo.shsTrack || 'N/A' }}</span>
+                                        <div class="col-sm-6">
+                                            <div class="profile-field">
+                                                <div class="profile-field-label"><i class="fa-solid fa-shapes"></i> Track / Strand</div>
+                                                <div class="profile-field-value">{{ selectedStudent.academicInfo.shsTrack || 'N/A' }}</div>
+                                            </div>
                                         </div>
-                                        <div class="col-6">
-                                            <small class="text-muted d-block">Junior High School</small>
-                                            <span class="text-dark fw-semibold">{{ selectedStudent.academicInfo.juniorHighSchool || 'N/A' }}</span>
+                                        <div class="col-sm-6">
+                                            <div class="profile-field">
+                                                <div class="profile-field-label"><i class="fa-solid fa-book-open"></i> Junior High School</div>
+                                                <div class="profile-field-value">{{ selectedStudent.academicInfo.juniorHighSchool || 'N/A' }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12" v-if="selectedStudent.academicInfo.previousCollege">
+                                            <div class="profile-field">
+                                                <div class="profile-field-label"><i class="fa-solid fa-building-columns"></i> Previous College / Transfer Origin</div>
+                                                <div class="profile-field-value">{{ selectedStudent.academicInfo.previousCollege }}</div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="text-muted py-2" v-else>No detailed academic background info.</div>
+                                    <div class="text-muted small py-2 text-center" v-else>No detailed academic background info recorded.</div>
                                 </div>
 
                                 <!-- 3. Medical Clearance Status -->
-                                <div class="panel border border-light-subtle rounded-3 p-3 mb-4 bg-white shadow-sm"
-                                    v-if="selectedStudent.medicalData">
-                                    <h6 class="mb-3 fw-bold border-bottom pb-2 text-success d-flex align-items-center">
-                                        <i class="fa-solid fa-heart-pulse me-2"></i> School Clinic Medical Record
-                                    </h6>
-                                    <div class="row g-3">
-                                        <div class="col-6">
-                                            <small class="text-muted d-block">Clearance Status</small>
-                                            <span
-                                                class="badge rounded-pill font-monospace text-uppercase py-1 px-2 border mt-1"
-                                                :class="{
-                                                  'bg-success-subtle text-success border-success-subtle': selectedStudent.medicalData.status === 'FIT_TO_ENROLL',
-                                                  'bg-danger-subtle text-danger border-danger-subtle': selectedStudent.medicalData.status === 'TEMPORARY_HOLD',
-                                                  'bg-light text-secondary border-secondary-subtle': !selectedStudent.medicalData.status
+                                <div class="profile-card" v-if="selectedStudent.medicalData">
+                                    <div class="profile-card-header">
+                                        <h6 class="profile-card-title"><i class="fa-solid fa-heart-pulse"></i> School Clinic Medical Record</h6>
+                                        <span class="badge rounded-pill font-monospace text-uppercase py-1 px-2.5"
+                                              :class="{
+                                                  'bg-success-subtle text-success border border-success-subtle': selectedStudent.medicalData.status === 'FIT_TO_ENROLL',
+                                                  'bg-danger-subtle text-danger border border-danger-subtle': selectedStudent.medicalData.status === 'TEMPORARY_HOLD',
+                                                  'bg-light text-secondary border': !selectedStudent.medicalData.status
                                               }">
-                                                {{ selectedStudent.medicalData.status || 'PENDING' }}
-                                            </span>
-                                        </div>
-                                        <div class="col-6">
-                                            <small class="text-muted d-block">Physician Notes</small>
-                                            <span class="text-dark fw-semibold">{{ selectedStudent.medicalData.notes || 'No remarks recorded.' }}</span>
+                                            {{ selectedStudent.medicalData.status || 'PENDING' }}
+                                        </span>
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <div class="profile-field">
+                                                <div class="profile-field-label"><i class="fa-solid fa-user-doctor"></i> Physician Notes &amp; Recommendations</div>
+                                                <div class="profile-field-value text-secondary">{{ selectedStudent.medicalData.notes || 'No specific medical restrictions recorded.' }}</div>
+                                            </div>
                                         </div>
                                         <div class="col-12" v-if="selectedStudent.medicalData.verifiedBy">
-                                            <small class="text-muted d-block">Examined By</small>
-                                            <span class="text-muted small">{{ selectedStudent.medicalData.verifiedBy }}
-                                                on {{ selectedStudent.medicalData.dateVerified }}</span>
+                                            <div class="d-flex align-items-center gap-2 text-muted" style="font-size:0.75rem;">
+                                                <i class="fa-solid fa-signature text-success"></i>
+                                                <span>Examined by <strong>{{ selectedStudent.medicalData.verifiedBy }}</strong> on {{ selectedStudent.medicalData.dateVerified }}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- 4. Cashier Financial Accounts -->
-                                <div class="panel border border-light-subtle rounded-3 p-3 bg-white shadow-sm"
-                                    v-if="selectedStudent.paymentData">
-                                    <h6 class="mb-3 fw-bold border-bottom pb-2 text-success d-flex align-items-center">
-                                        <i class="fa-solid fa-cash-register me-2"></i> Financial Account Ledger
-                                    </h6>
+                                <div class="profile-card" v-if="selectedStudent.paymentData">
+                                    <div class="profile-card-header">
+                                        <h6 class="profile-card-title"><i class="fa-solid fa-cash-register"></i> Financial Account Ledger</h6>
+                                        <span class="badge bg-light text-dark font-monospace border" style="font-size:0.68rem;">{{ selectedStudent.paymentData.paymentMode || 'N/A' }}</span>
+                                    </div>
                                     <div class="row g-3">
-                                        <div class="col-4">
-                                            <small class="text-muted d-block">Amount Paid</small>
-                                            <strong class="text-success fs-5">₱{{ parseFloat(selectedStudent.paymentData.amountPaid || 0).toLocaleString() }}</strong>
+                                        <div class="col-sm-6">
+                                            <div class="p-2.5 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25">
+                                                <small class="text-success fw-bold text-uppercase d-block" style="font-size:0.68rem;">Amount Paid</small>
+                                                <strong class="text-success fs-5">₱{{ parseFloat(selectedStudent.paymentData.amountPaid || 0).toLocaleString() }}</strong>
+                                            </div>
                                         </div>
-                                        <div class="col-4">
-                                            <small class="text-muted d-block">Outstanding Balance</small>
-                                            <strong class="text-danger fs-5">₱{{ parseFloat(selectedStudent.paymentData.balance || 0).toLocaleString() }}</strong>
-                                        </div>
-                                        <div class="col-4">
-                                            <small class="text-muted d-block">Mode of Payment</small>
-                                            <span class="text-dark fw-semibold">{{ selectedStudent.paymentData.paymentMode || 'N/A' }}</span>
+                                        <div class="col-sm-6">
+                                            <div class="p-2.5 rounded-3 bg-danger bg-opacity-10 border border-danger border-opacity-25">
+                                                <small class="text-danger fw-bold text-uppercase d-block" style="font-size:0.68rem;">Outstanding Balance</small>
+                                                <strong class="text-danger fs-5">₱{{ parseFloat(selectedStudent.paymentData.balance || 0).toLocaleString() }}</strong>
+                                            </div>
                                         </div>
                                         <div class="col-12" v-if="selectedStudent.paymentData.verifiedBy">
-                                            <small class="text-muted d-block">Cashier Reference</small>
-                                            <span class="text-muted small">Processed by {{ selectedStudent.paymentData.verifiedBy }} on {{ selectedStudent.paymentData.dateVerified }}</span>
+                                            <div class="d-flex align-items-center gap-2 text-muted" style="font-size:0.75rem;">
+                                                <i class="fa-solid fa-receipt text-success"></i>
+                                                <span>Processed by <strong>{{ selectedStudent.paymentData.verifiedBy }}</strong> on {{ selectedStudent.paymentData.dateVerified }}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                            <!-- Right Panel: RoadmapTimeline Audit Trail & Documents -->
-                            <div class="col-md-5">
-                                <!-- Timeline Audit Trail -->
-                                <h6 class="mb-3 fw-bold text-dark d-flex align-items-center">
-                                    <i class="fa-solid fa-route text-success me-2"></i> Enrollment Roadmap Log
-                                </h6>
-                                <div class="card p-3 border border-light-subtle rounded-3 bg-light bg-opacity-50 mb-4 shadow-sm"
-                                    style="max-height: 380px; overflow-y: auto;">
-                                    <div class="roadmap-static-list">
+                            <!-- Right Bento Column: Roadmap & Documents (col-lg-5) -->
+                            <div class="col-lg-5">
+                                <!-- 5. Enrollment Roadmap Stepper -->
+                                <div class="profile-card">
+                                    <div class="profile-card-header">
+                                        <h6 class="profile-card-title"><i class="fa-solid fa-route"></i> Enrollment Roadmap Log</h6>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace" style="font-size:0.68rem;">
+                                            {{ selectedStudent.roadmap ? selectedStudent.roadmap.filter(s => ['COMPLETED', 'Completed', 'VERIFIED', 'APPROVED'].includes(s.status)).length : 0 }} / {{ selectedStudent.roadmap ? selectedStudent.roadmap.length : 0 }} Steps
+                                        </span>
+                                    </div>
+                                    <div class="profile-roadmap-list" style="max-height: 320px; overflow-y: auto;">
                                         <div v-for="(step, idx) in selectedStudent.roadmap" :key="step.stepId || step.id || idx"
-                                            class="mb-3 pb-2 border-bottom border-light-subtle">
-                                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                                <span class="fw-bold small text-dark">{{ idx + 1 }}. {{ step.title || step.name || 'Enrollment Step' }}</span>
-                                                <span
-                                                    class="badge rounded-pill font-monospace text-uppercase py-1 px-2 border"
-                                                    :class="{
-                                                      'bg-success-subtle text-success border-success-subtle': ['COMPLETED', 'Completed', 'VERIFIED', 'APPROVED'].includes(step.status),
-                                                      'bg-warning-subtle text-dark border-warning-subtle': ['IN_PROGRESS', 'PENDING', 'Pending', 'In Progress'].includes(step.status),
-                                                      'bg-secondary-subtle text-secondary border-secondary-subtle': ['LOCKED', 'Locked'].includes(step.status),
-                                                      'bg-light text-secondary border-secondary-subtle': step.status === 'SKIPPED'
-                                                  }">
-                                                    {{ step.status }}
-                                                </span>
+                                             class="profile-roadmap-step"
+                                             :class="{
+                                                 'is-completed': ['COMPLETED', 'Completed', 'VERIFIED', 'APPROVED'].includes(step.status),
+                                                 'is-active': ['IN_PROGRESS', 'PENDING', 'Pending', 'In Progress'].includes(step.status),
+                                                 'is-locked': ['LOCKED', 'Locked'].includes(step.status)
+                                             }">
+                                            <div class="d-flex align-items-center gap-2 min-w-0">
+                                                <i class="fa-solid" :class="{
+                                                    'fa-circle-check text-success': ['COMPLETED', 'Completed', 'VERIFIED', 'APPROVED'].includes(step.status),
+                                                    'fa-spinner fa-spin text-warning': ['IN_PROGRESS', 'PENDING', 'Pending', 'In Progress'].includes(step.status),
+                                                    'fa-lock text-secondary': ['LOCKED', 'Locked'].includes(step.status),
+                                                    'fa-circle-minus text-muted': step.status === 'SKIPPED'
+                                                }" style="font-size:0.9rem;"></i>
+                                                <div class="min-w-0">
+                                                    <div class="fw-bold small text-dark text-truncate">{{ idx + 1 }}. {{ step.title || step.name || 'Enrollment Step' }}</div>
+                                                    <div class="text-muted" style="font-size: 0.7rem;">{{ step.station || step.location || ('Station ' + (idx + 1)) }}</div>
+                                                </div>
                                             </div>
-                                            <div class="d-flex justify-content-between text-muted"
-                                                style="font-size: 0.72rem;">
-                                                <span>{{ step.station || step.location || ('Station ' + (idx + 1)) }}</span>
-                                            </div>
+                                            <span class="badge rounded-pill font-monospace text-uppercase py-1 px-2 flex-shrink-0"
+                                                  :class="{
+                                                      'bg-success-subtle text-success border border-success-subtle': ['COMPLETED', 'Completed', 'VERIFIED', 'APPROVED'].includes(step.status),
+                                                      'bg-warning-subtle text-dark border border-warning-subtle': ['IN_PROGRESS', 'PENDING', 'Pending', 'In Progress'].includes(step.status),
+                                                      'bg-secondary-subtle text-secondary border border-secondary-subtle': ['LOCKED', 'Locked'].includes(step.status),
+                                                      'bg-light text-secondary border': step.status === 'SKIPPED'
+                                                  }" style="font-size: 0.65rem;">
+                                                {{ step.status }}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Required Documents Checklist & Compliance -->
-                                <h6 class="mb-3 fw-bold text-dark d-flex align-items-center">
-                                    <i class="fa-solid fa-folder-closed text-success me-2"></i> Verified Documents &amp; Compliance
-                                </h6>
-                                <div class="card p-3 border border-light-subtle rounded-3 bg-white shadow-sm mb-3"
-                                    v-if="selectedStudent.requirementsData">
-                                    <ul class="list-unstyled mb-0">
-                                        <li class="p-2 mb-2 rounded-2 border border-light-subtle bg-light bg-opacity-25"
-                                            v-for="doc in (selectedStudent.requirementsData.requirements || ['Form 138 (Original SHS Report Card)', 'Certificate of Good Moral', 'PSA Birth Certificate', '2x2 Photos'])" :key="doc">
-                                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <!-- 6. Verified Documents & Compliance -->
+                                <div class="profile-card">
+                                    <div class="profile-card-header">
+                                        <h6 class="profile-card-title"><i class="fa-solid fa-folder-open"></i> Admission Documents</h6>
+                                        <span class="badge bg-light text-secondary border font-monospace" style="font-size:0.68rem;">Compliance</span>
+                                    </div>
+                                    <div v-if="selectedStudent.requirementsData">
+                                        <ul class="profile-doc-list" style="max-height: 280px; overflow-y: auto;">
+                                            <li class="profile-doc-row"
+                                                v-for="doc in (selectedStudent.requirementsData.requirements || ['Form 138 (Original SHS Report Card)', 'Certificate of Good Moral', 'PSA Birth Certificate', '2x2 Photos'])" :key="doc">
                                                 <div class="d-flex align-items-center gap-2 min-w-0">
                                                     <i class="fa-solid" :class="{
                                                         'fa-circle-check text-success': getDocStatus(doc, selectedStudent) === 'ORIGINAL',
@@ -915,7 +984,7 @@
                                                         'fa-clock-rotate-left text-warning': getDocStatus(doc, selectedStudent) === 'UNDERTAKING',
                                                         'fa-circle-xmark text-danger': getDocStatus(doc, selectedStudent) === 'NOT_SUBMITTED'
                                                     }" style="font-size:0.85rem;"></i>
-                                                    <span class="small fw-semibold text-dark text-truncate" style="font-size:0.8rem;">{{ doc }}</span>
+                                                    <span class="small fw-semibold text-dark text-truncate" style="font-size:0.78rem;">{{ doc }}</span>
                                                 </div>
                                                 <div class="d-flex align-items-center gap-1.5 flex-shrink-0">
                                                     <span class="badge font-monospace" style="font-size:0.65rem;" :class="{
@@ -931,30 +1000,37 @@
                                                         <span>View</span>
                                                     </button>
                                                 </div>
-                                            </div>
-                                        </li>
-                                    </ul>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="text-muted small py-2 text-center" v-else>No document records initialized.</div>
                                 </div>
 
-                                <!-- Form 137 High School Transmittal Badge in Student Profile -->
-                                <div class="card p-2.5 border border-light-subtle rounded-3 bg-white shadow-sm" v-if="selectedStudent.requirementsData">
-                                    <div class="d-flex align-items-center justify-content-between" style="font-size:0.75rem;">
-                                        <span class="text-muted fw-bold text-uppercase"><i class="fa-solid fa-paper-plane text-success me-1"></i> Form 137 / SF10:</span>
+                                <!-- 7. Form 137 / SF10 High School Transmittal Badge -->
+                                <div class="profile-card" v-if="selectedStudent.requirementsData">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="fa-solid fa-paper-plane text-success"></i>
+                                            <span class="small fw-bold text-dark text-uppercase" style="font-size:0.75rem;">Form 137 / SF10 Transmittal:</span>
+                                        </div>
                                         <span class="badge font-monospace" :class="{
-                                            'bg-secondary-subtle text-secondary': getTransmittalData(selectedStudent).form137Status === 'NOT_SENT',
-                                            'bg-warning-subtle text-dark': ['1ST_REQUEST_SENT', '2ND_REQUEST_SENT'].includes(getTransmittalData(selectedStudent).form137Status),
-                                            'bg-success-subtle text-success': getTransmittalData(selectedStudent).form137Status === 'RECEIVED_ARCHIVED'
-                                        }">
+                                            'bg-secondary-subtle text-secondary border border-secondary-subtle': getTransmittalData(selectedStudent).form137Status === 'NOT_SENT',
+                                            'bg-warning-subtle text-dark border border-warning-subtle': ['1ST_REQUEST_SENT', '2ND_REQUEST_SENT'].includes(getTransmittalData(selectedStudent).form137Status),
+                                            'bg-success-subtle text-success border border-success-subtle': getTransmittalData(selectedStudent).form137Status === 'RECEIVED_ARCHIVED'
+                                        }" style="font-size:0.72rem;">
                                             {{ (getTransmittalData(selectedStudent).form137Status || 'NOT_SENT').replace(/_/g, ' ') }}
                                         </span>
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn-pill btn-pill-ghost" data-bs-dismiss="modal">Close Profile</button>
+
+                    <!-- Modal Footer -->
+                    <div class="modal-footer bg-light bg-opacity-50 py-2.5 px-4 d-flex justify-content-end gap-2 border-top">
+                        <button type="button" class="btn-pill btn-pill-ghost" data-bs-dismiss="modal">
+                            <i class="fa-solid fa-xmark me-1"></i> Close Profile
+                        </button>
                     </div>
                 </div>
             </div>

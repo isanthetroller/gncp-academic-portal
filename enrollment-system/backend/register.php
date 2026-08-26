@@ -346,24 +346,42 @@ try {
 
     if (!empty($_FILES)) {
         foreach ($_FILES as $inputKey => $fileInfo) {
-            if (strpos($inputKey, 'doc_') === 0 && $fileInfo['error'] === UPLOAD_ERR_OK && $fileInfo['size'] > 0) {
+            if (strpos($inputKey, 'doc_') === 0 && $fileInfo['error'] === UPLOAD_ERR_OK && $fileInfo['size'] > 0 && $fileInfo['size'] <= 10 * 1024 * 1024) {
                 $rawKey = substr($inputKey, 4);
                 $ext = strtolower(pathinfo($fileInfo['name'], PATHINFO_EXTENSION));
-                $allowedExts = ['pdf', 'jpg', 'jpeg', 'png'];
-                if (in_array($ext, $allowedExts)) {
-                    $sanitizedKey = preg_replace('/[^a-zA-Z0-9_]/', '', $rawKey);
-                    $newFileName = 'doc_' . $sanitizedKey . '_' . $tempStudentId . '_' . time() . '.' . $ext;
-                    $targetPath = $uploadDir . $newFileName;
-                    $moved = is_uploaded_file($fileInfo['tmp_name']) 
-                        ? move_uploaded_file($fileInfo['tmp_name'], $targetPath) 
-                        : copy($fileInfo['tmp_name'], $targetPath);
-                    if ($moved) {
-                        $uploadedFilesMeta[$sanitizedKey] = [
-                            'fileName'   => basename($fileInfo['name']),
-                            'filePath'   => 'uploads/documents/' . $newFileName,
-                            'fileType'   => $fileInfo['type'],
-                            'uploadedAt' => date('Y-m-d H:i:s')
-                        ];
+                
+                // Strictly accept PDF files only
+                if ($ext === 'pdf') {
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $detectedMime = finfo_file($finfo, $fileInfo['tmp_name']);
+                    finfo_close($finfo);
+
+                    // Check MIME type
+                    if ($detectedMime === 'application/pdf') {
+                        // Check %PDF- header magic bytes
+                        $handle = @fopen($fileInfo['tmp_name'], 'rb');
+                        $header = $handle ? @fread($handle, 5) : '';
+                        if ($handle) @fclose($handle);
+
+                        if ($header === '%PDF-') {
+                            $rawContent = @file_get_contents($fileInfo['tmp_name']);
+                            // Reject executable script injections
+                            if (!$rawContent || !preg_match('/<\?php|<\?=|<script\b|eval\s*\(|base64_decode\s*\(/i', $rawContent)) {
+                                $sanitizedKey = preg_replace('/[^a-zA-Z0-9_]/', '', $rawKey);
+                                $randomToken = bin2hex(random_bytes(8));
+                                $newFileName = 'doc_' . $sanitizedKey . '_' . preg_replace('/[^a-zA-Z0-9_]/', '', $tempStudentId) . '_' . $randomToken . '.pdf';
+                                $targetPath = $uploadDir . $newFileName;
+                                
+                                if (is_uploaded_file($fileInfo['tmp_name']) && move_uploaded_file($fileInfo['tmp_name'], $targetPath)) {
+                                    $uploadedFilesMeta[$sanitizedKey] = [
+                                        'fileName'   => basename($fileInfo['name']),
+                                        'filePath'   => 'uploads/documents/' . $newFileName,
+                                        'fileType'   => 'application/pdf',
+                                        'uploadedAt' => date('Y-m-d H:i:s')
+                                    ];
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -22,6 +22,7 @@
  * HTML file that still references the legacy endpoints.
  */
 
+require_once __DIR__ . '/../../shared/backend/utils/security_guard.php';
 require_once __DIR__ . '/../../shared/backend/config/database.php';
 require_once __DIR__ . '/../../shared/backend/utils/logger.php';
 require_once __DIR__ . '/../../shared/backend/utils/response.php';

@@ -16,12 +16,15 @@ yarn-error.log*
 *.log
 shared/backend/logs/
 
-# Python Caches & Selenium Screenshots
+# Python Caches & Screenshots
 __pycache__/
 *.pyc
+tests/**/__pycache__/
 tests/selenium/__pycache__/
+tests/playwright/__pycache__/
 tests/selenium/screenshots/*.png
 !tests/selenium/screenshots/.gitkeep
+tests/playwright/screenshots/*_[0-9]*.png
 
 # IDEs and editors
 .idea/
@@ -51,9 +54,12 @@ announcements_table_full.html
 test_station_integration.html
 test_ui.html
 
-# User Uploaded Avatars & Documents (keep folder structure)
-uploads/avatars/avatar_*
-shared/assets/uploads/avatar_*
-stations/it-center/assets/uploads/avatar_*
+# User Uploaded Avatars & Documents (keep folder structure and security configs)
+uploads/avatars/*
+!uploads/avatars/.gitkeep
+!uploads/avatars/.htaccess
 uploads/documents/*
 !uploads/documents/.gitkeep
+!uploads/documents/.htaccess
+shared/assets/uploads/avatar_*
+stations/it-center/assets/uploads/avatar_*

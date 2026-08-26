@@ -1,50 +1,37 @@
-/**
- * Student Portal - Dedicated Forgot Password Controller
- * Handles 2-step verification code dispatch, validation, and redirection to login.
- */
-
 window.StudentForgotPasswordController = {
     setup() {
         const { ref, reactive, onMounted } = Vue;
-
-        const currentStep = ref(1); // 1 = Request Code, 2 = Verify Code & Reset
+        const currentStep = ref(1); 
         const identifier = ref('');
         const verificationCode = ref('');
         const newPassword = ref('');
         const confirmPassword = ref('');
         const showNewPass = ref(false);
         const showConfirmPass = ref(false);
-
         const isSubmitting = ref(false);
         const errorMessage = ref('');
         const successMessage = ref('');
         const maskedEmail = ref('');
         const studentName = ref('');
-
         const handleRequestCode = async () => {
             if (!identifier.value.trim()) {
                 errorMessage.value = 'Please enter your Student ID or registered Email Address.';
                 return;
             }
-
             isSubmitting.value = true;
             errorMessage.value = '';
             successMessage.value = '';
-
             try {
                 const res = await StudentApiService.requestPasswordReset(identifier.value.trim());
                 isSubmitting.value = false;
-
                 if (!res.success) {
                     errorMessage.value = res.message || 'No account found matching that Student ID or Email address.';
                     return;
                 }
-
                 maskedEmail.value = res.data?.maskedEmail || 'your email';
                 studentName.value = res.data?.studentName || '';
                 successMessage.value = `A 6-digit verification code has been sent to ${maskedEmail.value}.`;
                 currentStep.value = 2;
-
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'Verification Code Sent',
@@ -59,7 +46,6 @@ window.StudentForgotPasswordController = {
                 errorMessage.value = 'An unexpected server error occurred. Please try again.';
             }
         };
-
         const handleResetPassword = async () => {
             if (!verificationCode.value.trim()) {
                 errorMessage.value = 'Please enter the 6-digit verification code.';
@@ -77,11 +63,9 @@ window.StudentForgotPasswordController = {
                 errorMessage.value = 'Passwords do not match. Please re-enter.';
                 return;
             }
-
             isSubmitting.value = true;
             errorMessage.value = '';
             successMessage.value = '';
-
             try {
                 const res = await StudentApiService.resetPasswordWithCode(
                     identifier.value.trim(),
@@ -89,14 +73,11 @@ window.StudentForgotPasswordController = {
                     newPassword.value
                 );
                 isSubmitting.value = false;
-
                 if (!res.success) {
                     errorMessage.value = res.message || 'Invalid or expired verification code.';
                     return;
                 }
-
                 successMessage.value = 'Password reset successfully! Redirecting to login...';
-
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'Password Updated!',
@@ -112,13 +93,11 @@ window.StudentForgotPasswordController = {
                         window.location.href = `login.html?reset=success&id=${encodeURIComponent(identifier.value.trim())}`;
                     }, 1500);
                 }
-
             } catch (err) {
                 isSubmitting.value = false;
                 errorMessage.value = 'Failed to reset password. Please try again.';
             }
         };
-
         const goBackToStep1 = () => {
             currentStep.value = 1;
             verificationCode.value = '';
@@ -127,7 +106,6 @@ window.StudentForgotPasswordController = {
             errorMessage.value = '';
             successMessage.value = '';
         };
-
         return {
             currentStep,
             identifier,

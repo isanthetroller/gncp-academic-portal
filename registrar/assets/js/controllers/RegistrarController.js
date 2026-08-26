@@ -115,7 +115,7 @@
                 {
                     title: 'Core Operations',
                     items: [
-                        { id: 'pending-applications', label: 'Pending Reviews', icon: 'fa-solid fa-file-signature', badge: pendingApplications.value.filter(s => s.status !== 'ENROLLED').length || null },
+                        { id: 'pending-applications', label: 'Pending Reviews', icon: 'fa-solid fa-file-signature', badge: pendingApplications.value.filter(s => ['PENDING', 'PRE_REGISTERED'].includes(String(s.status).toUpperCase())).length || null },
                         { id: 'students', label: 'Student Directory', icon: 'fa-solid fa-users' }
                     ]
                 },
@@ -133,7 +133,7 @@
                 const totalSubs = subjects.value.length;
                 const totalSecs = subjectSections.value.length;
                 const totalStud = students.value.length;
-                const pendingCount = pendingApplications.value.filter(s => s.status !== 'ENROLLED').length;
+                const pendingCount = pendingApplications.value.filter(s => ['PENDING', 'PRE_REGISTERED'].includes(String(s.status).toUpperCase())).length;
 
                 return [
                     { title: 'Registered Students', value: totalStud.toString(), meta: 'Approved and promoted' },
@@ -163,9 +163,41 @@
             };
 
             // ── Auth & Live Profile Handling ─────────────────────────────
+            const handleSessionExpired = () => {
+                isCheckingSession.value = false;
+                currentUser.value = null;
+                if (typeof global.SessionExpirationGuard !== 'undefined') {
+                    global.SessionExpirationGuard.handleExpiredSession({
+                        title: 'Session Expired',
+                        message: 'Your registrar workstation session has expired. Please sign in again to continue student evaluations.',
+                        reason: 'expired'
+                    });
+                } else {
+                    sessionStorage.removeItem('gncp_station_user');
+                    sessionStorage.removeItem('gncp_admin_user');
+                    window.location.href = '../?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                }
+            };
+
             const checkSession = async () => {
                 localStorage.removeItem('gncp_station_user');
                 localStorage.removeItem('gncp_admin_user');
+
+                // Optimistically render from tab-scoped sessionStorage for instant 0ms dashboard load
+                const cachedRaw = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user');
+                if (cachedRaw) {
+                    try {
+                        const parsed = JSON.parse(cachedRaw);
+                        if (parsed && parsed.role && ['REGISTRAR', 'SUPER_ADMIN', 'ADMIN'].includes(parsed.role)) {
+                            currentUser.value = parsed;
+                            isCheckingSession.value = false;
+                        }
+                    } catch (e) {}
+                }
+
+                // Immediately trigger data loading in parallel with background auth verification
+                loadData();
+                startLiveSync();
 
                 try {
                     const res = await fetch('../api/index.php?action=auth/check', { credentials: 'same-origin' });
@@ -178,55 +210,29 @@
                             const sessionKey = (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
                             sessionStorage.setItem(sessionKey, JSON.stringify(result.data));
 
-                            // Sync live profile
-                            try {
-                                const profRes = await RegistrarApiService.fetchUserProfile(result.data.username);
-                                if (profRes && profRes.success && profRes.data) {
-                                    const updatedUser = {
-                                        ...result.data,
-                                        name: profRes.data.name || result.data.name,
-                                        email: profRes.data.email || result.data.email,
-                                        avatar: profRes.data.avatar || result.data.avatar
-                                    };
-                                    currentUser.value = updatedUser;
-                                    sessionStorage.setItem(sessionKey, JSON.stringify(updatedUser));
-                                }
-                            } catch (err) {
-                                console.warn('Profile sync warning:', err);
-                            }
-
                             // Password change guard check
                             if (result.data.must_change_password && typeof global.PasswordChangeGuard !== 'undefined') {
                                 global.PasswordChangeGuard.checkAndPrompt(result.data, function () {
                                     const updatedUser = { ...currentUser.value, must_change_password: false };
                                     currentUser.value = updatedUser;
                                     sessionStorage.setItem(sessionKey, JSON.stringify(updatedUser));
-                                    loadData();
-                                    startLiveSync();
                                 });
-                            } else {
-                                loadData();
-                                startLiveSync();
                             }
                             return;
+                        } else {
+                            handleSessionExpired();
+                            return;
                         }
+                    } else if (res.status === 401) {
+                        handleSessionExpired();
+                        return;
                     }
                 } catch (err) {
-                    console.warn('[Registrar] Live session check error:', err);
+                    console.warn('[Registrar] Live session check network warning:', err);
                 }
 
-                isCheckingSession.value = false;
-                currentUser.value = null;
-                if (typeof global.SessionExpirationGuard !== 'undefined') {
-                    global.SessionExpirationGuard.handleExpiredSession({
-                        title: 'Session Expired',
-                        message: 'Your registrar workstation session has expired. Please sign in again to continue student evaluations.',
-                        reason: 'expired'
-                    });
-                } else {
-                    sessionStorage.removeItem('gncp_station_user');
-                    sessionStorage.removeItem('gncp_admin_user');
-                    window.location.href = '../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                if (!currentUser.value) {
+                    handleSessionExpired();
                 }
             };
 
@@ -256,16 +262,31 @@
                 showLogoutConfirm.value = false;
                 stopLiveSync();
                 currentUser.value = null;
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Signing Out...',
+                        text: 'Ending your session...',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                }
+
                 sessionStorage.removeItem('gncp_station_user');
                 sessionStorage.removeItem('gncp_admin_user');
                 localStorage.removeItem('gncp_station_user');
                 localStorage.removeItem('gncp_admin_user');
 
-                fetch('../api/index.php?action=auth/logout', { method: 'POST' })
-                    .catch(() => {})
-                    .finally(() => {
-                        window.location.replace('../index.html?clear=true&logout=true');
-                    });
+                // Dispatch non-blocking logout with keepalive
+                try {
+                    fetch('../api/index.php?action=auth/logout', { method: 'POST', keepalive: true }).catch(() => {});
+                } catch (e) {}
+
+                window.location.replace('../?clear=true&logout=true');
             };
 
             onMounted(() => {
@@ -1035,9 +1056,8 @@
                 });
             };
 
-            // ── Live Computeds (Overview KPIs) ────────────────────────────
             const pendingCount = computed(() => {
-                return pendingApplications.value.filter(a => a.status === 'Pending').length;
+                return pendingApplications.value.filter(a => ['PENDING', 'PRE_REGISTERED'].includes(String(a.status).toUpperCase())).length;
             });
 
             const totalEnrolled = computed(() => {

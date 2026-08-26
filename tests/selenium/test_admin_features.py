@@ -71,14 +71,14 @@ class AdminFeaturesSeleniumTestRunner:
             return None
 
     def get_api_session(self, username="admin", password="admin12345"):
+        if hasattr(self, '_api_session') and self._api_session is not None:
+            return self._api_session
         s = requests.Session()
-        if self.driver:
-            for cookie in self.driver.get_cookies():
-                s.cookies.set(cookie['name'], cookie['value'])
         try:
             s.post(f"{config.BASE_URL}/shared/backend/login.php", json={"username": username, "password": password})
         except Exception:
             pass
+        self._api_session = s
         return s
 
     def close(self):

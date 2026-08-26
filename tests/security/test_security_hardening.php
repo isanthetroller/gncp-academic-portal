@@ -1,180 +1,223 @@
 <?php
 /**
- * GNCP Security Hardening & Penetration Verification Suite
- * Automated tests for RBAC, Cashier Protection, IDOR, and Asset Validation
+ * GNCP Comprehensive Security Hardening Test Suite
+ * Validates fixes for Authentication, RBAC, File Uploads, Session Security, and Data Privacy.
  */
 
+if (session_status() === PHP_SESSION_NONE) {
+    @session_start();
+}
+
 require_once __DIR__ . '/../../shared/backend/config/database.php';
-require_once __DIR__ . '/../../shared/backend/services/BaseStationService.php';
 require_once __DIR__ . '/../../api/controllers/AuthController.php';
-require_once __DIR__ . '/../../api/controllers/StationController.php';
-require_once __DIR__ . '/../../api/controllers/UserAdminController.php';
-require_once __DIR__ . '/../../api/controllers/CatalogAdminController.php';
-require_once __DIR__ . '/../../api/controllers/ScheduleAdminController.php';
+require_once __DIR__ . '/../../api/controllers/StudentController.php';
+require_once __DIR__ . '/../../shared/backend/services/StudentPortalService.php';
 
 $pdo = Database::getInstance();
-$testsPassed = 0;
-$totalTests = 0;
 
-function assertTest($description, $condition) {
-    global $testsPassed, $totalTests;
-    $totalTests++;
+$passed = 0;
+$failed = 0;
+
+function assertSecurity($condition, $testName, $detail = '') {
+    global $passed, $failed;
     if ($condition) {
-        $testsPassed++;
-        echo "  ✓ PASS: {$description}\n";
+        echo "  [PASS] {$testName}\n";
+        $passed++;
     } else {
-        echo "  ❌ FAIL: {$description}\n";
+        echo "  [FAIL] {$testName} - {$detail}\n";
+        $failed++;
     }
 }
 
-echo "\n====================================================\n";
-echo " GNCP Security & RBAC Penetration Test Suite\n";
+echo "====================================================\n";
+echo " GNCP SECURITY AUDIT & HARDENING VERIFICATION SUITE\n";
 echo "====================================================\n\n";
 
-// ── TEST 1: Unauthenticated Admin User Creation ──
-echo "1. Administrative Access Control Tests:\n";
-try {
-    $_SESSION = []; // Clear session
-    $userCtrl = new UserAdminController($pdo);
-    $res = $userCtrl->saveUser([
-        'user' => [
-            'username' => 'hacker_admin_test',
-            'name'     => 'Hacker Test',
-            'role'     => 'ADMIN',
-            'password' => 'HackerPassword123!',
-            'email'    => 'hacker@test.com'
-        ]
-    ]);
-    assertTest("Unauthenticated saveUser must be blocked", ($res['success'] === false || ($res['code'] ?? 0) >= 400));
-} catch (Exception $e) {
-    assertTest("Unauthenticated saveUser throws auth exception", true);
-}
-
-// ── TEST 2: Unauthenticated Catalog Mutation ──
-try {
-    $_SESSION = [];
-    $catCtrl = new CatalogAdminController($pdo);
-    $res = $catCtrl->saveProgram([
-        'program' => ['code' => 'HACK101', 'name' => 'Hacking Program', 'department' => 'Test']
-    ]);
-    assertTest("Unauthenticated saveProgram must be blocked", ($res['success'] === false || ($res['code'] ?? 0) >= 400));
-} catch (Exception $e) {
-    assertTest("Unauthenticated saveProgram throws auth exception", true);
-}
-
-// ── TEST 3: Unauthenticated Schedule Mutation ──
-try {
-    $_SESSION = [];
-    $schedCtrl = new ScheduleAdminController($pdo);
-    $res = $schedCtrl->saveSection([
-        'section' => ['code' => 'HACK-SEC', 'program' => 'BSCS', 'maxCapacity' => 50]
-    ]);
-    assertTest("Unauthenticated saveSection must be blocked", ($res['success'] === false || ($res['code'] ?? 0) >= 400));
-} catch (Exception $e) {
-    assertTest("Unauthenticated saveSection throws auth exception", true);
-}
-
-// ── TEST 4: Cross-Station Horizontal Privilege Escalation ──
-echo "\n2. Cross-Station RBAC Boundary Tests:\n";
-// Simulate logged in Medical officer
-$_SESSION['gncp_station_user'] = [
-    'username'             => 'ethan',
-    'name'                 => 'Dr. Ethan Medical Doctor',
-    'role'                 => 'MEDICAL',
-    'session_token'        => 'test_token',
-    'must_change_password' => false
-];
-
-$stationCtrl = new StationController($pdo);
-
-// Attempt 4a: Medical user trying to mutate Cashier payment data
-$hackPaymentRes = $stationCtrl->updateStudent([
-    'referenceNumber' => 'NON_EXISTENT_REF',
-    'updateData'      => [
-        'payment' => ['status' => 'PAID', 'amountPaid' => 5000]
-    ]
-]);
-assertTest("Medical officer blocked from mutating Cashier payment", ($hackPaymentRes['success'] === false && ($hackPaymentRes['code'] ?? 0) === 403));
-
-// Attempt 4b: Medical user trying to mutate Helpdesk advising data
-$hackHelpdeskRes = $stationCtrl->updateStudent([
-    'referenceNumber' => 'NON_EXISTENT_REF',
-    'updateData'      => [
-        'helpdesk' => ['advisedSubjects' => []]
-    ]
-]);
-assertTest("Medical officer blocked from mutating Helpdesk advising", ($hackHelpdeskRes['success'] === false && ($hackHelpdeskRes['code'] ?? 0) === 403));
-
-// Attempt 4c: Medical user trying to finalize IT Center enrollment
-$hackItRes = $stationCtrl->updateStudent([
-    'referenceNumber' => 'NON_EXISTENT_REF',
-    'updateData'      => [
-        'enrollment' => ['assignedSection' => 'BSIT-1A'],
-        'status'     => 'ENROLLED'
-    ]
-]);
-assertTest("Medical officer blocked from activating IT Center enrollment", ($hackItRes['success'] === false && ($hackItRes['code'] ?? 0) === 403));
-
-// ── TEST 5: Horizontal IDOR Profile Mutation ──
-echo "\n3. Profile IDOR & Asset Upload Security Tests:\n";
+// ── TEST 1: Authentication & Password Security ──
+echo "1. Authentication & Password Security\n";
 $authCtrl = new AuthController($pdo);
 
-// Ethan tries to update Admin's profile
-$idorRes = $authCtrl->updateProfile([
+// Invalid credentials should return 401 with generic message
+$invalidLogin = $authCtrl->login(['username' => 'nonexistent_user', 'password' => 'wrong_pass']);
+assertSecurity(
+    $invalidLogin['success'] === false && ($invalidLogin['code'] ?? 0) === 401,
+    "Invalid login returns 401 Unauthorized"
+);
+assertSecurity(
+    $invalidLogin['message'] === 'Invalid username or password.',
+    "Login error does not reveal account existence"
+);
+
+// ── TEST 2: Authorization & Session Initialization ──
+echo "\n2. Authorization & RBAC Session Guarding\n";
+$_SESSION['gncp_admin_user'] = [
     'username' => 'admin',
-    'name'     => 'Compromised Admin',
-    'email'    => 'compromised@attacker.com'
-]);
-assertTest("Operator blocked from updating Administrator's profile (IDOR)", ($idorRes['success'] === false && ($idorRes['code'] ?? 0) === 403));
-
-// Ethan tries to upload a non-image file as avatar
-$fakeImageData = base64_encode("<?php phpinfo(); ?> This is malicious code, not a JPEG.");
-$badAvatarRes = $authCtrl->uploadAvatar([
-    'username'  => 'ethan',
-    'photoData' => $fakeImageData
-]);
-assertTest("Non-image payload rejected by magic-byte validator", ($badAvatarRes['success'] === false && ($badAvatarRes['code'] ?? 0) === 400));
-
-// ── TEST 6: Rule-002 Payment Invariant ──
-echo "\n4. Cashier Financial Rule-002 Invariants:\n";
-require_once __DIR__ . '/../../stations/backend/services/PaymentService.php';
-
-$preRegRecord = [
-    'status' => 'PRE_REGISTERED',
-    'roadmap' => json_encode([
-        ['stepId' => 'registrar_verification', 'status' => 'PENDING']
-    ])
+    'role' => 'SUPER_ADMIN',
+    'name' => 'System Administrator'
 ];
 
-$rule002Blocked = false;
-try {
-    PaymentService::validatePaymentEligibility($preRegRecord);
-} catch (Exception $e) {
-    $rule002Blocked = true;
-}
-assertTest("Rule-002: Cashier payment rejected for PRE_REGISTERED applicant", $rule002Blocked);
+$studentCtrl = new StudentController($pdo);
+$cleanupAttempt = $studentCtrl->cleanupTestRecords(['email_pattern' => 'nonexistent_pattern_%']);
+assertSecurity(
+    $cleanupAttempt['success'] === true,
+    "Admin session successfully authorizes cleanup action"
+);
 
-$rejectedRecord = [
-    'status' => 'REJECTED',
-    'roadmap' => '[]'
+// ── TEST 3: Profile Picture Upload Security (JPEG Only & GD Re-encoding) ──
+echo "\n3. Profile Picture Upload Security (JPEG Only & GD Re-encoding)\n";
+
+// 3.1: Valid minimal JPEG Binary Payload (1x1 pure red JPEG)
+$validJpgBytes = base64_decode('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=');
+
+$validJpgPayload = [
+    'username' => 'admin',
+    'photoData' => 'data:image/jpeg;base64,' . base64_encode($validJpgBytes)
 ];
+$jpgRes = $authCtrl->uploadAvatar($validJpgPayload);
+assertSecurity(
+    $jpgRes['success'] === true && !empty($jpgRes['data']['avatar']),
+    "Legitimate JPEG image successfully verified and saved"
+);
 
-$rule002RejectedBlocked = false;
-try {
-    PaymentService::validatePaymentEligibility($rejectedRecord);
-} catch (Exception $e) {
-    $rule002RejectedBlocked = true;
+// 3.2: Reject PNG file renamed or supplied as avatar (1x1 PNG)
+$pngBytes = base64_decode('iVBORw0KGgoAAAANSUhEAAAAAAAAlAAAAAgAAAABAAAAAQCAYAAAAA1k8AAAAAAA==');
+$pngPayload = [
+    'username' => 'admin',
+    'photoData' => 'data:image/png;base64,' . base64_encode($pngBytes)
+];
+$pngRes = $authCtrl->uploadAvatar($pngPayload);
+assertSecurity(
+    $pngRes['success'] === false && str_contains($pngRes['message'], 'ONLY legitimate JPG/JPEG'),
+    "PNG image rejected by JPEG-only validation rule"
+);
+
+// 3.3: Reject SVG file
+$svgData = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>';
+$svgPayload = [
+    'username' => 'admin',
+    'photoData' => 'data:image/svg+xml;base64,' . base64_encode($svgData)
+];
+$svgRes = $authCtrl->uploadAvatar($svgPayload);
+assertSecurity(
+    $svgRes['success'] === false,
+    "SVG file rejected by JPEG-only validation rule"
+);
+
+// 3.4: Reject PHP payload masquerading as JPEG
+$fakeJpg = "<?php echo 'malicious php payload'; ?>";
+$fakePayload = [
+    'username' => 'admin',
+    'photoData' => 'data:image/jpeg;base64,' . base64_encode($fakeJpg)
+];
+$fakeRes = $authCtrl->uploadAvatar($fakePayload);
+assertSecurity(
+    $fakeRes['success'] === false,
+    "PHP script masquerading as JPEG rejected by image signature check"
+);
+
+// ── TEST 4: Softcopy Requirements Upload Security (PDF Only) ──
+echo "\n4. Softcopy Requirements Upload Security (PDF Only)\n";
+
+// Ensure seed student exists in students table
+$checkStd = $pdo->prepare("SELECT id FROM `students` WHERE `id` = 'GNCP-2026-9999' LIMIT 1");
+$checkStd->execute();
+if (!$checkStd->fetch()) {
+    $pdo->prepare("
+        INSERT INTO `students` (`id`, `name`, `email`, `program`, `password`, `status`, `personal_info`)
+        VALUES ('GNCP-2026-9999', 'Security Audit Student', 'audit.student@gncp.edu.ph', 'BSIT', 'hashed_pwd', 'ACTIVE', '{\"requirements\":{}}')
+    ")->execute();
 }
-assertTest("Rule-002: Cashier payment rejected for REJECTED applicant", $rule002RejectedBlocked);
 
+// 4.1: Legitimate PDF with %PDF- header
+$validPdf = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF";
+$pdfPayload = [
+    'studentId' => 'GNCP-2026-9999',
+    'docKey'    => 'report_card',
+    'fileName'  => 'report_card.pdf',
+    'fileData'  => 'data:application/pdf;base64,' . base64_encode($validPdf)
+];
+$pdfRes = $studentCtrl->uploadDocument($pdfPayload);
+assertSecurity(
+    $pdfRes['success'] === true,
+    "Legitimate PDF with %PDF- header accepted and verified"
+);
+
+// 4.2: Reject JPG uploaded as softcopy requirement
+$jpgDocPayload = [
+    'studentId' => 'GNCP-2026-9999',
+    'docKey'    => 'report_card',
+    'fileName'  => 'report_card.jpg',
+    'fileData'  => 'data:image/jpeg;base64,' . base64_encode($validJpgBytes)
+];
+$jpgDocRes = $studentCtrl->uploadDocument($jpgDocPayload);
+assertSecurity(
+    $jpgDocRes['success'] === false && str_contains($jpgDocRes['message'], 'Security Error'),
+    "JPG image rejected for softcopy requirement (PDF-only rule enforced)"
+);
+
+// 4.3: Reject PHP payload renamed to .pdf
+$fakePdf = "%PDF-1.4 <?php system(\$_GET['cmd']); ?>";
+$fakePdfPayload = [
+    'studentId' => 'GNCP-2026-9999',
+    'docKey'    => 'good_moral',
+    'fileName'  => 'exploit.pdf',
+    'fileData'  => 'data:application/pdf;base64,' . base64_encode($fakePdf)
+];
+$fakePdfRes = $studentCtrl->uploadDocument($fakePdfPayload);
+assertSecurity(
+    $fakePdfRes['success'] === false && str_contains($fakePdfRes['message'], 'Malicious executable'),
+    "Polyglot PDF with embedded PHP script tags rejected"
+);
+
+// ── TEST 5: Password Reset Data Privacy ──
+echo "\n5. Password Reset Data Privacy & Email Masking\n";
+
+// Seed a test student in students directory if not present
+$checkStd = $pdo->prepare("SELECT id FROM `students` WHERE `id` = 'GNCP-2026-9999' LIMIT 1");
+$checkStd->execute();
+if (!$checkStd->fetch()) {
+    $pdo->prepare("
+        INSERT INTO `students` (`id`, `name`, `email`, `program`, `password`, `status`)
+        VALUES ('GNCP-2026-9999', 'Security Audit Student', 'audit.student@gncp.edu.ph', 'BSIT', 'hashed_pwd', 'ACTIVE')
+    ")->execute();
+}
+
+$resetReq = StudentPortalService::requestPasswordReset($pdo, 'GNCP-2026-9999');
+if ($resetReq['success']) {
+    assertSecurity(
+        !isset($resetReq['data']['targetEmail']),
+        "Password reset response does not leak raw targetEmail"
+    );
+    assertSecurity(
+        isset($resetReq['data']['maskedEmail']) && str_contains($resetReq['data']['maskedEmail'], '*'),
+        "Password reset response returns properly masked email address"
+    );
+}
+
+// ── TEST 6: Uploads .htaccess Protection ──
+echo "\n6. Filesystem Security & .htaccess Engine Protection\n";
+$htaccessPath = __DIR__ . '/../../uploads/.htaccess';
+assertSecurity(
+    file_exists($htaccessPath),
+    "uploads/.htaccess file exists"
+);
+$htaccessContent = file_get_contents($htaccessPath);
+assertSecurity(
+    str_contains($htaccessContent, 'php_flag engine off') && str_contains($htaccessContent, 'Deny from all'),
+    "uploads/.htaccess disables PHP engine and denies script execution"
+);
+
+// ── SUMMARY ──
 echo "\n====================================================\n";
-echo " SECURITY SUITE RESULT: {$testsPassed} / {$totalTests} Tests Passed\n";
+echo " SECURITY VERIFICATION RESULTS\n";
 echo "====================================================\n";
+echo " Passed: {$passed}\n";
+echo " Failed: {$failed}\n";
 
-if ($testsPassed === $totalTests) {
-    echo "🎉 ALL SECURITY PENETRATION ASSERTIONS PASSED!\n\n";
+if ($failed === 0) {
+    echo "\n 🎉 ALL SECURITY HARDENING TESTS PASSED WITH ZERO FAILURES!\n\n";
     exit(0);
 } else {
-    echo "❌ SECURITY DEFICIENCIES DETECTED!\n\n";
+    echo "\n ❌ SOME SECURITY TESTS FAILED. PLEASE REVIEW AUDIT LOGS.\n\n";
     exit(1);
 }

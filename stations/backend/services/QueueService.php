@@ -315,13 +315,16 @@ class QueueService {
 
             // Determine active station ticket
             $activeStationKey = 'registrar';
-            if ($row['status'] === 'VERIFIED') {
+            $statusUpper = strtoupper($row['status'] ?? '');
+            if (in_array($statusUpper, ['VERIFIED', 'APPROVED'])) {
                 $activeStationKey = 'helpdesk';
-            } elseif ($row['status'] === 'ADVISED') {
+            } elseif ($statusUpper === 'ADVISED') {
                 $activeStationKey = 'medical';
-            } elseif ($row['status'] === 'MEDICAL_CLEARED') {
+            } elseif ($statusUpper === 'MEDICAL_CLEARED') {
                 $activeStationKey = 'cashier';
-            } elseif ($row['status'] === 'PAID') {
+            } elseif ($statusUpper === 'PAID') {
+                $activeStationKey = 'it';
+            } elseif (in_array($statusUpper, ['ENROLLED', 'PROMOTED', 'ACTIVE'])) {
                 $activeStationKey = 'it';
             }
 

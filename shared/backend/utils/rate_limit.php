@@ -11,6 +11,24 @@
  */
 
 /**
+ * Resolves the genuine client IP address, guarding against header spoofing on direct connections.
+ */
+function getRateLimitClientIp(): string {
+    $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    
+    // Only inspect X-Forwarded-For if explicitly configured to run behind a trusted reverse proxy
+    if (getenv('GNCP_TRUST_FORWARDED_IP') === '1' && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $forwarded = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        $candidate = trim($forwarded[0]);
+        if (filter_var($candidate, FILTER_VALIDATE_IP)) {
+            return $candidate;
+        }
+    }
+    
+    return $remoteAddr;
+}
+
+/**
  * Checks and enforces a rate limit for the given action and client IP.
  *
  * @param string $action    A short identifier for the action (e.g. 'student_register')
@@ -18,9 +36,9 @@
  * @param int    $windowSec Time window in seconds (e.g. 60 = per minute)
  */
 function checkRateLimit(string $action, int $maxHits = 10, int $windowSec = 60): void {
-    $ip  = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $ip = getRateLimitClientIp();
     // Sanitize IP for use as filename
-    $safeIp = preg_replace('/[^a-f0-9:.\-]/', '_', strtolower(trim(explode(',', $ip)[0])));
+    $safeIp = preg_replace('/[^a-f0-9:.\-]/', '_', strtolower(trim($ip)));
     $safeAction = preg_replace('/[^a-z0-9_]/', '_', $action);
 
     $dir = __DIR__ . '/../logs/rate_limits/';
@@ -55,10 +73,12 @@ function checkRateLimit(string $action, int $maxHits = 10, int $windowSec = 60):
 
     if ($state['hits'] > $maxHits) {
         $retryAfter = $windowSec - ($now - $state['window_start']);
-        header('Retry-After: ' . max(1, $retryAfter));
-        header('X-RateLimit-Limit: ' . $maxHits);
-        header('X-RateLimit-Remaining: 0');
-        http_response_code(429);
+        if (!headers_sent()) {
+            header('Retry-After: ' . max(1, $retryAfter));
+            header('X-RateLimit-Limit: ' . $maxHits);
+            header('X-RateLimit-Remaining: 0');
+            http_response_code(429);
+        }
         echo json_encode([
             'success'   => false,
             'message'   => 'Too many requests. Please wait ' . max(1, $retryAfter) . ' seconds before trying again.',
@@ -69,8 +89,10 @@ function checkRateLimit(string $action, int $maxHits = 10, int $windowSec = 60):
     }
 
     // Set informational headers
-    header('X-RateLimit-Limit: ' . $maxHits);
-    header('X-RateLimit-Remaining: ' . max(0, $maxHits - $state['hits']));
+    if (!headers_sent()) {
+        header('X-RateLimit-Limit: ' . $maxHits);
+        header('X-RateLimit-Remaining: ' . max(0, $maxHits - $state['hits']));
+    }
 }
 
 /**
@@ -98,10 +120,12 @@ function checkLoginRateLimit(string $action, string $identifier = '', int $maxFa
             if (is_array($state) && isset($state['failures'], $state['window_start'])) {
                 if (($now - $state['window_start']) < $windowSec && $state['failures'] >= $maxFailed) {
                     $retryAfter = $windowSec - ($now - $state['window_start']);
-                    header('Retry-After: ' . max(1, $retryAfter));
-                    header('X-RateLimit-Limit: ' . $maxFailed);
-                    header('X-RateLimit-Remaining: 0');
-                    http_response_code(429);
+                    if (!headers_sent()) {
+                        header('Retry-After: ' . max(1, $retryAfter));
+                        header('X-RateLimit-Limit: ' . $maxFailed);
+                        header('X-RateLimit-Remaining: 0');
+                        http_response_code(429);
+                    }
                     echo json_encode([
                         'success'    => false,
                         'message'    => 'Too many failed login attempts. Please wait ' . max(1, $retryAfter) . ' seconds before trying again.',

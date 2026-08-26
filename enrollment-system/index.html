@@ -4,26 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GNCP — Online Enrollment Portal</title>
-    
-    <!-- Google Fonts -->
+
     <link rel="stylesheet" href="../shared/libs/fonts/fonts.css">
-    
-    <!-- Bootstrap 5 CSS -->
+
     <link href="../shared/libs/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- FontAwesome Icons -->
+
     <link rel="stylesheet" href="../shared/libs/font-awesome/css/all.min.css">
-    
-    <!-- Custom CSS -->
+
     <link rel="stylesheet" href="assets/css/style.css">
     <script src="../shared/libs/sweetalert2.all.min.js"></script>
 </head>
 <body>
     <div id="enrollment-app" v-cloak>
 
-        <!-- ═══════════════════════════════════════════════════════════════════
-             Header Navigation Bar
-             ═══════════════════════════════════════════════════════════════════ -->
         <nav class="navbar navbar-expand-lg portal-navbar shadow-sm sticky-top">
             <div class="container">
                 <a class="navbar-brand d-flex align-items-center" href="../school-website/index.html">
@@ -45,7 +38,6 @@
             </div>
         </nav>
 
-        <!-- Warning banner if opened directly via file:// instead of localhost web server -->
         <div v-if="isLocalFile" class="alert alert-warning border-warning shadow-sm mx-auto my-3 p-3 rounded-3 container" style="max-width: 900px; z-index: 9999;">
             <h5 class="alert-heading text-warning-emphasis mb-2">
                 <i class="fas fa-exclamation-triangle me-2"></i>Running directly via File Protocol (file://)
@@ -60,12 +52,8 @@
             </p>
         </div>
 
-        <!-- ═══════════════════════════════════════════════════════════════════
-             Main Enrollment Wizard
-             ═══════════════════════════════════════════════════════════════════ -->
         <main class="container my-5">
 
-            <!-- Enrollment Closed Error Banner -->
             <div v-if="programsLoadError" class="alert alert-danger border-danger shadow-sm mx-auto mb-4 p-3 rounded-3" style="max-width: 900px;">
                 <h5 class="alert-heading text-danger-emphasis mb-2">
                     <i class="fas fa-exclamation-circle me-2"></i>Enrollment Closed
@@ -76,7 +64,7 @@
             </div>
 
             <div v-else>
-                <!-- Step Progress Indicator (hidden on confirmation screen) -->
+                
                 <div class="wizard-progress-wrapper mb-5" v-if="currentStep <= 6">
                 <div class="wizard-stepper">
                     <template v-for="(step, index) in steps" :key="step.number">
@@ -100,21 +88,17 @@
                 </div>
             </div>
 
-            <!-- Steps Container -->
             <div class="row justify-content-center">
                 <div class="col-xl-9 col-lg-10">
                     <div class="card wizard-card border-0">
                         <div class="card-body p-4 p-md-5">
 
-                            <!-- ─────────────────────────────────────────────────
-                                 STEP 1: Program Selection + NSTP
-                                 ───────────────────────────────────────────────── -->
                             <div v-if="currentStep === 1">
                                 <h3 class="step-title mb-2">Program &amp; NSTP Selection</h3>
                                 <p class="step-description mb-4 text-muted">Select your admission type, academic program, and NSTP component for this semester.</p>
 
                                 <div class="row g-4 mb-4">
-                                    <!-- Admission Type -->
+                                    
                                     <div class="col-md-6">
                                         <label class="form-label-custom">Admission Type</label>
                                         <div class="d-flex flex-column gap-3">
@@ -135,7 +119,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Department & Course -->
                                     <div class="col-md-6">
                                         <div class="mb-4">
                                             <label class="form-label-custom" for="collegeSelect">{{ collegeSelectLabel }}</label>
@@ -172,7 +155,6 @@
                                     </div>
                                  </div>
 
-                                <!-- ── RETURNING STUDENT: Verify Existing Record Panel ────────────── -->
                                 <div v-if="form.studentType === 'RETURNING'" class="col-12 mt-4 pt-3 border-top">
                                     <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
                                         <i class="fas fa-user-clock text-success fs-5"></i>
@@ -182,7 +164,6 @@
                                         Enter your <strong>institutional school email</strong> (e.g. <code>juan.delacruz24@gncp.edu.ph</code>) or the <strong>personal email</strong> you used when you first enrolled.
                                     </p>
 
-                                    <!-- Input + Verify Button row -->
                                     <div class="d-flex gap-2 flex-wrap mb-2">
                                         <div class="flex-grow-1">
                                             <input
@@ -215,13 +196,11 @@
                                         </button>
                                     </div>
 
-                                    <!-- Lookup Error message -->
                                     <div v-if="lookupError" class="alert alert-danger border-0 mt-3 mb-0 small d-flex align-items-center rounded-3">
                                         <i class="fas fa-circle-xmark me-2 fs-5"></i>
                                         <span>{{ lookupError }}</span>
                                     </div>
 
-                                    <!-- Lookup Success: student identity confirmed -->
                                     <div v-if="lookupSuccess && form.returningStudentData" class="alert alert-success border-0 mt-3 mb-0 d-flex align-items-start rounded-3">
                                         <i class="fas fa-circle-check me-3 fs-4 text-success mt-1"></i>
                                         <div>
@@ -239,7 +218,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Year Level selection (shown after successful verification) -->
                                     <div v-if="lookupSuccess" class="mt-3">
                                         <label class="form-label-custom">
                                             Year Level You Are Re-Enrolling At
@@ -262,7 +240,6 @@
                                     </div>
                                 </div>
 
-                                <!-- NSTP Selection Section -->
                                 <div class="col-12 mt-4 pt-3 border-top">
                                     <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
                                         <i class="fas fa-flag text-success fs-5"></i>
@@ -299,14 +276,10 @@
                                 </div>
                             </div>
 
-                            <!-- ─────────────────────────────────────────────────
-                                 STEP 2: Personal Details
-                                 ───────────────────────────────────────────────── -->
                             <div v-if="currentStep === 2">
                                 <h3 class="step-title mb-2">Personal Information</h3>
                                 <p class="step-description mb-4 text-muted">Provide your primary contact and demographic information.</p>
 
-                                <!-- Pre-fill notice for returning students -->
                                 <div v-if="form.studentType === 'RETURNING' && lookupSuccess"
                                      class="alert alert-info border-0 mb-3 small d-flex align-items-center">
                                     <i class="fas fa-magic-wand-sparkles me-2 fs-5 text-info"></i>
@@ -366,15 +339,12 @@
                                 </div>
                             </div>
 
-                            <!-- ─────────────────────────────────────────────────
-                                 STEP 3: Academic Background
-                                 ───────────────────────────────────────────────── -->
                             <div v-if="currentStep === 3">
                                 <h3 class="step-title mb-2">Academic Background</h3>
                                 <p class="step-description mb-4 text-muted">Please provide details regarding your previous educational background.</p>
 
                                 <div class="row g-4 mb-4">
-                                    <!-- High School Pathway (hidden for RETURNING — already on record) -->
+                                    
                                     <div class="col-md-12" v-if="form.studentType !== 'RETURNING'">
                                         <label class="form-label-custom">High School Pathway / Curriculum <span class="text-danger">*</span></label>
                                         <select class="form-select portal-select" v-model="form.educationPathway" @change="onPathwayChange">
@@ -393,7 +363,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Elementary School -->
                                     <div class="col-md-4">
                                         <label class="form-label-custom">
                                             {{ form.educationPathway === 'ALS' ? 'ALS Learning Center / CLC' : 'Elementary School' }} <span class="text-danger">*</span>
@@ -402,7 +371,6 @@
                                         <div class="invalid-feedback" v-if="errors.elementarySchool">{{ errors.elementarySchool }}</div>
                                     </div>
 
-                                    <!-- Junior High School -->
                                     <div class="col-md-4">
                                         <label class="form-label-custom">
                                             {{ form.educationPathway === 'REGULAR' ? 'Junior High School' : (form.educationPathway === 'OLD_CURRICULUM' ? 'High School (Old 4-Year)' : 'Junior High School') }}
@@ -413,7 +381,6 @@
                                         <div class="invalid-feedback" v-if="errors.juniorHighSchool">{{ errors.juniorHighSchool }}</div>
                                     </div>
 
-                                    <!-- Senior High School -->
                                     <div class="col-md-4">
                                         <label class="form-label-custom">
                                             Senior High School
@@ -424,7 +391,6 @@
                                         <div class="invalid-feedback" v-if="errors.seniorHighSchool">{{ errors.seniorHighSchool }}</div>
                                     </div>
 
-                                    <!-- Previous College (Shown only for TRANSFEREE students) -->
                                     <div class="col-md-12" v-if="form.studentType === 'TRANSFEREE'">
                                         <label class="form-label-custom">
                                             Previous College / University Attended <span class="text-danger">*</span>
@@ -433,7 +399,6 @@
                                         <div class="invalid-feedback" v-if="errors.previousCollege">{{ errors.previousCollege }}</div>
                                     </div>
 
-                                    <!-- High School Track -->
                                     <div class="col-md-6">
                                         <label class="form-label-custom">
                                             High School Track Taken
@@ -449,13 +414,11 @@
                                         </select>
                                     </div>
 
-                                    <!-- Honors / Awards (always shown) -->
                                     <div class="col-md-6">
                                         <label class="form-label-custom">Academic Honors / Awards</label>
                                         <input type="text" class="form-control portal-input" v-model="form.honors" placeholder="e.g. With Honors, Valedictorian">
                                     </div>
 
-                                    <!-- Soft Copy Document Uploads Section (Minimalist & Clean) -->
                                     <div class="col-md-12 mt-4 pt-3 border-top">
                                         <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                                             <div>
@@ -471,7 +434,6 @@
                                             </div>
                                         </div>
 
-                                        <!-- Soft Copy Validation Error Banner -->
                                         <div v-if="errors.softCopyDocs" class="alert alert-danger border-0 mb-3 small d-flex align-items-center rounded-3">
                                             <i class="fas fa-exclamation-circle me-2 fs-5"></i>
                                             <span>{{ errors.softCopyDocs }}</span>
@@ -482,7 +444,7 @@
                                                  class="card border rounded-3 p-3 bg-white shadow-sm hover-shadow transition-all"
                                                  :class="{ 'border-danger bg-danger-subtle bg-opacity-10': errors.softCopyDocs && !documentFiles[doc.key] }">
                                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                                                    <!-- Left: Document Information -->
+                                                    
                                                     <div class="d-flex align-items-center me-3" style="min-width: 260px;">
                                                         <div class="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0" 
                                                              :class="documentFiles[doc.key] ? 'bg-success bg-opacity-10 text-success' : (errors.softCopyDocs ? 'bg-danger bg-opacity-10 text-danger' : 'bg-light text-secondary')" 
@@ -505,12 +467,10 @@
                                                         </div>
                                                     </div>
 
-                                                    <!-- Right: Upload Actions -->
                                                     <div class="ms-auto">
-                                                        <!-- Hidden Native Input -->
+                                                        
                                                         <input type="file" class="d-none" :id="'file_' + doc.key" @change="onFileChange(doc.key, $event)" accept=".pdf,.jpg,.jpeg,.png">
 
-                                                        <!-- Action Buttons -->
                                                         <button v-if="!documentFiles[doc.key]" type="button" 
                                                                 class="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold fs-7"
                                                                 :class="errors.softCopyDocs ? 'btn-danger' : 'btn-outline-success'"
@@ -534,12 +494,6 @@
                                 </div>
                             </div>
 
-                            <!-- ─────────────────────────────────────────────────
-                                 STEP 4: Medical Pre-Screening
-                                 ───────────────────────────────────────────────── -->
-                            <!-- ─────────────────────────────────────────────────
-                                 STEP 4: Medical Pre-Screening
-                                 ───────────────────────────────────────────────── -->
                             <div v-if="currentStep === 4">
                                 <h3 class="step-title mb-2">Medical Pre-Screening</h3>
                                 <p class="step-description mb-4 text-muted">
@@ -548,7 +502,6 @@
 
                                 <div class="row g-4 mb-4">
 
-                                    <!-- ── SECTION 1: Health Profile & Medical History ── -->
                                     <div class="col-12">
                                         <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
                                             <i class="fas fa-heart-pulse text-success fs-5"></i>
@@ -557,7 +510,6 @@
                                         <p class="text-muted small mb-3">Assess your current physical health and declare any pre-existing conditions.</p>
                                     </div>
 
-                                    <!-- General Health Status -->
                                     <div class="col-12">
                                         <label class="form-label-custom">General Health Status <span class="text-danger">*</span></label>
                                         <div class="row g-3">
@@ -586,7 +538,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Pre-Existing Medical Conditions -->
                                     <div class="col-12">
                                         <label class="form-label-custom">
                                             Pre-Existing Medical Conditions
@@ -603,13 +554,11 @@
                                         </div>
                                     </div>
 
-                                    <!-- Known Allergies -->
                                     <div class="col-md-6">
                                         <label class="form-label-custom">Known Allergies / Food &amp; Drug Sensitivities</label>
                                         <input type="text" class="form-control portal-input" v-model="form.allergies" placeholder="e.g. Penicillin, Aspirin, Shellfish — or None">
                                     </div>
 
-                                    <!-- Current Medication Option -->
                                     <div class="col-md-6">
                                         <label class="form-label-custom">Currently taking prescription medication?</label>
                                         <div class="row g-3">
@@ -630,13 +579,11 @@
                                         </div>
                                     </div>
 
-                                    <!-- Medication Details (Conditional) -->
                                     <div class="col-12" v-if="form.currentMedication">
                                         <label class="form-label-custom">Prescription Medication Details</label>
                                         <input type="text" class="form-control portal-input" v-model="form.medicationDetails" placeholder="List current medications and dosages (e.g. Metformin 500mg once daily)">
                                     </div>
 
-                                    <!-- ── SECTION 2: Physical Activity Clearance ── -->
                                     <div class="col-12 mt-4 pt-3 border-top">
                                         <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
                                             <i class="fas fa-person-running text-success fs-5"></i>
@@ -677,7 +624,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- ── SECTION 3: Emergency Contact Details ── -->
                                     <div class="col-12 mt-4 pt-3 border-top">
                                         <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
                                             <i class="fas fa-phone text-success fs-5"></i>
@@ -707,7 +653,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Notice Box -->
                                     <div class="col-12 mt-3">
                                         <div class="alert border-0 py-3 px-4 small rounded-3 d-flex align-items-center gap-3" style="background-color: var(--primary-green-light); color: var(--dark-green);">
                                             <i class="fas fa-stethoscope fs-4 text-primary-green"></i>
@@ -720,15 +665,12 @@
                                 </div>
                             </div>
 
-                            <!-- ─────────────────────────────────────────────────
-                                 STEP 5: Fee Evaluation & Tuition Calculator
-                                 ───────────────────────────────────────────────── -->
                             <div v-if="currentStep === 5">
                                 <h3 class="step-title mb-2">Tuition &amp; Payment Setup</h3>
                                 <p class="step-description mb-4 text-muted">Configure your payment term and view your calculated collegiate fees.</p>
 
                                 <div class="row g-4 mb-4">
-                                    <!-- Payment Options -->
+                                    
                                     <div class="col-lg-6">
                                         <div class="mb-4">
                                             <label class="form-label-custom">Choose Payment Scheme</label>
@@ -751,7 +693,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Live Fee Invoice -->
                                     <div class="col-lg-6">
                                         <div class="invoice-container shadow-sm p-4 rounded-4">
                                             <div class="invoice-header d-flex justify-content-between align-items-center mb-3">
@@ -800,9 +741,6 @@
                                 </div>
                             </div>
 
-                            <!-- ─────────────────────────────────────────────────
-                                 STEP 6: Review & Submit
-                                 ───────────────────────────────────────────────── -->
                             <div v-if="currentStep === 6">
                                 <h3 class="step-title mb-2">Review Enrollment Details</h3>
                                 <p class="step-description mb-4 text-muted">Confirm that all details are correct before finalizing your enrollment.</p>
@@ -813,9 +751,9 @@
                                 </div>
 
                                 <div class="row g-4 mb-4">
-                                    <!-- Left Column: Program & Student Details -->
+                                    
                                     <div class="col-lg-6 d-flex flex-column gap-4">
-                                        <!-- Card 1: Academic Program -->
+                                        
                                         <div class="summary-section">
                                             <h5 class="summary-section-title"><i class="fas fa-university me-2 text-primary-gold"></i>Academic Program</h5>
                                             <p class="summary-item mb-2"><strong>Degree Major:</strong> {{ getCourseName(form.courseCode) }}</p>
@@ -827,7 +765,6 @@
                                             </p>
                                         </div>
 
-                                        <!-- Card 2: Student Details -->
                                         <div class="summary-section flex-grow-1">
                                             <h5 class="summary-section-title"><i class="fas fa-user me-2 text-primary-gold"></i>Student &amp; Contact Details</h5>
                                             <p class="summary-item mb-2"><strong>Full Name:</strong> {{ form.lastName }}, {{ form.firstName }} {{ form.middleName }}</p>
@@ -838,9 +775,8 @@
                                         </div>
                                     </div>
 
-                                    <!-- Right Column: Academic, Medical & Financial -->
                                     <div class="col-lg-6 d-flex flex-column gap-4">
-                                        <!-- Card 3: Academic History -->
+                                        
                                         <div class="summary-section">
                                             <h5 class="summary-section-title"><i class="fas fa-graduation-cap me-2 text-primary-gold"></i>Academic History</h5>
                                             <p class="summary-item mb-2" v-if="form.educationPathway !== 'ALS'"><strong>Elementary:</strong> {{ form.elementarySchool }}</p>
@@ -851,7 +787,6 @@
                                             <p class="summary-item mb-0" v-if="form.studentType === 'TRANSFEREE' && form.previousCollege"><strong>Previous College:</strong> {{ form.previousCollege }}</p>
                                         </div>
 
-                                        <!-- Card 4: Medical Profile -->
                                         <div class="summary-section">
                                             <h5 class="summary-section-title"><i class="fas fa-heartbeat me-2 text-primary-gold"></i>Medical Profile</h5>
                                             <p class="summary-item mb-2"><strong>Health Status:</strong> {{ form.healthStatus }}</p>
@@ -859,7 +794,6 @@
                                             <p class="summary-item mb-0"><strong>PE Participation:</strong> {{ form.fitnessParticipation ? 'Fit to participate' : 'Requires accommodation' }}</p>
                                         </div>
 
-                                        <!-- Card 5: Financial Summary -->
                                         <div class="summary-section">
                                             <h5 class="summary-section-title"><i class="fas fa-coins me-2 text-primary-gold"></i>Financial Summary</h5>
                                             <p class="summary-item mb-2"><strong>Payment Scheme:</strong> {{ getPaymentModeLabel(form.paymentMode) }}</p>
@@ -867,7 +801,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Full Width: Required Documents Checklist -->
                                     <div class="col-12">
                                         <div class="summary-section">
                                             <h5 class="summary-section-title">
@@ -885,9 +818,6 @@
                                 </div>
                             </div>
 
-                            <!-- ─────────────────────────────────────────────────
-                                 STEP 7: Confirmation + Temp Account + Campus Roadmap
-                                 ───────────────────────────────────────────────── -->
                             <div v-if="currentStep === 7" class="text-center py-4">
                                 <div class="confirmation-success-badge mb-4">
                                     <i class="fas fa-check-double animate__animated animate__zoomIn"></i>
@@ -901,7 +831,6 @@
                                     Your online pre-enrollment has been successfully recorded in our system. Below are your temporary tracking credentials.
                                 </p>
 
-                                <!-- ── Temporary Student Account Card ────────────────────── -->
                                 <div class="temp-account-card mx-auto p-4 mb-5 shadow-sm rounded-4" style="max-width: 620px;">
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom border-secondary border-opacity-10">
                                         <div class="text-start">
@@ -951,7 +880,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Printable Billing Receipt -->
                                 <div class="receipt-card text-start mx-auto p-4 mb-4 shadow-sm border border-secondary border-opacity-10 rounded-4" style="max-width: 620px;">
                                     <div class="receipt-header text-center mb-4 pb-3 border-bottom border-secondary border-opacity-10">
                                         <h5 class="fw-bold mb-1 text-primary-green">GO-ON NATIONAL COLLEGE OF THE PHILIPPINES</h5>
@@ -997,7 +925,6 @@
                                     </div>
                                 </div>
 
-                                <!-- ── Campus Enrollment Roadmap ────────────────────── -->
                                 <div class="campus-guide text-start mx-auto mb-5 no-print" style="max-width: 620px;" v-if="tempAccount">
                                     <div class="campus-guide-header mb-4">
                                         <h5 class="campus-guide-title mb-1">
@@ -1030,10 +957,9 @@
                                                 <p class="station-desc text-muted small mb-0">{{ step.description }}</p>
                                             </div>
                                         </div>
-                                    </div><!-- /.campus-station-timeline -->
-                                </div><!-- /.campus-guide -->
+                                    </div>
+                                </div>
 
-                                <!-- Action Buttons -->
                                 <div class="d-flex justify-content-center gap-3 no-print">
                                     <a href="tracker.html" class="btn btn-pill btn-pill-green px-4 py-3">
                                         <i class="fas fa-route me-2"></i>Open Tracker Portal
@@ -1047,9 +973,6 @@
                                 </div>
                             </div>
 
-                            <!-- ─────────────────────────────────────────────────
-                                 Footer Wizard Buttons (hidden on confirmation)
-                                 ───────────────────────────────────────────────── -->
                             <div class="d-flex justify-content-between border-top pt-4 mt-4" v-if="currentStep <= 6">
                                 <button class="btn btn-pill btn-pill-outline px-4"
                                         @click="prevStep"
@@ -1069,21 +992,17 @@
                     </div>
                 </div>
             </div>
-            </div><!-- /v-else -->
+            </div>
         </main>
     </div>
 
-    <!-- Vue 3 Global Build from CDN -->
     <script src="../shared/libs/vue.global.js"></script>
     <script src="../shared/academic_constants.js"></script>
 
-    <!-- ApiService Abstraction -->
     <script src="assets/js/services/ApiService.js?v=11"></script>
 
-    <!-- Enrollment Model -->
     <script src="assets/js/models/EnrollmentModel.js?v=11"></script>
 
-    <!-- Custom JS -->
     <script src="assets/js/App.js?v=11"></script>
 </body>
 </html>

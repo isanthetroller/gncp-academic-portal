@@ -17,11 +17,11 @@
             const pathname = window.location.pathname;
             let prefix = '';
             if (pathname.includes('/stations/')) {
-                prefix = '../../index.html';
+                prefix = '../../';
             } else if (pathname.includes('/registrar/') || pathname.includes('/admin/')) {
-                prefix = '../index.html';
+                prefix = '../';
             } else {
-                prefix = 'index.html';
+                prefix = './';
             }
 
             const redirectTarget = encodeURIComponent(window.location.pathname + window.location.search);

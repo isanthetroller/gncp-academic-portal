@@ -1,4 +1,3 @@
-// Go-on National College of the Philippines — Tracker App Service
 (function () {
     const createApp = Vue.createApp;
     const ref = Vue.ref;
@@ -6,18 +5,15 @@
     const computed = Vue.computed;
     const onMounted = Vue.onMounted;
     const onUnmounted = Vue.onUnmounted;
-
     createApp({
         setup() {
-            const currentView = ref('LOGIN'); // 'LOGIN' | 'LOADING' | 'DASHBOARD'
+            const currentView = ref('LOGIN'); 
             const isLoading = ref(false);
             const loginError = ref('');
             const showPassword = ref(false);
             const rememberMe = ref(true);
             const hasSavedCredentials = ref(false);
-
             let pollTimer = null;
-
             const startLivePolling = () => {
                 if (pollTimer) clearInterval(pollTimer);
                 pollTimer = setInterval(() => {
@@ -32,21 +28,17 @@
                     }
                 }, 4000);
             };
-
             const stopLivePolling = () => {
                 if (pollTimer) {
                     clearInterval(pollTimer);
                     pollTimer = null;
                 }
             };
-
             const loginForm = reactive({
                 tempStudentId: '',
                 tempPin: ''
             });
-
             const enrollmentData = ref(null);
-
             const loadSavedCredentials = () => {
                 try {
                     const saved = localStorage.getItem('gncp_saved_tracker_credentials');
@@ -61,15 +53,12 @@
                     console.error('Error loading saved tracker credentials:', e);
                 }
             };
-
             const clearSavedCredentials = () => {
                 loginForm.tempStudentId = '';
                 loginForm.tempPin = '';
                 localStorage.removeItem('gncp_saved_tracker_credentials');
                 hasSavedCredentials.value = false;
             };
-
-            // Check URL parameters or local saved credentials
             onMounted(() => {
                 loadSavedCredentials();
                 const params = new URLSearchParams(window.location.search);
@@ -81,23 +70,18 @@
                     handleLogin();
                 }
             });
-
             onUnmounted(() => {
                 stopLivePolling();
             });
-
             const handleLogin = () => {
                 loginForm.tempStudentId = (loginForm.tempStudentId || '').trim().toUpperCase();
                 loginForm.tempPin = (loginForm.tempPin || '').trim();
-
                 if (!loginForm.tempStudentId || !loginForm.tempPin) {
                     loginError.value = 'Please enter both your Reference Number / Student ID and security PIN.';
                     return;
                 }
-
                 isLoading.value = true;
                 loginError.value = '';
-
                 window.ApiService.getEnrollment(loginForm.tempStudentId, loginForm.tempPin)
                     .then(res => {
                         isLoading.value = false;
@@ -105,7 +89,6 @@
                             enrollmentData.value = res.data;
                             currentView.value = 'DASHBOARD';
                             startLivePolling();
-
                             if (rememberMe.value) {
                                 localStorage.setItem('gncp_saved_tracker_credentials', JSON.stringify({
                                     tempStudentId: loginForm.tempStudentId,
@@ -126,7 +109,6 @@
                         loginError.value = 'Network or server error. Please try again.';
                     });
             };
-
             const logout = () => {
                 stopLivePolling();
                 enrollmentData.value = null;
@@ -134,8 +116,6 @@
                 loginForm.tempPin = '';
                 currentView.value = 'LOGIN';
             };
-
-            // Computed metrics for dashboard
             const completedCount = computed(() => {
                 if (!enrollmentData.value || !enrollmentData.value.roadmap) return 0;
                 let count = 0;
@@ -146,13 +126,11 @@
                 }
                 return count;
             });
-
             const progressPercent = computed(() => {
                 if (!enrollmentData.value || !enrollmentData.value.roadmap) return 0;
                 const total = enrollmentData.value.roadmap.length;
                 return Math.round((completedCount.value / total) * 100);
             });
-
             const nextPendingStep = computed(() => {
                 if (!enrollmentData.value || !enrollmentData.value.roadmap) return null;
                 for (let i = 0; i < enrollmentData.value.roadmap.length; i++) {
@@ -163,19 +141,16 @@
                 }
                 return null;
             });
-
             const getStudentTypeLabel = (val) => {
                 if (val === 'FRESHMAN') return 'Incoming Freshman';
                 if (val === 'TRANSFEREE') return 'College Transferee';
                 if (val === 'RETURNING') return 'Returning Student';
                 return val;
             };
-
             const formatDate = (isoStr) => {
                 if (!isoStr) return '';
                 return new Date(isoStr).toLocaleString();
             };
-
             const copyToClipboard = (text) => {
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(text);
@@ -193,7 +168,6 @@
                     }
                 }
             };
-
             return {
                 currentView,
                 isLoading,

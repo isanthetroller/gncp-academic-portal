@@ -55,13 +55,18 @@ window.app = createApp({
         };
 
         const getMedicalStepStatus = (student) => {
+            if (typeof StationPipeline !== 'undefined') {
+                return StationPipeline.getStepStatus('medical', student);
+            }
             if (!student) return 'PENDING';
-            if (student.medical && (student.medical.status === 'fit' || student.medical.status === 'cleared' || student.medical.status === 'conditional' || student.medical.verifiedBy)) {
+            if (student.medical && (student.medical.status === 'fit' || student.medical.status === 'cleared' || student.medical.verifiedBy)) {
                 return 'COMPLETED';
             }
-            if (!student.roadmap) return 'PENDING';
-            const step = student.roadmap.find(r => r.stepId === 'clinic_checkup');
-            return step ? step.status : 'PENDING';
+            const statusUpper = String(student.status || '').toUpperCase();
+            if (['MEDICAL_CLEARED', 'PAID', 'ENROLLED', 'PROMOTED'].includes(statusUpper)) {
+                return 'COMPLETED';
+            }
+            return 'PENDING';
         };
 
         const getQueueRank = (student) => {
@@ -116,7 +121,7 @@ window.app = createApp({
                     matchesFilter = true;
                 } else if (activeFilter.value === 'Pending' && stepStatus !== 'COMPLETED') {
                     matchesFilter = true;
-                } else if (activeFilter.value === 'Completed' && stepStatus === 'COMPLETED') {
+                } else if (activeFilter.value === 'Cleared' && stepStatus === 'COMPLETED') {
                     matchesFilter = true;
                 } else if (activeFilter.value === 'Conditional' && (student.status === 'conditional' || student.status === 'unfit' || stepStatus === 'FLAGGED')) {
                     matchesFilter = true;
@@ -168,58 +173,56 @@ window.app = createApp({
             const result = [];
             for (let i = 0; i < queue.length; i++) {
                 const student = queue[i];
-                // Only show students whose clinic_checkup step is IN_PROGRESS or later
-                const step = student.roadmap ? student.roadmap.find(r => r.stepId === 'clinic_checkup') : null;
-                if (!step || step.status === 'PENDING') {
-                    continue;
+                if (typeof StationPipeline !== 'undefined') {
+                    if (!StationPipeline.isAtOrPastStation('medical', student)) continue;
+                } else {
+                    const statusUpper = String(student.status || '').toUpperCase();
+                    const isAtOrPastMedical = ['ADVISED', 'MEDICAL_CLEARED', 'PAID', 'ENROLLED', 'PROMOTED'].includes(statusUpper);
+                    if (!isAtOrPastMedical) continue;
                 }
-                const form = student.form || {};
-                // Safely default all medical fields to avoid undefined in the UI
-                const med = student.medical && typeof student.medical === 'object' ? student.medical : {};
-                
-                const padId = String(student.id || (i + 1)).padStart(3, '0');
-                const queueTicket = (student.queueTickets && student.queueTickets.medical) ? student.queueTickets.medical : ('MED-' + padId);
-                const arrivedAt = (student.stationArrivals && student.stationArrivals.medical) ? student.stationArrivals.medical : (student.createdAt || student.datePreRegistered || '');
 
-                const s = {
-                    id: student.referenceNumber || student.id,
-                    referenceNumber: student.referenceNumber,
-                    queueTicket: queueTicket,
-                    arrivedAt: arrivedAt,
-                    createdAt: student.createdAt,
-                    name: student.name,
-                    program: student.program,
-                    studentType: student.studentType,
-                    roadmap: student.roadmap,
-                    medical: med,
-                    payment: student.payment,
-                    scholarship: student.scholarship,
-                    form: student.form,
-                    status: med.status || 'pending',
-                    physicalExam: med.physicalExam || 'not-assessed',
-                    medicalInterview: med.medicalInterview || 'not-assessed',
-                    peFitness: med.peFitness || 'not-assessed',
-                    nstpFitness: med.nstpFitness || 'not-assessed',
-                    notes: med.notes || '',
-                    verifiedBy: med.verifiedBy || '',
-                    dateVerified: med.dateVerified || '',
-                    // Student pre-registration medical declarations
-                    healthStatus: form.healthStatus || 'GOOD',
-                    medicalConditions: form.medicalConditions || [],
-                    allergies: form.allergies || 'None',
-                    currentMedication: form.currentMedication !== undefined ? form.currentMedication : false,
-                    medicationDetails: form.medicationDetails || '',
-                    // Demographics & Emergency Details
-                    birthDate: student.birthDate || (student.personal ? student.personal.birthDate : ''),
-                    gender: student.gender || 'Not specified',
-                    phone: student.phone || '',
-                    email: student.email || '',
-                    nstp: student.nstp || (student.helpdesk ? student.helpdesk.nstp : (form.nstp || 'CWTS')),
-                    emergencyContactName: student.emergencyContactName || form.emergencyContactName || '',
-                    emergencyContactPhone: student.emergencyContactPhone || form.emergencyContactPhone || '',
-                    fitnessParticipation: student.fitnessParticipation !== undefined ? student.fitnessParticipation : (form.fitnessParticipation !== undefined ? form.fitnessParticipation : true)
-                };
-                result.push(s);
+                const form = student.form || {};
+                const med = student.medical && typeof student.medical === 'object' ? student.medical : {};
+
+                const normalized = (typeof StationPipeline !== 'undefined')
+                    ? StationPipeline.normalizeStudent(student, i, 'medical')
+                    : {
+                        id: student.referenceNumber || student.id,
+                        referenceNumber: student.referenceNumber || student.id,
+                        name: student.name || 'Applicant',
+                        program: student.program || '---',
+                        studentType: student.studentType || 'REGULAR',
+                        roadmap: student.roadmap,
+                        medical: med,
+                        payment: student.payment,
+                        scholarship: student.scholarship,
+                        form: form
+                    };
+
+                // Merge clinical specifics
+                normalized.status = med.status || (getMedicalStepStatus(student) === 'COMPLETED' ? 'fit' : 'pending');
+                normalized.physicalExam = med.physicalExam || 'not-assessed';
+                normalized.medicalInterview = med.medicalInterview || 'not-assessed';
+                normalized.peFitness = med.peFitness || 'not-assessed';
+                normalized.nstpFitness = med.nstpFitness || 'not-assessed';
+                normalized.notes = med.notes || '';
+                normalized.verifiedBy = med.verifiedBy || '';
+                normalized.dateVerified = med.dateVerified || '';
+                normalized.healthStatus = form.healthStatus || 'GOOD';
+                normalized.medicalConditions = form.medicalConditions || [];
+                normalized.allergies = form.allergies || 'None';
+                normalized.currentMedication = form.currentMedication !== undefined ? form.currentMedication : false;
+                normalized.medicationDetails = form.medicationDetails || '';
+                normalized.birthDate = student.birthDate || (student.personal ? student.personal.birthDate : '');
+                normalized.gender = student.gender || 'Not specified';
+                normalized.phone = student.phone || '';
+                normalized.email = student.email || '';
+                normalized.nstp = student.nstp || (student.helpdesk ? student.helpdesk.nstp : (form.nstp || 'CWTS'));
+                normalized.emergencyContactName = student.emergencyContactName || form.emergencyContactName || '';
+                normalized.emergencyContactPhone = student.emergencyContactPhone || form.emergencyContactPhone || '';
+                normalized.fitnessParticipation = student.fitnessParticipation !== undefined ? student.fitnessParticipation : (form.fitnessParticipation !== undefined ? form.fitnessParticipation : true);
+
+                result.push(normalized);
             }
             students.value = result;
         };
@@ -245,6 +248,20 @@ window.app = createApp({
             localStorage.removeItem('gncp_station_user');
             localStorage.removeItem('gncp_admin_user');
 
+            // Optimistically load session from tab-scoped sessionStorage for 0ms initial render
+            const cachedRaw = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user');
+            if (cachedRaw) {
+                try {
+                    const parsed = JSON.parse(cachedRaw);
+                    if (parsed && ['MEDICAL', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                        currentUser.value = parsed;
+                    }
+                } catch (e) {}
+            }
+
+            // Immediately load queue in parallel with background session check
+            loadQueue();
+
             try {
                 const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
                 if (res.ok) {
@@ -259,26 +276,26 @@ window.app = createApp({
                             window.PasswordChangeGuard.checkAndPrompt(result.data, function() {
                                 loadQueue();
                             });
-                        } else {
-                            loadQueue();
                         }
                         return;
                     }
                 }
             } catch (e) {
-                console.error('[Medical] Session check error:', e);
+                console.warn('[Medical] Session check warning:', e);
             }
 
-            if (typeof window.SessionExpirationGuard !== 'undefined') {
-                window.SessionExpirationGuard.handleExpiredSession({
-                    title: 'Session Expired',
-                    message: 'Your medical clinic session has expired. Please sign in again to continue student medical clearance.',
-                    reason: 'expired'
-                });
-            } else {
-                sessionStorage.removeItem('gncp_station_user');
-                sessionStorage.removeItem('gncp_admin_user');
-                window.location.href = '../../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            if (!currentUser.value) {
+                if (typeof window.SessionExpirationGuard !== 'undefined') {
+                    window.SessionExpirationGuard.handleExpiredSession({
+                        title: 'Session Expired',
+                        message: 'Your medical clinic session has expired. Please sign in again to continue student medical clearance.',
+                        reason: 'expired'
+                    });
+                } else {
+                    sessionStorage.removeItem('gncp_station_user');
+                    sessionStorage.removeItem('gncp_admin_user');
+                    window.location.href = '../../?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                }
             }
         };
 
@@ -322,16 +339,31 @@ window.app = createApp({
             showLogoutConfirm.value = false;
             stopLiveSync();
             currentUser.value = null;
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Signing Out...',
+                    text: 'Ending your session...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            }
+
             sessionStorage.removeItem('gncp_station_user');
             sessionStorage.removeItem('gncp_admin_user');
             localStorage.removeItem('gncp_station_user');
             localStorage.removeItem('gncp_admin_user');
 
-            fetch('../../api/index.php?action=auth/logout', { method: 'POST' })
-                .catch(() => {})
-                .finally(() => {
-                    window.location.replace('../../index.html?clear=true&logout=true');
-                });
+            // Dispatch non-blocking logout with keepalive
+            try {
+                fetch('../../api/index.php?action=auth/logout', { method: 'POST', keepalive: true }).catch(() => {});
+            } catch (e) {}
+
+            window.location.replace('../../?clear=true&logout=true');
         };
 
         const isMedicalStepCompleted = (student) => {
@@ -421,7 +453,7 @@ window.app = createApp({
 
                 // Sync global roadmap steps
                 const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) 
-                    ? s.roadmap.findIndex(r => r.stepId === 'clinic_checkup' || r.stepId === 'medical_checkup' || r.name === 'Medical Clearance' || r.id === 4) 
+                    ? s.roadmap.findIndex(r => r && (r.stepId === 'clinic_checkup' || r.stepId === 'medical_checkup' || r.name === 'Medical Clearance' || r.title === 'School Clinic — Medical Clearance' || r.id === 4)) 
                     : -1;
                 if (currentStepIdx !== -1) {
                     if (student.status === 'fit' || student.status === 'conditional') {
@@ -432,7 +464,7 @@ window.app = createApp({
                         s.status = 'MEDICAL_CLEARED';
                         
                         // Open next station step: Cashier / Treasury / Scholarship
-                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING' || r.status === 'LOCKED');
+                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r && (['PENDING', 'LOCKED'].includes(String(r.status || '').toUpperCase()) || r.stepId === 'cashier_payment' || r.name === 'Cashier Payment'));
                         if (nextStep) {
                             nextStep.status = 'IN_PROGRESS';
                             nextStep.updatedAt = new Date().toISOString();
@@ -444,6 +476,8 @@ window.app = createApp({
                     } else {
                         s.roadmap[currentStepIdx].status = 'IN_PROGRESS';
                     }
+                } else if (student.status === 'fit' || student.status === 'conditional') {
+                    s.status = 'MEDICAL_CLEARED';
                 }
             }, ['medical', 'roadmap', 'status']); // Delta: send medical + roadmap + status fields
             loadQueue();

@@ -8,6 +8,7 @@
  * Canonical REST routes should be consumed via `/api/index.php?action=student_portal/...`.
  */
 
+require_once __DIR__ . '/../../shared/backend/utils/security_guard.php';
 require_once __DIR__ . '/../../shared/backend/config/database.php';
 require_once __DIR__ . '/../../shared/backend/utils/logger.php';
 require_once __DIR__ . '/../../shared/backend/utils/response.php';

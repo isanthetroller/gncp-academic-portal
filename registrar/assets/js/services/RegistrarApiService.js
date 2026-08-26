@@ -9,247 +9,167 @@
     }
 
     const RegistrarApiService = {
-        async fetchAllData() {
+        generateRequestId() {
+            return 'reg_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        },
+
+        async request(endpoint, options = {}) {
+            const reqId = this.generateRequestId();
+            const url = endpoint.startsWith('http') || endpoint.startsWith('../') || endpoint.includes('api.php')
+                ? endpoint
+                : `backend/api.php?action=${endpoint}`;
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-Request-ID': reqId,
+                ...(options.headers || {})
+            };
+
             try {
-                const response = await fetch('backend/api.php?action=fetch_all_data');
-                return await response.json();
+                const response = await fetch(url, {
+                    method: options.method || 'GET',
+                    headers,
+                    credentials: 'same-origin',
+                    body: options.body || null
+                });
+
+                if (response.status === 401) {
+                    if (typeof global.SessionExpirationGuard !== 'undefined') {
+                        global.SessionExpirationGuard.handleExpiredSession({
+                            title: 'Session Expired',
+                            message: 'Your registrar workstation session has expired. Please sign in again.',
+                            reason: 'expired'
+                        });
+                    }
+                    return createResponse(false, null, 'Authentication required. Please sign in.', { code: 401, requestId: reqId });
+                }
+
+                const data = await response.json();
+                return data;
             } catch (err) {
-                console.error('Failed to fetch initial registrar data:', err);
-                return createResponse(false, null, 'Failed to fetch registrar database.');
+                console.error(`[RegistrarApi] Error on [${endpoint}]:`, err);
+                return createResponse(false, null, err.message || 'Network error processing request.', { requestId: reqId });
             }
+        },
+
+        async fetchAllData() {
+            return await this.request('fetch_all_data');
         },
 
         // Programs CRUD
         async saveProgram(programData) {
-            try {
-                const response = await fetch('backend/api.php?action=save_program', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ program: programData })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to save program:', err);
-                return createResponse(false, null, 'Failed to save program details.');
-            }
+            return await this.request('save_program', {
+                method: 'POST',
+                body: JSON.stringify({ program: programData })
+            });
         },
 
         async deleteProgram(programId) {
-            try {
-                const response = await fetch('backend/api.php?action=delete_program', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: programId })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to delete program:', err);
-                return createResponse(false, null, 'Failed to delete program.');
-            }
+            return await this.request('delete_program', {
+                method: 'POST',
+                body: JSON.stringify({ id: programId })
+            });
         },
 
         // Subjects CRUD
         async saveSubject(subjectData) {
-            try {
-                const response = await fetch('backend/api.php?action=save_subject', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ subject: subjectData })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to save subject:', err);
-                return createResponse(false, null, 'Failed to save subject details.');
-            }
+            return await this.request('save_subject', {
+                method: 'POST',
+                body: JSON.stringify({ subject: subjectData })
+            });
         },
 
         async deleteSubject(subjectId) {
-            try {
-                const response = await fetch('backend/api.php?action=delete_subject', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: subjectId })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to delete subject:', err);
-                return createResponse(false, null, 'Failed to delete subject.');
-            }
+            return await this.request('delete_subject', {
+                method: 'POST',
+                body: JSON.stringify({ id: subjectId })
+            });
         },
 
         // Curriculum CRUD
         async saveCurriculum(curriculumData) {
-            try {
-                const response = await fetch('backend/api.php?action=save_curriculum', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ curriculum: curriculumData })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to save curriculum:', err);
-                return createResponse(false, null, 'Failed to save curriculum details.');
-            }
+            return await this.request('save_curriculum', {
+                method: 'POST',
+                body: JSON.stringify({ curriculum: curriculumData })
+            });
         },
 
         async deleteCurriculum(curriculumId) {
-            try {
-                const response = await fetch('backend/api.php?action=delete_curriculum', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: curriculumId })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to delete curriculum:', err);
-                return createResponse(false, null, 'Failed to delete curriculum.');
-            }
+            return await this.request('delete_curriculum', {
+                method: 'POST',
+                body: JSON.stringify({ id: curriculumId })
+            });
         },
 
         // Academic Periods CRUD
         async saveAcademicPeriod(periodData) {
-            try {
-                const response = await fetch('backend/api.php?action=save_academic_period', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ period: periodData })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to save academic period:', err);
-                return createResponse(false, null, 'Failed to save academic period details.');
-            }
+            return await this.request('save_academic_period', {
+                method: 'POST',
+                body: JSON.stringify({ period: periodData })
+            });
         },
 
         async deleteAcademicPeriod(periodId) {
-            try {
-                const response = await fetch('backend/api.php?action=delete_academic_period', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: periodId })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to delete academic period:', err);
-                return createResponse(false, null, 'Failed to delete academic period.');
-            }
+            return await this.request('delete_academic_period', {
+                method: 'POST',
+                body: JSON.stringify({ id: periodId })
+            });
         },
 
         // Subject Sections CRUD
         async saveSubjectSection(sectionData) {
-            try {
-                const response = await fetch('backend/api.php?action=save_subject_section', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ section: sectionData })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to save subject section:', err);
-                return createResponse(false, null, 'Failed to save section details.');
-            }
+            return await this.request('save_subject_section', {
+                method: 'POST',
+                body: JSON.stringify({ section: sectionData })
+            });
         },
 
         async deleteSubjectSection(sectionId) {
-            try {
-                const response = await fetch('backend/api.php?action=delete_subject_section', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: sectionId })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to delete subject section:', err);
-                return createResponse(false, null, 'Failed to delete section.');
-            }
+            return await this.request('delete_subject_section', {
+                method: 'POST',
+                body: JSON.stringify({ id: sectionId })
+            });
         },
 
         // Fee Schedule CRUD
         async saveFee(feeData) {
-            try {
-                const response = await fetch('backend/api.php?action=save_fee', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fee: feeData })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to save fee schedule:', err);
-                return createResponse(false, null, 'Failed to save fee details.');
-            }
+            return await this.request('save_fee', {
+                method: 'POST',
+                body: JSON.stringify({ fee: feeData })
+            });
         },
 
         async deleteFee(feeId) {
-            try {
-                const response = await fetch('backend/api.php?action=delete_fee', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: feeId })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to delete fee schedule:', err);
-                return createResponse(false, null, 'Failed to delete fee.');
-            }
+            return await this.request('delete_fee', {
+                method: 'POST',
+                body: JSON.stringify({ id: feeId })
+            });
         },
 
         // Legacy / details / approvals
         async updateApplicationStatus(referenceNumber, status, notes, requirementsData = null, sectionCode = null) {
-            try {
-                const response = await fetch('backend/api.php?action=update_application_status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ referenceNumber, status, registrarNotes: notes, requirementsData, sectionCode })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to update application status:', err);
-                return createResponse(false, null, 'Failed to submit review decisions.');
-            }
+            return await this.request('update_application_status', {
+                method: 'POST',
+                body: JSON.stringify({ referenceNumber, status, registrarNotes: notes, requirementsData, sectionCode })
+            });
         },
 
         async getSectionsForProgram(program, yearLevel, semester) {
-            try {
-                const response = await fetch(`backend/api.php?action=get_sections_for_program&program=${encodeURIComponent(program)}&year_level=${encodeURIComponent(yearLevel)}&semester=${encodeURIComponent(semester)}`);
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to fetch sections for program:', err);
-                return createResponse(false, null, 'Failed to load sections for this program.');
-            }
+            return await this.request(`get_sections_for_program&program=${encodeURIComponent(program)}&year_level=${encodeURIComponent(yearLevel)}&semester=${encodeURIComponent(semester)}`);
         },
 
         async updateRoadmapStep(referenceNumber, stepId, status) {
-            try {
-                const response = await fetch('backend/api.php?action=update_roadmap_step', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ referenceNumber, stepId, status })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to update roadmap step:', err);
-                return createResponse(false, null, 'Failed to update roadmap step.');
-            }
+            return await this.request('update_roadmap_step', {
+                method: 'POST',
+                body: JSON.stringify({ referenceNumber, stepId, status })
+            });
         },
 
         async checkSession() {
-            try {
-                const response = await fetch('../api/index.php?action=auth/check');
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to verify backend session:', err);
-                return createResponse(false, null, 'Failed to verify backend session.');
-            }
+            return await this.request('../api/index.php?action=auth/check');
         },
 
         async fetchUserProfile(username) {
-            try {
-                const response = await fetch(`../api/index.php?action=auth/profile&username=${encodeURIComponent(username || '')}`);
-                return await response.json();
-            } catch (err) {
-                console.error('Failed to fetch user profile:', err);
-                return createResponse(false, null, 'Failed to fetch user profile.');
-            }
+            return await this.request(`../api/index.php?action=auth/profile&username=${encodeURIComponent(username || '')}`);
         }
     };
 

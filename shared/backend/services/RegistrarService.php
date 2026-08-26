@@ -66,13 +66,22 @@ class RegistrarService {
 
         $roadmap = json_decode((string)($record['roadmap'] ?? ''), true) ?: [];
 
-        if (strcasecmp($status, 'Approved') === 0) {
+        $isApproved = in_array(strtoupper($status), ['APPROVED', 'VERIFIED']);
+        if ($isApproved) {
+            $status = 'VERIFIED';
             foreach ($roadmap as &$step) {
-                if ($step['stepId'] === 'registrar_verification') {
+                $sid = $step['stepId'] ?? '';
+                if ($sid === 'online_prereg' || $sid === 'online_registration') {
+                    $step['status'] = 'COMPLETED';
+                    if (empty($step['updatedAt'])) {
+                        $step['updatedAt'] = date('c');
+                    }
+                }
+                if ($sid === 'registrar_verification') {
                     $step['status'] = 'COMPLETED';
                     $step['updatedAt'] = date('c');
                 }
-                if ($step['stepId'] === 'advising_assessment' && $step['status'] === 'PENDING') {
+                if (($sid === 'advising_assessment' || $sid === 'academic_advising') && in_array(strtoupper($step['status'] ?? ''), ['PENDING', 'LOCKED'])) {
                     $step['status'] = 'IN_PROGRESS';
                     $step['updatedAt'] = date('c');
                 }
@@ -99,7 +108,12 @@ class RegistrarService {
 
         $fullName = trim($updatedRow['first_name'] . ' ' . ($updatedRow['middle_name'] ? $updatedRow['middle_name'] . ' ' : '') . $updatedRow['last_name']);
         $isReviewedToday = in_array($updatedRow['status'], ['Approved', 'Rejected']);
-        $requirements = getRequirementsForType($updatedRow['student_type'] ?? 'FRESHMAN', $updatedRow['shs_track'] ?? '');
+        if (!function_exists('getRequirementsForType')) {
+            require_once __DIR__ . '/../utils/student.php';
+        }
+        $requirements = function_exists('getRequirementsForType')
+            ? getRequirementsForType($updatedRow['student_type'] ?? 'FRESHMAN', $updatedRow['shs_track'] ?? '')
+            : ['Form 138 / Report Card', 'Certificate of Good Moral Character', 'PSA Birth Certificate', '2x2 Pictures'];
 
         $updatedReqData = json_decode((string)($updatedRow['requirements_data'] ?? ''), true) ?: [
             'status' => 'PENDING',
@@ -206,7 +220,12 @@ class RegistrarService {
         $updatedRow = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $fullName = trim($updatedRow['first_name'] . ' ' . ($updatedRow['middle_name'] ? $updatedRow['middle_name'] . ' ' : '') . $updatedRow['last_name']);
-        $requirements = getRequirementsForType($updatedRow['student_type'] ?? 'FRESHMAN', $updatedRow['shs_track'] ?? '');
+        if (!function_exists('getRequirementsForType')) {
+            require_once __DIR__ . '/../utils/student.php';
+        }
+        $requirements = function_exists('getRequirementsForType')
+            ? getRequirementsForType($updatedRow['student_type'] ?? 'FRESHMAN', $updatedRow['shs_track'] ?? '')
+            : ['Form 138 / Report Card', 'Certificate of Good Moral Character', 'PSA Birth Certificate', '2x2 Pictures'];
 
         return [
             'success' => true,

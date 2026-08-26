@@ -65,6 +65,15 @@ window.app = createApp({
             const result = [];
             for (let i = 0; i < queue.length; i++) {
                 const student = queue[i];
+                if (typeof StationPipeline !== 'undefined') {
+                    if (!StationPipeline.isAtOrPastStation('cashier', student)) continue;
+                } else {
+                    const statusUpper = String(student.status || '').toUpperCase();
+                    const isAtOrPastCashier = ['MEDICAL_CLEARED', 'PAID', 'ENROLLED', 'PROMOTED'].includes(statusUpper);
+                    if (!isAtOrPastCashier) continue;
+                }
+
+                // Parse roadmap and payment defensively
                 let roadmap = student.roadmap;
                 if (typeof roadmap === 'string') {
                     try { roadmap = JSON.parse(roadmap); } catch (e) { roadmap = []; }
@@ -77,48 +86,50 @@ window.app = createApp({
                 }
                 if (!payment || typeof payment !== 'object') payment = {};
 
-                // Enforce sequential station workflow
-                const step = roadmap.find(r => r && (r.stepId === 'cashier_payment' || r.name === 'Cashier Payment' || r.id === 6));
-                if (!step || step.status === 'PENDING' || step.status === 'LOCKED') {
-                    continue;
-                }
-                
                 let balanceVal = payment.totalFee || 0;
                 if (payment.balance != null) {
                     balanceVal = payment.balance;
                 }
 
-                const padId = String(student.id || (i + 1)).padStart(3, '0');
-                const queueTicket = (student.queueTickets && student.queueTickets.cashier) ? student.queueTickets.cashier : ('CSH-' + padId);
-                const arrivedAt = (student.stationArrivals && student.stationArrivals.cashier) ? student.stationArrivals.cashier : (student.createdAt || student.datePreRegistered || '');
+                // Use StationPipeline.normalizeStudent() as the unified base
+                const s = (typeof StationPipeline !== 'undefined')
+                    ? StationPipeline.normalizeStudent(student, i, 'cashier')
+                    : {
+                        id: student.referenceNumber || student.id,
+                        referenceNumber: student.referenceNumber,
+                        name: student.name || 'Applicant',
+                        program: student.program || '---',
+                        studentType: student.studentType || 'REGULAR',
+                        tempPin: student.tempPin || '',
+                        phone: student.phone || '',
+                        email: student.email || '',
+                        roadmap: roadmap,
+                        form: student.form || {},
+                        medical: student.medical || {},
+                        payment: student.payment || {},
+                        helpdesk: student.helpdesk || {},
+                        enrollment: student.enrollment || {},
+                        overallStatus: student.status || 'PRE_REGISTERED'
+                    };
 
-                const s = {
-                    id: student.referenceNumber || student.id,
-                    referenceNumber: student.referenceNumber,
-                    queueTicket: queueTicket,
-                    arrivedAt: arrivedAt,
-                    createdAt: student.createdAt,
-                    tempPin: student.tempPin || '',
-                    studentName: student.name,
-                    program: student.program,
-                    studentType: student.studentType,
-                    paymentMode: student.paymentMode || student.payment?.paymentMode || 'CASH',
-                    status: payment.status || 'PENDING',
-                    orNumber: student.orNumber || null,
-                    enrolledAt: student.enrolledAt || null,
-                    cashierName: student.cashierName || null,
-                    payment: {
-                        totalFee:       payment.totalFee     || 0,
-                        amountPaid:     payment.amountPaid   || 0,
-                        balance:        balanceVal,
-                        paymentType:    String(payment.paymentType || 'Cash').toUpperCase() === 'GCASH' ? 'GCash' : 'Cash',
-                        transactionRef: payment.transactionRef || '',
-                        cashierNotes:   payment.notes        || '',
-                        history:        payment.history      || []
-                    },
-                    roadmap: roadmap,
-                    scholarship: student.scholarship || {},
-                    helpdesk: student.helpdesk || {}
+                // Merge cashier-specific fields on top of the normalized base
+                s.studentName  = s.name;
+                s.roadmap      = roadmap;
+                s.helpdesk     = student.helpdesk || {};
+                s.scholarship  = student.scholarship || {};
+                s.paymentMode  = student.paymentMode || payment.paymentMode || 'CASH';
+                s.orNumber     = student.orNumber || null;
+                s.enrolledAt   = student.enrolledAt || null;
+                s.cashierName  = student.cashierName || null;
+                s.status       = payment.status || 'PENDING';
+                s.payment      = {
+                    totalFee:       payment.totalFee     || 0,
+                    amountPaid:     payment.amountPaid   || 0,
+                    balance:        balanceVal,
+                    paymentType:    String(payment.paymentType || 'Cash').toUpperCase() === 'GCASH' ? 'GCash' : 'Cash',
+                    transactionRef: payment.transactionRef || '',
+                    cashierNotes:   payment.notes        || '',
+                    history:        payment.history      || []
                 };
                 result.push(s);
             }
@@ -146,6 +157,20 @@ window.app = createApp({
             localStorage.removeItem('gncp_station_user');
             localStorage.removeItem('gncp_admin_user');
 
+            // Optimistically load session from tab-scoped sessionStorage for 0ms initial render
+            const cachedRaw = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user');
+            if (cachedRaw) {
+                try {
+                    const parsed = JSON.parse(cachedRaw);
+                    if (parsed && ['CASHIER', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                        currentUser.value = parsed;
+                    }
+                } catch (e) {}
+            }
+
+            // Immediately load queue in parallel with background session check
+            loadQueue();
+
             try {
                 const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
                 if (res.ok) {
@@ -161,27 +186,26 @@ window.app = createApp({
                                 if (window.StationDataBus) await window.StationDataBus.syncWithBackend();
                                 loadQueue();
                             });
-                        } else {
-                            if (window.StationDataBus) await window.StationDataBus.syncWithBackend();
-                            loadQueue();
                         }
                         return;
                     }
                 }
             } catch (e) {
-                console.error('[Cashier] Session check error:', e);
+                console.warn('[Cashier] Session check warning:', e);
             }
 
-            if (typeof window.SessionExpirationGuard !== 'undefined') {
-                window.SessionExpirationGuard.handleExpiredSession({
-                    title: 'Session Expired',
-                    message: 'Your cashier workstation session has expired. Please sign in again to continue managing payments.',
-                    reason: 'expired'
-                });
-            } else {
-                sessionStorage.removeItem('gncp_station_user');
-                sessionStorage.removeItem('gncp_admin_user');
-                window.location.href = '../../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            if (!currentUser.value) {
+                if (typeof window.SessionExpirationGuard !== 'undefined') {
+                    window.SessionExpirationGuard.handleExpiredSession({
+                        title: 'Session Expired',
+                        message: 'Your cashier workstation session has expired. Please sign in again to continue managing payments.',
+                        reason: 'expired'
+                    });
+                } else {
+                    sessionStorage.removeItem('gncp_station_user');
+                    sessionStorage.removeItem('gncp_admin_user');
+                    window.location.href = '../../?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                }
             }
         };
 
@@ -230,16 +254,31 @@ window.app = createApp({
             showLogoutConfirm.value = false;
             stopLiveSync();
             currentUser.value = null;
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Signing Out...',
+                    text: 'Ending your session...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            }
+
             sessionStorage.removeItem('gncp_station_user');
             sessionStorage.removeItem('gncp_admin_user');
             localStorage.removeItem('gncp_station_user');
             localStorage.removeItem('gncp_admin_user');
 
-            fetch('../../api/index.php?action=auth/logout', { method: 'POST' })
-                .catch(() => {})
-                .finally(() => {
-                    window.location.replace('../../index.html?clear=true&logout=true');
-                });
+            // Dispatch non-blocking logout with keepalive
+            try {
+                fetch('../../api/index.php?action=auth/logout', { method: 'POST', keepalive: true }).catch(() => {});
+            } catch (e) {}
+
+            window.location.replace('../../?clear=true&logout=true');
         };
 
         const filteredStudents = computed(() => {
@@ -433,8 +472,9 @@ window.app = createApp({
                 await fetchPayMongoSession();
             }
 
+            const basePath = window.location.pathname.startsWith('/systemtest') ? '/systemtest' : '';
             const checkoutUrl = paymongoSession.value?.checkoutUrl || 
-                `/systemtest/shared/paymongo/checkout.html?session_id=cs_test_${Date.now()}&ref=${encodeURIComponent(student.referenceNumber)}&amount=${encodeURIComponent(payAmt)}&desc=${encodeURIComponent('Tuition Assessment - ' + student.studentName)}`;
+                `${basePath}/shared/paymongo/checkout.html?session_id=cs_test_${Date.now()}&ref=${encodeURIComponent(student.referenceNumber)}&amount=${encodeURIComponent(payAmt)}&desc=${encodeURIComponent('Tuition Assessment - ' + student.studentName)}`;
             
             const win = window.open(checkoutUrl, 'PayMongoCheckoutWindow', 'width=1020,height=800,scrollbars=yes');
             if (win) {
@@ -452,8 +492,9 @@ window.app = createApp({
             if (!selectedStudent.value) return;
             const student = selectedStudent.value;
             const payAmt = parseFloat(payAmountInput.value) || 0;
+            const basePath = window.location.pathname.startsWith('/systemtest') ? '/systemtest' : '';
             const checkoutUrl = (window.location.origin || '') + (paymongoSession.value?.checkoutUrl || 
-                `/systemtest/shared/paymongo/checkout.html?session_id=cs_test_${Date.now()}&ref=${encodeURIComponent(student.referenceNumber)}&amount=${encodeURIComponent(payAmt)}`);
+                `${basePath}/shared/paymongo/checkout.html?session_id=cs_test_${Date.now()}&ref=${encodeURIComponent(student.referenceNumber)}&amount=${encodeURIComponent(payAmt)}`);
 
             try {
                 await navigator.clipboard.writeText(checkoutUrl);
@@ -649,15 +690,19 @@ window.app = createApp({
                 s.payment.verifiedBy = currentUser.value?.name || currentUser.value?.username || 'Cashier Officer';
                 s.payment.dateVerified = new Date().toLocaleDateString();
 
+                if (student.status === 'PAID' || student.status === 'PARTIAL') {
+                    s.status = 'PAID';
+                }
+
                 // Mark cashier step as completed; advance IT Center step to IN_PROGRESS
-                const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r.stepId === 'cashier_payment' || r.name === 'Cashier Payment' || r.id === 6) : -1;
+                const currentStepIdx = (s.roadmap && Array.isArray(s.roadmap)) ? s.roadmap.findIndex(r => r && (r.stepId === 'cashier_payment' || r.name === 'Cashier Payment' || r.title === 'Treasury / Cashier — Payment' || r.id === 6)) : -1;
                 if (currentStepIdx !== -1) {
                     if (student.status === 'PAID' || student.status === 'PARTIAL') {
                         s.roadmap[currentStepIdx].status = 'COMPLETED';
                         s.roadmap[currentStepIdx].updatedAt = new Date().toISOString();
 
                         // Unlock the IT Center step
-                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r.status === 'PENDING' || r.status === 'LOCKED');
+                        const nextStep = s.roadmap.slice(currentStepIdx + 1).find(r => r && (['PENDING', 'LOCKED'].includes(String(r.status || '').toUpperCase()) || r.stepId === 'it_activation' || r.stepId === 'id_email_final'));
                         if (nextStep) {
                             nextStep.status = 'IN_PROGRESS';
                             nextStep.updatedAt = new Date().toISOString();
@@ -667,7 +712,7 @@ window.app = createApp({
                         s.roadmap[currentStepIdx].updatedAt = new Date().toISOString();
                     }
                 }
-            }, ['payment', 'roadmap']); // Delta: only send payment + roadmap
+            }, ['payment', 'roadmap', 'status']); // Delta: send payment + roadmap + status
             loadQueue();
         };
 

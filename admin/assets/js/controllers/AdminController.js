@@ -24,10 +24,10 @@ window.handle401SessionExpired = () => {
             allowOutsideClick: false,
             allowEscapeKey: false
         }).then(() => {
-            window.location.href = '../index.html?clear=true&session_expired=true&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = '../?clear=true&session_expired=true&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
         });
     } else {
-        window.location.href = '../index.html?clear=true&session_expired=true&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = '../?clear=true&session_expired=true&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
     }
 };
 
@@ -1124,6 +1124,21 @@ const app = createApp({
             localStorage.removeItem('gncp_admin_user');
             localStorage.removeItem('gncp_station_user');
 
+            // Optimistically load cached session from tab-scoped sessionStorage for 0ms initial render
+            const cachedRaw = sessionStorage.getItem('gncp_admin_user') || sessionStorage.getItem('gncp_station_user');
+            if (cachedRaw) {
+                try {
+                    const parsed = JSON.parse(cachedRaw);
+                    if (parsed && (parsed.role === 'SUPER_ADMIN' || parsed.role === 'ADMIN')) {
+                        currentAdmin.value = parsed;
+                    }
+                } catch (e) {}
+            }
+
+            // Immediately trigger data loading in parallel with background auth verification
+            loadAll();
+            startLiveSync();
+
             try {
                 const res = await fetch('../api/index.php?action=auth/check', { credentials: 'same-origin' });
                 if (res.ok) {
@@ -1137,9 +1152,6 @@ const app = createApp({
                                 loadAll();
                                 startLiveSync();
                             });
-                        } else {
-                            loadAll();
-                            startLiveSync();
                         }
                         return;
                     }
@@ -1148,16 +1160,18 @@ const app = createApp({
                 console.warn('[Admin] Live auth check error:', err);
             }
 
-            if (typeof window.SessionExpirationGuard !== 'undefined') {
-                window.SessionExpirationGuard.handleExpiredSession({
-                    title: 'Session Expired',
-                    message: 'Your administrator session has expired. Please sign in again to continue managing the system.',
-                    reason: 'expired'
-                });
-            } else {
-                sessionStorage.removeItem('gncp_admin_user');
-                sessionStorage.removeItem('gncp_station_user');
-                window.location.href = '../index.html?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            if (!currentAdmin.value) {
+                if (typeof window.SessionExpirationGuard !== 'undefined') {
+                    window.SessionExpirationGuard.handleExpiredSession({
+                        title: 'Session Expired',
+                        message: 'Your administrator session has expired. Please sign in again to continue managing the system.',
+                        reason: 'expired'
+                    });
+                } else {
+                    sessionStorage.removeItem('gncp_admin_user');
+                    sessionStorage.removeItem('gncp_station_user');
+                    window.location.href = '../?session_expired=1&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                }
             }
         });
 
@@ -1192,16 +1206,31 @@ const app = createApp({
             showLogoutConfirm.value = false;
             stopLiveSync();
             currentAdmin.value = null;
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Signing Out...',
+                    text: 'Ending your session...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            }
+
             sessionStorage.removeItem('gncp_admin_user');
             sessionStorage.removeItem('gncp_station_user');
             localStorage.removeItem('gncp_admin_user');
             localStorage.removeItem('gncp_station_user');
 
-            fetch('../api/index.php?action=auth/logout', { method: 'POST' })
-                .catch(() => {})
-                .finally(() => {
-                    window.location.replace('../index.html?clear=true&logout=true');
-                });
+            // Dispatch non-blocking logout with keepalive
+            try {
+                fetch('../api/index.php?action=auth/logout', { method: 'POST', keepalive: true }).catch(() => {});
+            } catch (e) {}
+
+            window.location.replace('../?clear=true&logout=true');
         };
 
         // ── Announcements (Bulletin Board & Google Docs Editor) ──
