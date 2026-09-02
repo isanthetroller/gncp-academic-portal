@@ -356,361 +356,355 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Certificate of Registration - <?php echo htmlspecialchars($student['temp_student_id']); ?></title>
+    <title>Certificate of Registration &ndash; <?php echo htmlspecialchars($student['temp_student_id']); ?></title>
     <style>
+        @page { size: Letter portrait; margin: 0.75in; }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 10pt;
             color: #000;
-            background-color: #f8fafc;
-            margin: 0;
-            padding: 20px;
-            font-size: 11px;
-            line-height: 1.3;
+            background: #e8e8e8;
+            padding: 24px;
+            line-height: 1.35;
         }
-        .container {
-            width: 100%;
-            max-width: 800px;
+
+        /* White Google-Docs-style page shell */
+        .page {
+            background: #fff;
+            width: 816px;
+            min-height: 1056px;
             margin: 0 auto;
-            background-color: #fff;
-            padding: 28px 32px;
-            border: 1px solid #d1d5db;
-            border-radius: 0 !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            padding: 72px 72px 60px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
         }
-        .header-table, .schedule-table, .assessment-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 10px;
-        }
-        .header-table td {
-            border: 1px solid #000;
-            padding: 5px;
-            vertical-align: top;
-        }
-        .header-title {
-            text-align: center;
-            font-weight: bold;
-            font-size: 14px;
-            border: none !important;
-            padding-bottom: 15px !important;
-        }
-        .label {
-            font-size: 9px;
-            text-transform: uppercase;
-            color: #333;
-            display: block;
-            margin-bottom: 2px;
-        }
-        .value {
-            font-weight: bold;
-            font-size: 11px;
-        }
-        .schedule-table th, .schedule-table td {
-            border: 1px solid #000;
-            padding: 4px 6px;
-            text-align: left;
-        }
-        .schedule-table th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 10px;
-        }
-        .text-center {
-            text-align: center !important;
-        }
-        .text-right {
-            text-align: right !important;
-        }
-        .font-mono {
-            font-family: Courier, monospace;
-        }
-        .flex-container {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-            margin-bottom: 15px;
-        }
-        .left-col {
-            width: 48%;
-        }
-        .right-col {
-            width: 48%;
-        }
-        .section-title {
-            font-weight: bold;
-            text-decoration: underline;
-            margin-bottom: 8px;
+
+        /* Print button */
+        .no-print { text-align: center; margin-bottom: 18px; }
+        .no-print button {
+            font-family: Arial, sans-serif;
             font-size: 12px;
+            padding: 7px 22px;
+            background: #1a73e8;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
         }
-        .fee-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 3px 0;
-        }
-        .fee-total {
-            font-weight: bold;
-            border-top: 1px solid #000;
-            margin-top: 5px;
-            padding-top: 5px;
-        }
-        .double-underline {
-            border-bottom: 3px double #000;
-            padding-bottom: 1px;
-        }
-        .schedule-payments-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .schedule-payments-table th, .schedule-payments-table td {
-            border: 1px solid #000;
-            padding: 4px;
+        .no-print button:hover { background: #1558b0; }
+
+        /* Letterhead */
+        .letterhead {
             text-align: center;
+            margin-bottom: 10px;
+            border-bottom: 2.5pt solid #000;
+            padding-bottom: 8px;
         }
-        .schedule-payments-table th {
-            background-color: #f2f2f2;
-            font-size: 9px;
+        .letterhead .school-name {
+            font-size: 14pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        .stamps-signatures {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 30px;
-            margin-bottom: 20px;
-            border: 1px dashed #666;
-            padding: 15px;
-            background-color: #fafafa;
+        .letterhead .school-addr { font-size: 8.5pt; margin-top: 2px; }
+
+        .doc-title {
+            text-align: center;
+            font-size: 11pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 7px 0 10px;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 6px;
         }
+
+        /* Info grid */
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        .info-table td { border: 0.75pt solid #000; padding: 3px 5px; vertical-align: top; }
+        .field-label {
+            display: block;
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #333;
+            margin-bottom: 1px;
+        }
+        .field-value { display: block; font-size: 10pt; font-weight: bold; }
+        .mono { font-family: 'Courier New', Courier, monospace; }
+
+        /* Section headings */
+        .section-heading {
+            font-size: 9pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 0.75pt solid #000;
+            padding-bottom: 2px;
+            margin: 8px 0 4px;
+        }
+
+        /* Schedule table */
+        .sched-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 10px; }
+        .sched-table th {
+            border: 0.75pt solid #000;
+            background: #f2f2f2;
+            padding: 3px 4px;
+            text-align: center;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .sched-table td { border: 0.75pt solid #000; padding: 2.5px 4px; }
+        .sched-table .total-row td { font-weight: bold; background: #f9f9f9; }
+        .text-center { text-align: center; }
+        .text-right  { text-align: right; }
+
+        /* Two-column layout */
+        .two-col { display: table; width: 100%; margin-bottom: 10px; }
+        .col-left, .col-right { display: table-cell; vertical-align: top; width: 50%; }
+        .col-left  { padding-right: 14px; }
+        .col-right { padding-left: 14px; border-left: 0.75pt solid #ccc; }
+
+        /* Fee rows */
+        .fee-row { display: flex; justify-content: space-between; padding: 1.5px 0; font-size: 9.5pt; }
+        .fee-row.total-line {
+            font-weight: bold;
+            border-top: 0.75pt solid #000;
+            margin-top: 4px;
+            padding-top: 4px;
+        }
+        .fee-row.discount { color: #a00; }
+        .double-line { text-decoration: underline; text-decoration-style: double; }
+
+        /* Payment table */
+        .payment-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+        .payment-table th {
+            border: 0.75pt solid #000;
+            background: #f2f2f2;
+            padding: 3px 5px;
+            text-align: center;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 7.5pt;
+            text-transform: uppercase;
+        }
+        .payment-table td { border: 0.75pt solid #000; padding: 3px 5px; }
+        .paid-cell { color: #166534; font-style: italic; }
+
+        /* Signature row */
+        .sig-row { display: table; width: 100%; margin-top: 22px; margin-bottom: 14px; }
+        .sig-cell { display: table-cell; width: 33.33%; text-align: center; vertical-align: bottom; padding: 0 10px; }
+        .sig-line { border-top: 0.75pt solid #000; margin-top: 36px; padding-top: 3px; font-size: 9pt; font-weight: bold; }
+        .sig-sub { font-size: 8pt; font-family: Arial, Helvetica, sans-serif; color: #333; }
         .stamp-box {
-            width: 30%;
-            border: 2px dashed #000;
-            height: 70px;
+            border: 1.5pt dashed #999;
+            height: 60px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            flex-direction: column;
+            font-size: 10pt;
             font-weight: bold;
-            color: #666;
+            color: #777;
             text-transform: uppercase;
         }
-        .stamp-active {
-            border-color: #008000;
-            color: #008000;
-        }
-        .signature-line {
-            width: 30%;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-        }
-        .sig-border {
-            border-top: 1px solid #000;
-            margin-top: 45px;
-            font-weight: bold;
-        }
+        .stamp-box.paid { border-color: #166534; color: #166534; }
+
+        /* Footer */
         .footer-note {
-            font-size: 9px;
+            font-size: 7.5pt;
             font-style: italic;
-            border-top: 1px solid #000;
+            border-top: 0.75pt solid #000;
             padding-top: 5px;
-            margin-top: 15px;
+            margin-top: 10px;
             text-align: justify;
+            line-height: 1.4;
         }
-        .footer-metadata {
+        .footer-meta {
             display: flex;
             justify-content: space-between;
-            margin-top: 8px;
-            font-size: 9px;
-            font-family: monospace;
+            margin-top: 6px;
+            font-size: 7.5pt;
+            font-family: 'Courier New', Courier, monospace;
+            color: #444;
         }
-        .print-btn-container {
-            text-align: center;
-            margin-bottom: 15px;
-        }
-        .btn-print {
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-            padding: 8px 20px;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        .btn-print:hover {
-            background-color: #0056b3;
-        }
+
+        /* Print */
         @media print {
-            .print-btn-container {
-                display: none;
-            }
-            body {
-                padding: 0;
-            }
+            body { background: none; padding: 0; }
+            .page { box-shadow: none; width: 100%; padding: 0; min-height: auto; }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
 <body>
 
-<div class="print-btn-container">
-    <button class="btn-print" onclick="window.print()">Print Document</button>
+<div class="no-print">
+    <button onclick="window.print()">&#128438; Print / Save as PDF</button>
 </div>
 
-<div class="container">
-    <table class="header-table">
+<div class="page">
+
+    <div class="letterhead">
+        <div class="school-name">Go-on National College of the Philippines</div>
+        <div class="school-addr">Registrar&rsquo;s Office &middot; Official Academic Record</div>
+    </div>
+    <div class="doc-title">Certificate of Registration</div>
+
+    <table class="info-table">
         <tr>
-            <td colspan="5" class="header-title">
-                GNCP ACADEMIC PORTAL<br>
-                <span style="font-size: 12px; font-weight: normal;">CERTIFICATE OF REGISTRATION</span>
+            <td style="width:18%">
+                <span class="field-label">Student No.</span>
+                <span class="field-value mono"><?php echo htmlspecialchars($student['temp_student_id']); ?></span>
             </td>
-        </tr>
-        <tr>
-            <td style="width: 20%;">
-                <span class="label">Student No.</span>
-                <span class="value font-mono"><?php echo htmlspecialchars($student['temp_student_id']); ?></span>
+            <td style="width:22%">
+                <span class="field-label">Family Name</span>
+                <span class="field-value"><?php echo htmlspecialchars($student['last_name']); ?></span>
             </td>
-            <td style="width: 25%;">
-                <span class="label">Family Name</span>
-                <span class="value"><?php echo htmlspecialchars($student['last_name']); ?></span>
+            <td style="width:22%">
+                <span class="field-label">Given Name</span>
+                <span class="field-value"><?php echo htmlspecialchars($student['first_name']); ?></span>
             </td>
-            <td style="width: 25%;">
-                <span class="label">Given Name</span>
-                <span class="value"><?php echo htmlspecialchars($student['first_name']); ?></span>
+            <td style="width:18%">
+                <span class="field-label">Middle Name</span>
+                <span class="field-value"><?php echo htmlspecialchars($student['middle_name'] ?: '&mdash;'); ?></span>
             </td>
-            <td style="width: 15%;">
-                <span class="label">Middle Name</span>
-                <span class="value"><?php echo htmlspecialchars($student['middle_name'] ?: '---'); ?></span>
-            </td>
-            <td style="width: 15%;">
-                <span class="label">Course Code</span>
-                <span class="value"><?php echo htmlspecialchars($student['course_code']); ?></span>
+            <td style="width:20%">
+                <span class="field-label">Course</span>
+                <span class="field-value"><?php echo htmlspecialchars($student['course_code']); ?></span>
             </td>
         </tr>
         <tr>
             <td colspan="3">
-                <span class="label">Address</span>
-                <span class="value"><?php echo htmlspecialchars($student['address']); ?></span>
+                <span class="field-label">Address</span>
+                <span class="field-value"><?php echo htmlspecialchars($student['address']); ?></span>
             </td>
             <td>
-                <span class="label">Contact No.</span>
-                <span class="value"><?php echo htmlspecialchars($student['phone']); ?></span>
+                <span class="field-label">Contact No.</span>
+                <span class="field-value mono"><?php echo htmlspecialchars($student['phone']); ?></span>
             </td>
             <td>
-                <span class="label">Year Level</span>
-                <span class="value"><?php echo $yearLevel; ?></span>
+                <span class="field-label">Year Level</span>
+                <span class="field-value"><?php echo $yearLevel; ?></span>
             </td>
         </tr>
         <tr>
             <td colspan="2">
-                <span class="label">Gender</span>
-                <span class="value"><?php echo htmlspecialchars($student['gender']); ?></span>
+                <span class="field-label">Gender</span>
+                <span class="field-value"><?php echo htmlspecialchars($student['gender']); ?></span>
             </td>
             <td colspan="2">
-                <span class="label">Semester</span>
-                <span class="value"><?php echo htmlspecialchars($student['ap_semester'] ?: '1st Semester'); ?></span>
+                <span class="field-label">Semester</span>
+                <span class="field-value"><?php echo htmlspecialchars($student['ap_semester'] ?: '1st Semester'); ?></span>
             </td>
             <td>
-                <span class="label">S.Y.</span>
-                <span class="value"><?php echo htmlspecialchars($student['academic_year'] ?: '2026-2027'); ?></span>
+                <span class="field-label">Academic Year</span>
+                <span class="field-value"><?php echo htmlspecialchars($student['academic_year'] ?: '2026-2027'); ?></span>
             </td>
         </tr>
     </table>
 
-    <table class="schedule-table">
+    <div class="section-heading">Class Schedule</div>
+    <table class="sched-table">
         <thead>
             <tr>
-                <th style="width: 10%;">Code</th>
-                <th style="width: 32%;">Description</th>
-                <th style="width: 6%;" class="text-center">Units</th>
-                <th style="width: 8%;">Type</th>
-                <th style="width: 6%;">Days</th>
-                <th style="width: 8%;">Start</th>
-                <th style="width: 8%;">End</th>
-                <th style="width: 12%;">Section</th>
-                <th style="width: 8%;">Room</th>
-                <th style="width: 12%;">Instructor</th>
-                <th style="width: 4%;" class="text-center">S</th>
+                <th style="width:9%">Code</th>
+                <th style="width:30%">Description</th>
+                <th style="width:6%" class="text-center">Units</th>
+                <th style="width:7%">Type</th>
+                <th style="width:6%">Days</th>
+                <th style="width:8%">Start</th>
+                <th style="width:8%">End</th>
+                <th style="width:13%">Section</th>
+                <th style="width:7%">Room</th>
+                <th style="width:10%">Instructor</th>
+                <th style="width:4%" class="text-center">S</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($schedule as $row): ?>
-                <tr>
-                    <td class="font-mono"><?php echo htmlspecialchars($row['code']); ?></td>
-                    <td><?php echo htmlspecialchars($row['description']); ?></td>
-                    <td class="text-center font-mono"><?php echo $row['units']; ?></td>
-                    <td><?php echo htmlspecialchars($row['type']); ?></td>
-                    <td><?php echo htmlspecialchars($row['days']); ?></td>
-                    <td><?php echo htmlspecialchars($row['start']); ?></td>
-                    <td><?php echo htmlspecialchars($row['end']); ?></td>
-                    <td class="font-mono"><?php echo htmlspecialchars($row['section']); ?></td>
-                    <td><?php echo htmlspecialchars($row['room']); ?></td>
-                    <td><?php echo htmlspecialchars($row['instructor']); ?></td>
-                    <td class="text-center font-mono"><?php echo $row['s']; ?></td>
-                </tr>
+            <tr>
+                <td class="mono"><?php echo htmlspecialchars($row['code']); ?></td>
+                <td><?php echo htmlspecialchars($row['description']); ?></td>
+                <td class="text-center mono"><?php echo $row['units']; ?></td>
+                <td><?php echo htmlspecialchars($row['type']); ?></td>
+                <td class="text-center"><?php echo htmlspecialchars($row['days']); ?></td>
+                <td><?php echo htmlspecialchars($row['start']); ?></td>
+                <td><?php echo htmlspecialchars($row['end']); ?></td>
+                <td class="mono"><?php echo htmlspecialchars($row['section']); ?></td>
+                <td><?php echo htmlspecialchars($row['room']); ?></td>
+                <td><?php echo htmlspecialchars($row['instructor']); ?></td>
+                <td class="text-center mono"><?php echo $row['s']; ?></td>
+            </tr>
             <?php endforeach; ?>
-            <tr style="font-weight: bold; background-color: #fafafa;">
-                <td colspan="2" class="text-right">TOTAL UNITS:</td>
-                <td class="text-center font-mono"><?php echo number_format($totalUnits, 2); ?></td>
-                <td colspan="8">Status Codes [S]: A=Added, D=Dropped, Blank=Regular Enrollment</td>
+            <tr class="total-row">
+                <td colspan="2" class="text-right">Total Units:</td>
+                <td class="text-center mono"><?php echo number_format($totalUnits, 2); ?></td>
+                <td colspan="8" style="font-weight:normal; font-size:7.5pt; color:#444;">
+                    Status Codes [S]:&nbsp; A = Added &nbsp;&middot;&nbsp; D = Dropped &nbsp;&middot;&nbsp; Blank = Regular Enrollment
+                </td>
             </tr>
         </tbody>
     </table>
 
-    <div class="flex-container">
-        <div class="left-col">
-            <div class="section-title">Assessment of Fees (Cash)</div>
+    <div class="two-col">
+        <div class="col-left">
+            <div class="section-heading">Assessment of Fees</div>
             <div class="fee-row">
-                <span>Tuition Fee:</span>
-                <span class="font-mono"><?php echo number_format($tuitionFee, 2); ?></span>
+                <span>Tuition Fee (&#8369;<?php echo number_format($tuitionRate, 2); ?>/unit):</span>
+                <span class="mono"><?php echo number_format($tuitionFee, 2); ?></span>
             </div>
             <div class="fee-row">
                 <span>Laboratory Fee:</span>
-                <span class="font-mono"><?php echo number_format($totalLabFee, 2); ?></span>
+                <span class="mono"><?php echo number_format($totalLabFee, 2); ?></span>
             </div>
             <div class="fee-row">
                 <span>Miscellaneous:</span>
-                <span class="font-mono"><?php echo number_format($miscFee, 2); ?></span>
+                <span class="mono"><?php echo number_format($miscFee, 2); ?></span>
             </div>
             <div class="fee-row">
                 <span>LMS Fee:</span>
-                <span class="font-mono"><?php echo number_format($lmsFee, 2); ?></span>
+                <span class="mono"><?php echo number_format($lmsFee, 2); ?></span>
             </div>
             <div class="fee-row">
-                <span>NSTP/ROTC:</span>
-                <span class="font-mono"><?php echo number_format($nstpFee, 2); ?></span>
+                <span>NSTP / ROTC:</span>
+                <span class="mono"><?php echo number_format($nstpFee, 2); ?></span>
             </div>
             <div class="fee-row">
                 <span>OMR:</span>
-                <span class="font-mono"><?php echo number_format($omrFee, 2); ?></span>
+                <span class="mono"><?php echo number_format($omrFee, 2); ?></span>
             </div>
             <?php if ($discount > 0): ?>
-            <div class="fee-row" style="color: #c00;">
+            <div class="fee-row discount">
                 <span>Scholarship Discount:</span>
-                <span class="font-mono">-<?php echo number_format($discount, 2); ?></span>
+                <span class="mono">&ndash; <?php echo number_format($discount, 2); ?></span>
             </div>
             <?php endif; ?>
-            <div class="fee-row fee-total">
+            <div class="fee-row total-line">
                 <span>Cash Total:</span>
-                <span class="font-mono double-underline">₱ <?php echo number_format($cashTotal, 2); ?></span>
+                <span class="mono double-line">&#8369; <?php echo number_format($cashTotal, 2); ?></span>
             </div>
-            <br>
-            <div class="section-title" style="margin-top: 5px;">Installment</div>
-            <div class="fee-row">
-                <span>Installment Charge (8%):</span>
-                <span class="font-mono"><?php echo number_format($installmentCharge, 2); ?></span>
-            </div>
-            <div class="fee-row fee-total">
-                <span>Installment Total:</span>
-                <span class="font-mono">₱ <?php echo number_format($installmentTotal, 2); ?></span>
-            </div>
-            <div style="font-size: 8.5px; margin-top: 5px; font-style: italic;">
-                Note: Installment charge does not apply to full-payment transaction(s).
+            <div style="margin-top:8px;">
+                <div class="fee-row">
+                    <span>Installment Charge (8%):</span>
+                    <span class="mono"><?php echo number_format($installmentCharge, 2); ?></span>
+                </div>
+                <div class="fee-row total-line">
+                    <span>Installment Total:</span>
+                    <span class="mono double-line">&#8369; <?php echo number_format($installmentTotal, 2); ?></span>
+                </div>
+                <div style="font-size:7.5pt; margin-top:4px; font-style:italic; color:#555;">
+                    Installment charge does not apply to full-payment transactions.
+                </div>
             </div>
         </div>
 
-        <div class="right-col">
-            <div class="section-title">Schedule of Payment(s)</div>
-            <table class="schedule-payments-table">
+        <div class="col-right">
+            <div class="section-heading">Schedule of Payments</div>
+            <table class="payment-table">
                 <thead>
                     <tr>
                         <th>Milestone</th>
@@ -721,68 +715,81 @@ try {
                 <tbody>
                     <?php if (!empty($paymentSchedule['items'])): ?>
                         <?php foreach ($paymentSchedule['items'] as $item): ?>
-                            <tr>
-                                <td style="<?php echo $item['milestone'] === 'Upon Registration' ? 'font-weight: bold;' : ''; ?>"><?php echo htmlspecialchars($item['milestone']); ?></td>
-                                <td style="<?php echo $item['status'] === 'CLEARED' ? 'color: #059669; font-style: italic;' : ''; ?>"><?php echo htmlspecialchars($item['dueDate']); ?></td>
-                                <td class="font-mono" style="font-weight: bold; <?php echo ($item['status'] === 'PAID' || $item['status'] === 'CLEARED') ? 'color: #059669;' : ''; ?>">
-                                    <?php echo htmlspecialchars($item['formattedAmount']); ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
                         <tr>
-                            <td style="font-weight: bold;">Upon Registration</td>
-                            <td>Upon Enrollment</td>
-                            <td class="font-mono" style="font-style: italic; font-weight: bold;">
-                                <?php echo $student['payment_mode'] === 'Installment' ? '₱ ' . number_format($installmentTotal, 2) : '₱ ' . number_format($cashTotal, 2); ?>
+                            <td style="<?php echo $item['milestone'] === 'Upon Registration' ? 'font-weight:bold;' : ''; ?>">
+                                <?php echo htmlspecialchars($item['milestone']); ?>
+                            </td>
+                            <td class="<?php echo ($item['status'] === 'CLEARED' || $item['status'] === 'PAID') ? 'paid-cell' : ''; ?>">
+                                <?php echo htmlspecialchars($item['dueDate']); ?>
+                            </td>
+                            <td class="text-right mono" style="font-weight:bold;<?php echo ($item['status'] === 'PAID' || $item['status'] === 'CLEARED') ? 'color:#166534;' : ''; ?>">
+                                <?php echo htmlspecialchars($item['formattedAmount']); ?>
                             </td>
                         </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                    <tr>
+                        <td style="font-weight:bold;">Upon Registration</td>
+                        <td>Upon Enrollment</td>
+                        <td class="text-right mono" style="font-weight:bold;">
+                            <?php echo $student['payment_mode'] === 'Installment'
+                                ? '&#8369; ' . number_format($installmentTotal, 2)
+                                : '&#8369; ' . number_format($cashTotal, 2); ?>
+                        </td>
+                    </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
-            <div style="font-size: 8.5px; margin-top: 8px; font-style: italic; text-align: justify;">
-                Note: Outright payment of adding/dropping charge is required when adding/dropping class schedule(s).
+            <div style="font-size:7.5pt; margin-top:6px; font-style:italic; color:#555; text-align:justify;">
+                Outright payment of adding/dropping charge is required when changing class schedule(s).
             </div>
         </div>
     </div>
 
-    <div class="stamps-signatures">
-        <div class="stamp-box <?php echo !empty($student['or_number']) ? 'stamp-active' : ''; ?>">
-            <?php 
-            if (!empty($student['or_number'])) {
-                echo "PAID ENROLLED<br><span style='font-size: 9px; font-weight: normal; font-family: monospace;'>" . htmlspecialchars($student['or_number']) . "</span>";
-            } else {
-                echo "CASHIER STAMP";
-            }
-            ?>
+    <div class="sig-row">
+        <div class="sig-cell">
+            <div class="stamp-box <?php echo !empty($student['or_number']) ? 'paid' : ''; ?>">
+                <?php if (!empty($student['or_number'])): ?>
+                    <span>PAID / ENROLLED</span>
+                    <span style="font-size:8pt;font-family:'Courier New',monospace;font-weight:normal;margin-top:4px;">
+                        OR #<?php echo htmlspecialchars($student['or_number']); ?>
+                    </span>
+                <?php else: ?>
+                    Cashier Stamp
+                <?php endif; ?>
+            </div>
         </div>
-        <div class="signature-line">
-            <div class="sig-border">Cashier Representative</div>
+        <div class="sig-cell">
+            <div class="sig-line">
+                Cashier Representative
+                <div class="sig-sub">Treasury Department</div>
+            </div>
         </div>
-        <div class="signature-line">
-            <div class="sig-border">Registrar Officer</div>
+        <div class="sig-cell">
+            <div class="sig-line">
+                Registrar Officer
+                <div class="sig-sub">Office of the University Registrar</div>
+            </div>
         </div>
     </div>
 
     <div class="footer-note">
-        Note to the students: Enrollment is valid only upon acceptance of payment by the Treasury Department within the next working day from the day of encoding. GNCP reserves the right, at its sole discretion, to displace/delete transactions that are deemed inactive and/or unpaid after the allotted enrollment period without incurring any liability or whatsoever.
+        Note to the students: Enrollment is valid only upon acceptance of payment by the Treasury Department within the next working day from the day of encoding.
+        GNCP reserves the right, at its sole discretion, to displace/delete transactions that are deemed inactive and/or unpaid after the allotted enrollment period without incurring any liability whatsoever.
     </div>
-
-    <div class="footer-metadata">
+    <div class="footer-meta">
         <span>Print Date: <?php echo date('d/m/Y h:i:sa'); ?></span>
         <span>Enrollment Date: <?php echo date('d/m/Y h:i:sa', strtotime($student['created_at'])); ?></span>
         <span>Encoder: <?php echo htmlspecialchars($student['cashier_name'] ?: 'sbaltazar3'); ?></span>
     </div>
+
 </div>
 
 <script>
-    // Auto print if requested via query param or if in print mode
     window.onload = function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('autoprint') === 'true') {
-            window.print();
-        }
-    }
+        const p = new URLSearchParams(window.location.search);
+        if (p.get('autoprint') === 'true') window.print();
+    };
 </script>
 </body>
 </html>
