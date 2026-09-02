@@ -492,7 +492,8 @@ class EnrollmentService {
             throw new RuntimeException('Failed to write portrait file to disk.');
         }
 
-        $webPath = '/systemtest/uploads/portraits/' . $finalName;
+        $appBase = (isset($_SERVER['SCRIPT_NAME']) && strpos($_SERVER['SCRIPT_NAME'], '/systemtest/') !== false) ? '/systemtest' : '';
+        $webPath = $appBase . '/uploads/portraits/' . $finalName;
 
         return [
             'referenceNumber' => $refNo,

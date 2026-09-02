@@ -252,7 +252,8 @@ class StudentController {
                 return ['success' => false, 'message' => 'Failed to write uploaded file to disk.', 'code' => 500];
             }
 
-            $softCopyUrl = "/systemtest/uploads/documents/{$targetName}";
+            $appBase = (isset($_SERVER['SCRIPT_NAME']) && strpos($_SERVER['SCRIPT_NAME'], '/systemtest/') !== false) ? '/systemtest' : '';
+            $softCopyUrl = "{$appBase}/uploads/documents/{$targetName}";
             $fileSize = strlen($binaryData);
             $fileType = 'application/pdf';
             if (empty($fileName)) {
@@ -308,7 +309,8 @@ class StudentController {
                 return ['success' => false, 'message' => 'Failed to move uploaded document.', 'code' => 500];
             }
 
-            $softCopyUrl = "/systemtest/uploads/documents/{$targetName}";
+            $appBase = (isset($_SERVER['SCRIPT_NAME']) && strpos($_SERVER['SCRIPT_NAME'], '/systemtest/') !== false) ? '/systemtest' : '';
+            $softCopyUrl = "{$appBase}/uploads/documents/{$targetName}";
             $fileName = basename($file['name']);
             $fileType = 'application/pdf';
             $fileSize = $file['size'];

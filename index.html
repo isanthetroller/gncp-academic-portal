@@ -32,17 +32,18 @@
                 }
 
                 if (user && user.role && !user.must_change_password) {
+                    const _bp = window.location.pathname.startsWith('/systemtest') ? '/systemtest' : '';
                     const roleRedirects = {
-                        'SUPER_ADMIN': '/systemtest/admin/',
-                        'ADMIN': '/systemtest/admin/',
-                        'REGISTRAR': '/systemtest/registrar/',
-                        'HELPDESK': '/systemtest/stations/tlc-helpdesk/',
-                        'MEDICAL': '/systemtest/stations/medical-checkup/',
-                        'CASHIER': '/systemtest/stations/payment-processing/',
-                        'IT_CENTER': '/systemtest/stations/it-center/',
-                        'DEVELOPER': '/systemtest/monitoring/'
+                        'SUPER_ADMIN': _bp + '/admin/',
+                        'ADMIN':       _bp + '/admin/',
+                        'REGISTRAR':   _bp + '/registrar/',
+                        'HELPDESK':    _bp + '/stations/tlc-helpdesk/',
+                        'MEDICAL':     _bp + '/stations/medical-checkup/',
+                        'CASHIER':     _bp + '/stations/payment-processing/',
+                        'IT_CENTER':   _bp + '/stations/it-center/',
+                        'DEVELOPER':   _bp + '/monitoring/'
                     };
-                    const target = roleRedirects[user.role] || '/systemtest/admin/';
+                    const target = roleRedirects[user.role] || (_bp + '/admin/');
                     if (target) {
                         window.location.replace(target);
                     }
@@ -878,14 +879,15 @@
                 ];
 
                 const getRoleRedirectUrl = (role) => {
-                    if (role === 'SUPER_ADMIN' || role === 'ADMIN') return '/systemtest/admin/';
-                    if (role === 'REGISTRAR') return '/systemtest/registrar/';
-                    if (role === 'HELPDESK') return '/systemtest/stations/tlc-helpdesk/';
-                    if (role === 'MEDICAL') return '/systemtest/stations/medical-checkup/';
-                    if (role === 'CASHIER') return '/systemtest/stations/payment-processing/';
-                    if (role === 'IT_CENTER') return '/systemtest/stations/it-center/';
-                    if (role === 'DEVELOPER') return '/systemtest/monitoring/';
-                    return '/systemtest/admin/';
+                    const _bp = window.location.pathname.startsWith('/systemtest') ? '/systemtest' : '';
+                    if (role === 'SUPER_ADMIN' || role === 'ADMIN') return _bp + '/admin/';
+                    if (role === 'REGISTRAR') return _bp + '/registrar/';
+                    if (role === 'HELPDESK') return _bp + '/stations/tlc-helpdesk/';
+                    if (role === 'MEDICAL') return _bp + '/stations/medical-checkup/';
+                    if (role === 'CASHIER') return _bp + '/stations/payment-processing/';
+                    if (role === 'IT_CENTER') return _bp + '/stations/it-center/';
+                    if (role === 'DEVELOPER') return _bp + '/monitoring/';
+                    return _bp + '/admin/';
                 };
 
                 const roleAllowedWorkstations = {
@@ -909,7 +911,8 @@
                     const cleanPath = clean.split('?')[0].replace(/\/index\.html$/i, '').replace(/\/+$/, '');
                     const allowed = roleAllowedWorkstations[role] || [];
                     if (allowed.some(p => cleanPath.toLowerCase().endsWith(p.toLowerCase()) || cleanPath.toLowerCase() === p.toLowerCase())) {
-                        return '/systemtest/' + clean;
+                        const _bp = window.location.pathname.startsWith('/systemtest') ? '/systemtest' : '';
+                        return _bp + '/' + clean;
                     }
                     return defaultUrl;
                 };

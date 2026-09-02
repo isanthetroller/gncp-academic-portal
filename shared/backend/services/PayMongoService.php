@@ -85,7 +85,7 @@ class PayMongoService {
                 'currency'          => 'PHP',
                 'description'       => $description,
                 'paymentMethods'    => ['gcash', 'paymaya', 'card', 'qrph', 'grab_pay'],
-                'checkoutUrl'       => '/systemtest/shared/paymongo/checkout.html?session_id=' . urlencode($sessionId) . '&ref=' . urlencode($refNo) . '&amount=' . urlencode((string)$amount) . '&desc=' . urlencode($description),
+                'checkoutUrl'       => (strpos($_SERVER['SCRIPT_NAME'] ?? '', '/systemtest/') !== false ? '/systemtest' : '') . '/shared/paymongo/checkout.html?session_id=' . urlencode($sessionId) . '&ref=' . urlencode($refNo) . '&amount=' . urlencode((string)$amount) . '&desc=' . urlencode($description),
                 'qrPhPayload'       => "00020101021226580014ph.paymongo.qr0111{$sessionId}5204581253036085408{$amount}5802PH5910GNCP_COLLEGE6006MANILA62150111{$refNo}6304ABCD",
                 'createdAt'         => date('Y-m-d H:i:s'),
                 'expiresAt'         => date('Y-m-d H:i:s', time() + 3600)
