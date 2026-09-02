@@ -788,10 +788,35 @@
             color: #64748b;
         }
 
+        /* ── Chart views fixed-height wrapper & crossfade animation ── */
+        .chart-views-wrapper {
+            position: relative;
+            width: 100%;
+            height: 268px; /* tall enough for both SVG and funnel without resize */
+        }
+
+        .chart-view-panel {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(6px);
+            transition:
+                opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: opacity, transform;
+        }
+
+        .chart-view-panel.chart-view-active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
         .chart-svg-container {
             position: relative;
             width: 100%;
-            height: 230px;
+            height: 100%;
             background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             border: 1px solid #e2e8f0;
             border-radius: 12px;
@@ -805,6 +830,13 @@
             display: block;
             border-radius: 12px;
             overflow: hidden;
+        }
+
+        /* Funnel fills the full wrapper height when active */
+        .chart-view-panel .pipeline-funnel-list {
+            height: 100%;
+            overflow-y: auto;
+            scrollbar-width: thin;
         }
 
         .chart-tooltip-floating {
@@ -1941,8 +1973,12 @@
                                 </div>
                             </div>
 
+                            <!-- Chart views: fixed-height wrapper with crossfade animation -->
+                            <div class="chart-views-wrapper">
+
                             <!-- View 1: By Course Grouped Column Chart -->
-                            <div v-if="chartViewMode === 'spline'" class="chart-svg-container" @mouseleave="hoveredChartPoint = null">
+                            <div class="chart-view-panel" :class="{ 'chart-view-active': chartViewMode === 'spline' }">
+                            <div class="chart-svg-container" @mouseleave="hoveredChartPoint = null">
                                 <svg :viewBox="`0 0 ${graphMetrics.width} ${graphMetrics.height}`" preserveAspectRatio="none" style="width: 100%; height: 100%;">
                                     <defs>
                                         <linearGradient id="emeraldBarGrad" x1="0" y1="0" x2="0" y2="1">
@@ -2047,10 +2083,12 @@
                                         <strong style="color:#0284c7">{{ hoveredChartPoint.data.pending }} applicant(s)</strong>
                                     </div>
                                 </div>
-                            </div>
+                            </div><!-- /.chart-svg-container -->
+                            </div><!-- /.chart-view-panel spline -->
 
                             <!-- View 2: 30-Day Trend Timeline -->
-                            <div v-else-if="chartViewMode === 'timeline'" class="chart-svg-container" @mouseleave="hoveredTimelinePoint = null">
+                            <div class="chart-view-panel" :class="{ 'chart-view-active': chartViewMode === 'timeline' }">
+                            <div class="chart-svg-container" @mouseleave="hoveredTimelinePoint = null">
                                 <svg :viewBox="`0 0 ${timelineGraphMetrics.width} ${timelineGraphMetrics.height}`" preserveAspectRatio="none" style="width: 100%; height: 100%;">
                                     <defs>
                                         <linearGradient id="timeAreaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -2116,10 +2154,12 @@
                                         <strong style="color:#d97706">+{{ hoveredTimelinePoint.data.daily }} applicant(s)</strong>
                                     </div>
                                 </div>
-                            </div>
+                            </div><!-- /.chart-svg-container -->
+                            </div><!-- /.chart-view-panel timeline -->
 
-                            <!-- View 3: Admissions Lifecycle 6-Stage Pipeline Funnel -->
-                            <div v-else class="pipeline-funnel-list">
+                            <!-- View 3: Admissions Lifecycle Funnel -->
+                            <div class="chart-view-panel" :class="{ 'chart-view-active': chartViewMode === 'bars' }">
+                            <div class="pipeline-funnel-list">
                                 <div v-for="stage in pipelineFunnel" :key="stage.id" class="funnel-stage-row">
                                     <div class="funnel-stage-header">
                                         <div class="funnel-stage-title">
@@ -2139,7 +2179,10 @@
                                         <div class="funnel-bar-fill" :style="{ width: stage.pct + '%', background: stage.color }"></div>
                                     </div>
                                 </div>
-                            </div>
+                            </div><!-- /.pipeline-funnel-list -->
+                            </div><!-- /.chart-view-panel bars -->
+
+                            </div><!-- /.chart-views-wrapper -->
 
                             <!-- Legend & Quick-Filter Row -->
                             <div class="chart-legend-bar">
