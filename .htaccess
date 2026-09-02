@@ -9,7 +9,7 @@ DirectoryIndex index.php index.html
 # ------------------------------------------------------------------------------
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /systemtest/
+    # RewriteBase is omitted so rules adapt dynamically to both localhost (/systemtest/) and root hosting (/)
 
     # Reroute direct requests for protected station HTML pages to their server-side auth PHP wrappers
     RewriteRule ^admin/(index\.html)?$ admin/index.php [L,QSA]
