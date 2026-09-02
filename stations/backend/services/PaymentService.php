@@ -11,24 +11,26 @@ class PaymentService {
      */
     public static function validatePaymentEligibility(array $existingRecord) {
         $status = strtoupper($existingRecord['status'] ?? '');
-        if ($status === 'PRE_REGISTERED') {
+        if ($status === 'PRE_REGISTERED' || $status === 'PENDING') {
             throw new Exception("Student documents must be verified by the Registrar before accepting payment.");
         }
-        if ($status === 'REJECTED') {
+        if ($status === 'REJECTED' || $status === 'FLAGGED') {
             throw new Exception("Cannot process payment for a rejected applicant.");
         }
 
-        $roadmap = json_decode($existingRecord['roadmap'] ?? '[]', true) ?: [];
-        foreach ($roadmap as $idx => $step) {
-            $stepId = $step['stepId'] ?? '';
-            $name   = strtolower($step['name'] ?? '');
-            $isPrior = in_array($stepId, ['registrar_verification', 'advising_assessment', 'clinic_checkup'], true) ||
-                       in_array($name, ['registrar verification', 'academic advising', 'medical clearance'], true) ||
-                       ($stepId === '' && in_array($idx + 1, [2, 3, 4], true));
-            if ($isPrior) {
+        // Check roadmap steps to ensure prior steps are completed and not flagged/rejected
+        if (!in_array($status, ['PAID', 'PARTIAL', 'ENROLLED', 'PROMOTED', 'ACTIVE'], true)) {
+            $roadmap = json_decode($existingRecord['roadmap'] ?? '[]', true) ?: [];
+            foreach ($roadmap as $idx => $step) {
+                $stepId = strtolower($step['stepId'] ?? '');
+                $title  = strtolower($step['title'] ?? ($step['name'] ?? ''));
+                $isClinic = in_array($stepId, ['clinic_checkup', 'medical_checkup'], true) || str_contains($title, 'medical') || str_contains($title, 'clinic');
                 $stepStatus = strtoupper($step['status'] ?? '');
-                if ($stepStatus !== 'COMPLETED' && $stepStatus !== 'SKIPPED') {
-                    throw new Exception("Prior workstation steps (Registrar/Advising/Medical) must be completed before accepting cashier payment.");
+                if ($isClinic && in_array($stepStatus, ['PENDING', 'LOCKED'], true) && $status !== 'MEDICAL_CLEARED') {
+                    throw new Exception("Medical clearance must be completed before accepting cashier payment.");
+                }
+                if ($stepStatus === 'FLAGGED' || $stepStatus === 'REJECTED') {
+                    throw new Exception("Prior workstation step ({$title}) was flagged or rejected.");
                 }
             }
         }

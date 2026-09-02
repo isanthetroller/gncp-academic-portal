@@ -3,12 +3,39 @@ require_once __DIR__ . '/../../shared/backend/config/database.php';
 require_once __DIR__ . '/../../shared/backend/utils/student.php';
 require_once __DIR__ . '/../../shared/backend/services/AssessmentService.php';
 
+require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
+
 $ref = $_GET['ref'] ?? $_GET['id'] ?? $_GET['student_id'] ?? '';
-$pin = $_GET['pin'] ?? '';
+$pin = trim($_GET['pin'] ?? '');
 
 if (empty($ref)) {
+    http_response_code(400);
     die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>Error: Student reference number or Student ID is required.</h1>");
 }
+
+initSession();
+$isAuthorized = false;
+
+// 1. Staff session check
+$adminUser = $_SESSION['gncp_admin_user'] ?? null;
+$stationUser = $_SESSION['gncp_station_user'] ?? null;
+if ($adminUser || $stationUser) {
+    $u = $adminUser ?: $stationUser;
+    $role = strtoupper(is_array($u) ? ($u['role'] ?? '') : (json_decode($u, true)['role'] ?? ''));
+    if (in_array($role, ['CASHIER', 'REGISTRAR', 'ADMIN', 'SUPER_ADMIN', 'HELPDESK', 'IT_CENTER'])) {
+        $isAuthorized = true;
+    }
+}
+
+// 2. Student session check
+$studentSess = $_SESSION['gncp_student'] ?? null;
+if ($studentSess) {
+    $sessId = is_array($studentSess) ? ($studentSess['id'] ?? '') : '';
+    if (!empty($sessId) && strcasecmp($sessId, $ref) === 0) {
+        $isAuthorized = true;
+    }
+}
+session_write_close();
 
 try {
     $pdo = Database::getInstance();
@@ -72,22 +99,39 @@ try {
         die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>Error: Student record not found.</h1>");
     }
 
-    // Access control check: allow logged in cashier/admin/staff to bypass PIN check
+    // Access control check: allow logged in cashier/admin/staff, active student session, or valid PIN
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    $isLoggedInStaff = false;
+    $isAuthorized = false;
     $storedUser = $_SESSION['gncp_station_user'] ?? $_SESSION['gncp_admin_user'] ?? null;
     if ($storedUser) {
         $user = is_array($storedUser) ? $storedUser : (is_string($storedUser) ? json_decode($storedUser, true) : []);
         $role = strtoupper($user['role'] ?? '');
         if (in_array($role, ['CASHIER', 'REGISTRAR', 'ADMIN', 'SUPER_ADMIN', 'HELPDESK', 'MEDICAL', 'IT_CENTER'])) {
-            $isLoggedInStaff = true;
+            $isAuthorized = true;
         }
     }
 
-    if (!$isLoggedInStaff && $student['temp_pin'] !== $pin) {
-        die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>Error: Invalid security PIN. Access denied.</h1>");
+    if (!$isAuthorized && !empty($_SESSION['gncp_student'])) {
+        $studentUser = is_array($_SESSION['gncp_student']) ? $_SESSION['gncp_student'] : json_decode($_SESSION['gncp_student'], true);
+        $sId = strtolower($studentUser['id'] ?? ($studentUser['username'] ?? ''));
+        $targetId = strtolower($student['temp_student_id'] ?? ($student['id'] ?? ''));
+        if ($sId && ($sId === $targetId || strcasecmp($sId, $ref) === 0)) {
+            $isAuthorized = true;
+        }
+    }
+
+    if (!$isAuthorized) {
+        $storedPin = (string)($student['temp_pin'] ?? '');
+        if (!empty($pin) && !empty($storedPin) && hash_equals($storedPin, $pin)) {
+            $isAuthorized = true;
+        }
+    }
+
+    if (!$isAuthorized) {
+        http_response_code(401);
+        die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px; color:#dc2626;'>401 Unauthorized: Invalid security PIN or staff authorization required. Access denied.</h1>");
     }
 
     // Year level translation

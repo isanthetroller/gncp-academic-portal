@@ -173,13 +173,6 @@ const AdminSidebar = {
                 </div>
 
                 <div class="nav-category-wrapper">
-                    <a href="../monitoring/" target="_blank" class="nav-cat-header nav-item-top" style="text-decoration:none; color:inherit;">
-                        <span><i class="fa-solid fa-shield-halved" style="color:#00e699;"></i> Security &amp; IP Radar</span>
-                        <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.65rem; opacity:0.6;"></i>
-                    </a>
-                </div>
-
-                <div class="nav-category-wrapper">
                     <button class="nav-cat-header nav-item-top" :class="{ active: view === 'profile' }" @click="selectView('profile')">
                         <span><i class="fa-solid fa-user-circle"></i> My Account Profile</span>
                     </button>

@@ -3,6 +3,7 @@
  * Auth Controller — Handles user login, logout, forced password changes, and session check
  */
 require_once __DIR__ . '/../models/UserModel.php';
+require_once __DIR__ . '/../../shared/backend/utils/rate_limit.php';
 
 class AuthController {
     private $userModel;
@@ -19,6 +20,9 @@ class AuthController {
             return ['success' => false, 'message' => 'Username and password are required.', 'code' => 400];
         }
 
+        // Enforce brute-force rate limit on login attempts (10 failed requests per 5 minutes per IP/user)
+        checkLoginRateLimit('employee_login', $username, 10, 300);
+
         $user = $this->userModel->findByUsername($username);
 
         // Auto-bootstrap developer account if not yet seeded
@@ -33,6 +37,7 @@ class AuthController {
         }
 
         if (!$user) {
+            recordLoginFailure('employee_login', $username, 10, 300);
             return ['success' => false, 'message' => 'Invalid username or password.', 'code' => 401];
         }
 
@@ -56,8 +61,12 @@ class AuthController {
         }
 
         if (!$isValidPassword) {
+            recordLoginFailure('employee_login', $username, 10, 300);
             return ['success' => false, 'message' => 'Invalid username or password.', 'code' => 401];
         }
+
+        // Clear failed attempts counter on successful credential match
+        clearLoginFailures('employee_login', $username);
 
         $userStatus = strtoupper(trim($user['status'] ?? 'ACTIVE')) ?: 'ACTIVE';
         if ($userStatus !== 'ACTIVE') {
@@ -66,8 +75,7 @@ class AuthController {
 
         // ── Single-Active Session Token Generation ──
         $activeSessionToken = bin2hex(random_bytes(32));
-        $clientIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        $clientIp = trim(explode(',', $clientIp)[0]);
+        $clientIp = getRateLimitClientIp();
 
         try {
             $pdo = Database::getInstance();

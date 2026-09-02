@@ -121,7 +121,7 @@ def test_security_session_isolation():
         page_admin.fill("#username", "admin")
         page_admin.fill("#password", "admin12345")
         page_admin.click("button[type='submit']")
-        page_admin.wait_for_url("**/admin/index.html*", timeout=10000)
+        page_admin.wait_for_url("**/admin/**", timeout=10000)
         print("  [OK] Profile 1 authenticated as Admin.")
 
         # Context 2: Fresh browser profile / private window opens index.html
@@ -138,7 +138,7 @@ def test_security_session_isolation():
         page_fresh2.goto(f"{BASE_URL}/admin/index.html")
         time.sleep(2.0)
         # Must be redirected to index.html with clear=true
-        assert "admin/index.html" not in page_fresh2.url or "index.html" in page_fresh2.url, f"Expected redirect away from admin, got {page_fresh2.url}"
+        assert "admin" not in page_fresh2.url.rstrip("/") or "index.html" in page_fresh2.url, f"Expected redirect away from admin, got {page_fresh2.url}"
         print("  [OK] Fresh profile navigating to admin/index.html is blocked and redirected to login.")
 
         ctx_admin.close()

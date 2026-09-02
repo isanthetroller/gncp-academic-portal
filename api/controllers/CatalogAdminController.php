@@ -13,6 +13,7 @@ class CatalogAdminController {
     }
 
     public function getCatalog(): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN', 'REGISTRAR', 'HELPDESK']);
         return ['success' => true, 'data' => $this->courseModel->getFullCatalog()];
     }
 

@@ -34,6 +34,39 @@ class PayMongoService {
             throw new InvalidArgumentException('Payment amount must be greater than zero.');
         }
 
+        // Validate student status and remaining tuition balance
+        try {
+            $pdo = Database::getInstance();
+            $stmt = $pdo->prepare("SELECT `payment_data`, `status` FROM `pre_enrollments` WHERE `temp_student_id` = :ref1 LIMIT 1");
+            $stmt->execute([':ref1' => $refNo]);
+            $stud = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$stud) {
+                $stmt2 = $pdo->prepare("SELECT `payment_data`, `status` FROM `students` WHERE `temp_reference_no` = :ref2 OR `id` = :sid LIMIT 1");
+                $stmt2->execute([':ref2' => $refNo, ':sid' => $refNo]);
+                $stud = $stmt2->fetch(PDO::FETCH_ASSOC);
+            }
+
+            if ($stud) {
+                $st = strtoupper(trim($stud['status'] ?? ''));
+                if ($st === 'PRE_REGISTERED' || $st === 'REJECTED') {
+                    throw new DomainException("Payment rejected: Student status is {$st}. Must be verified and advised before creating checkout.");
+                }
+                $pData = !empty($stud['payment_data']) ? (is_array($stud['payment_data']) ? $stud['payment_data'] : json_decode($stud['payment_data'], true)) : [];
+                if (isset($pData['balance'])) {
+                    $maxBal = (float)$pData['balance'];
+                    if ($maxBal > 0 && $amount > round($maxBal + 0.01, 2)) {
+                        throw new InvalidArgumentException("Payment amount (PHP " . number_format($amount, 2) . ") exceeds remaining balance (PHP " . number_format($maxBal, 2) . ").");
+                    }
+                }
+            }
+        } catch (DomainException $de) {
+            throw $de;
+        } catch (InvalidArgumentException $ie) {
+            throw $ie;
+        } catch (Exception $e) {
+            error_log('[PayMongoService::BalanceCheck] ' . $e->getMessage());
+        }
+
         $amountInCentavos = (int)round($amount * 100);
         $sessionId = 'cs_test_' . substr(md5($refNo . time() . uniqid()), 0, 24);
         $clientKey = 'cs_' . substr(md5(uniqid()), 0, 16) . '_client_secret';

@@ -20,6 +20,27 @@ window.app = createApp({
         const students = ref([]);
         const receiptData = ref(null);
 
+        // Authentication State
+        const getStoredUser = () => {
+            try {
+                const raw = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && ['CASHIER', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                        return parsed;
+                    }
+                }
+            } catch (e) {}
+            return null;
+        };
+        const currentUser = ref(getStoredUser());
+        const isLoggingIn = ref(false);
+        const loginError = ref('');
+        const loginForm = reactive({
+            username: '',
+            password: ''
+        });
+
         const timeGreeting = computed(() => {
             const hour = new Date().getHours();
             if (hour < 12) return 'Great Morning';
@@ -50,15 +71,6 @@ window.app = createApp({
             const idx = pendingList.findIndex(s => s.referenceNumber === student.referenceNumber);
             return idx >= 0 ? idx + 1 : null;
         };
-
-        // Authentication State
-        const currentUser = ref(null);
-        const isLoggingIn = ref(false);
-        const loginError = ref('');
-        const loginForm = reactive({
-            username: '',
-            password: ''
-        });
 
         const loadQueue = () => {
             const queue = StationDataBus.getQueue();

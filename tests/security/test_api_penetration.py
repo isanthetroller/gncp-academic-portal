@@ -15,7 +15,7 @@ import codecs
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
-BASE_URL = "http://127.0.0.1:8000/systemtest/api/index.php"
+BASE_URL = "http://127.0.0.1/systemtest/api/index.php"
 
 tests_passed = 0
 total_tests = 0

@@ -12,7 +12,7 @@
     const onUnmounted = Vue.onUnmounted;
     const watch = Vue.watch;
 
-    const Model = global.RegistrarModel;
+    const Api = global.RegistrarApiService;
     const View = global.RegistrarView;
 
     const App = {
@@ -97,8 +97,28 @@
 
 
             // ── Data Repositories ─────────────────────────────────────────
-            const navItems = ref(Model.getNavItems());
-            const staticMeta = Model.getStaticMeta();
+            const navItems = ref([
+                {
+                    category: 'Core Operations',
+                    items: [
+                        { key: 'pending-applications', label: 'Pending Reviews', icon: 'fa-solid fa-file-signature' },
+                        { key: 'students', label: 'Student Directory', icon: 'fa-solid fa-users' }
+                    ]
+                },
+                {
+                    category: 'Performance & Insights',
+                    items: [
+                        { key: 'enrollment-overview', label: 'Enrollment Overview', icon: 'fa-solid fa-chart-pie' },
+                        { key: 'reports', label: 'Statistical Reports', icon: 'fa-solid fa-file-invoice' }
+                    ]
+                }
+            ]);
+            const staticMeta = {
+                semesters: [
+                    { title: 'Current Semester', value: '2026-1st', meta: 'Registration is open' },
+                    { title: 'Semester Closing', value: 'June 30', meta: 'Final grade submission deadline' }
+                ]
+            };
 
             const programs = ref([]);
             const subjects = ref([]);
@@ -144,8 +164,9 @@
             });
 
             const loadData = () => {
-                Model.loadInitialData()
-                    .then(data => {
+                Api.fetchAllData()
+                    .then(res => {
+                        const data = (res && res.data) ? res.data : {};
                         programs.value = data.programs || [];
                         subjects.value = data.subjects || [];
                         curriculum.value = data.curriculum || [];
@@ -236,6 +257,13 @@
                 }
             };
 
+            onMounted(() => {
+                checkSession();
+            });
+
+            onUnmounted(() => {
+                stopLiveSync();
+            });
 
             const handleLogout = () => {
                 if (typeof Swal !== 'undefined') {
@@ -446,19 +474,20 @@
                     if (!sections.value || !progCode) return [];
                     const search = progCode.trim().toLowerCase();
 
-                    const progObj = programs.value ? programs.value.find(p => p.code.trim().toLowerCase() === search || p.name.trim().toLowerCase() === search) : null;
+                    const progObj = programs.value ? programs.value.find(p => (p.code || '').trim().toLowerCase() === search || (p.name || '').trim().toLowerCase() === search) : null;
                     const searchName = progObj ? progObj.name.trim().toLowerCase() : search;
                     const searchCode = progObj ? progObj.code.trim().toLowerCase() : search;
 
-                    const targetYear = (targetYearLevel || '1st Year').trim().toLowerCase();
+                    const targetYear = (targetYearLevel || '').trim().toLowerCase();
                     return sections.value.filter(s => {
                         const progName = (s.program || '').trim().toLowerCase();
                         const isProgMatch = (progName === searchName ||
                             progName === searchCode ||
                             progName.includes(search) ||
-                            search.includes(progName));
+                            search.includes(progName) ||
+                            (searchCode && progName.includes(searchCode)));
 
-                        const sectionYear = (s.yearLevel || '1st Year').trim().toLowerCase();
+                        const sectionYear = (s.yearLevel || '').trim().toLowerCase();
                         const isYearMatch = !targetYear || sectionYear === targetYear || sectionYear.includes(targetYear) || targetYear.includes(sectionYear);
                         return isProgMatch && isYearMatch;
                     }).map(s => ({
@@ -466,29 +495,34 @@
                         code: s.code,
                         program: s.program,
                         yearLevel: s.yearLevel || '1st Year',
-                        sectionName: s.program + ' — Section ' + s.code,
+                        sectionName: (s.program || progCode) + ' — Section ' + s.code,
                         capacity: s.capacity || 40,
                         enrolledCount: 0,
                         availableSlots: s.capacity || 40,
                         occupancyPct: 0,
                         adviser: s.adviser || 'Unassigned',
-                        curriculumVersion: '—',
-                        semester: '1st Semester',
-                        schoolYear: '—'
+                        curriculumVersion: s.curriculumVersion || '—',
+                        semester: s.semester || '1st Semester',
+                        schoolYear: s.schoolYear || '—'
                     }));
                 };
 
-                // Pre-populate from loaded sections immediately (no wait)
-                const fallbackList = getSectionsFromLoaded(application.program, application.yearLevel);
+                // Pre-populate from loaded sections immediately (exact year first, then program fallback)
+                let fallbackList = getSectionsFromLoaded(application.program, application.yearLevel);
+                if (!fallbackList || fallbackList.length === 0) {
+                    fallbackList = getSectionsFromLoaded(application.program, null);
+                }
                 availableSectionsForApplication.value = ensureSelectedSectionInList(fallbackList, application.sectionCode, application.program);
 
                 // Then try to get fresh data from API (with live enrolled counts)
                 if (application.program) {
                     const yLevel = application.yearLevel || '1st Year';
-                    Model.getSectionsForProgram(application.program, yLevel, '1st Semester')
+                    Api.getSectionsForProgram(application.program, yLevel, '1st Semester')
                         .then(res => {
                             if (res.success && res.data && res.data.length > 0) {
                                 availableSectionsForApplication.value = ensureSelectedSectionInList(res.data, application.sectionCode, application.program);
+                            } else if (res.allSections && res.allSections.length > 0) {
+                                availableSectionsForApplication.value = ensureSelectedSectionInList(res.allSections, application.sectionCode, application.program);
                             } else if (application.sectionCode) {
                                 availableSectionsForApplication.value = ensureSelectedSectionInList([], application.sectionCode, application.program);
                             }
@@ -647,7 +681,7 @@
                     const notes = selectedApplication.value.registrarNotes || '';
                     const reqData = selectedApplication.value.requirementsData;
                     const sectionCode = selectedApplication.value.sectionCode;
-                    Model.updateApplicationStatus(refNum, currentStatus, notes, reqData, sectionCode).then(res => {
+                    Api.updateApplicationStatus(refNum, currentStatus, notes, reqData, sectionCode).then(res => {
                         if (res.success) {
                             const index = pendingApplications.value.findIndex(a => a.referenceNumber === refNum);
                             if (index !== -1) {
@@ -779,8 +813,10 @@
                 const unverifiedCount = reqs.filter(item => !isDocVerified(item)).length;
                 const undertakingsCount = reqs.filter(item => getDocStatus(item) === 'UNDERTAKING').length;
 
+                const isAlreadyApproved = ['Approved', 'APPROVED', 'REGISTRAR_APPROVED', 'VERIFIED'].includes(currentStatus || '');
+
                 // Show validation feedback in the form and hard-block approval if any document is NOT_SUBMITTED
-                if (status === 'Approved' && unverifiedCount > 0) {
+                if (status === 'Approved' && !isAlreadyApproved && unverifiedCount > 0) {
                     showRequirementsValidation.value = true;
                     requirementsError.value = `${unverifiedCount} document(s) missing/unsubmitted. All required documents must be marked Original, Photocopy, or Promissory Undertaking before approval.`;
                     await Swal.fire({
@@ -797,7 +833,9 @@
 
                 let msg = '';
                 if (status === 'Approved') {
-                    if (undertakingsCount > 0) {
+                    if (isAlreadyApproved) {
+                        msg = `Update block section assignment to <strong>${selectedApplication.value.sectionCode || 'Unassigned'}</strong> for application ${refNum}?`;
+                    } else if (undertakingsCount > 0) {
                         msg = `Approve application ${refNum} under <strong>Conditional Promissory Undertaking</strong>? (${undertakingsCount} document(s) pending promissory compliance). This will clear the applicant for station advising and medical checkup.`;
                     } else {
                         msg = `Approve application ${refNum}? All required documents are verified and complete. This will advance the enrollment roadmap.`;
@@ -822,7 +860,7 @@
                 const notes = undertakingsCount > 0 ? `Conditional Enrollment: ${undertakingsCount} document(s) under Promissory Undertaking.` : '';
                 const reqData = selectedApplication.value.requirementsData;
                 const sectionCode = selectedApplication.value.sectionCode;
-                Model.updateApplicationStatus(refNum, status, notes, reqData, sectionCode).then(res => {
+                Api.updateApplicationStatus(refNum, status, notes, reqData, sectionCode).then(res => {
                     if (res.success) {
                         const index = pendingApplications.value.findIndex(a => a.referenceNumber === refNum);
                         if (index !== -1) {
@@ -856,7 +894,7 @@
                 getModalInstance('programModal')?.show();
             };
             const saveProgram = (prog) => {
-                Model.saveProgram(prog).then(res => {
+                Api.saveProgram(prog).then(res => {
                     if (res.success) {
                         programs.value = res.data || [];
                         hideModal('programModal');
@@ -875,7 +913,7 @@
                     confirmButtonText: 'Yes, delete it!'
                 });
                 if (!confirmRes.isConfirmed) return;
-                Model.deleteProgram(id).then(res => {
+                Api.deleteProgram(id).then(res => {
                     if (res.success) {
                         programs.value = res.data || [];
                         loadData();
@@ -889,7 +927,7 @@
                 getModalInstance('subjectModal')?.show();
             };
             const saveSubject = (sub) => {
-                Model.saveSubject(sub).then(res => {
+                Api.saveSubject(sub).then(res => {
                     if (res.success) {
                         subjects.value = res.data || [];
                         hideModal('subjectModal');
@@ -908,7 +946,7 @@
                     confirmButtonText: 'Yes, delete it!'
                 });
                 if (!confirmRes.isConfirmed) return;
-                Model.deleteSubject(id).then(res => {
+                Api.deleteSubject(id).then(res => {
                     if (res.success) {
                         subjects.value = res.data || [];
                         loadData();
@@ -922,7 +960,7 @@
                 getModalInstance('curriculumModal')?.show();
             };
             const saveCurriculum = (curr) => {
-                Model.saveCurriculum(curr).then(res => {
+                Api.saveCurriculum(curr).then(res => {
                     if (res.success) {
                         curriculum.value = res.data || [];
                         hideModal('curriculumModal');
@@ -941,7 +979,7 @@
                     confirmButtonText: 'Yes, delete it!'
                 });
                 if (!confirmRes.isConfirmed) return;
-                Model.deleteCurriculum(id).then(res => {
+                Api.deleteCurriculum(id).then(res => {
                     if (res.success) {
                         curriculum.value = res.data || [];
                         loadData();
@@ -955,7 +993,7 @@
                 getModalInstance('periodModal')?.show();
             };
             const saveAcademicPeriod = (period) => {
-                Model.saveAcademicPeriod(period).then(res => {
+                Api.saveAcademicPeriod(period).then(res => {
                     if (res.success) {
                         academicPeriods.value = res.data || [];
                         hideModal('periodModal');
@@ -974,7 +1012,7 @@
                     confirmButtonText: 'Yes, delete it!'
                 });
                 if (!confirmRes.isConfirmed) return;
-                Model.deleteAcademicPeriod(id).then(res => {
+                Api.deleteAcademicPeriod(id).then(res => {
                     if (res.success) {
                         academicPeriods.value = res.data || [];
                         loadData();
@@ -988,7 +1026,7 @@
                 getModalInstance('sectionModal')?.show();
             };
             const saveSubjectSection = (sect) => {
-                Model.saveSubjectSection(sect).then(res => {
+                Api.saveSubjectSection(sect).then(res => {
                     if (res.success) {
                         subjectSections.value = res.data || [];
                         hideModal('sectionModal');
@@ -1007,7 +1045,7 @@
                     confirmButtonText: 'Yes, delete it!'
                 });
                 if (!confirmRes.isConfirmed) return;
-                Model.deleteSubjectSection(id).then(res => {
+                Api.deleteSubjectSection(id).then(res => {
                     if (res.success) {
                         subjectSections.value = res.data || [];
                         loadData();
@@ -1021,7 +1059,7 @@
                 getModalInstance('feeModal')?.show();
             };
             const saveFee = (fee) => {
-                Model.saveFee(fee).then(res => {
+                Api.saveFee(fee).then(res => {
                     if (res.success) {
                         feeSchedule.value = res.data || [];
                         hideModal('feeModal');
@@ -1040,7 +1078,7 @@
                     confirmButtonText: 'Yes, delete it!'
                 });
                 if (!confirmRes.isConfirmed) return;
-                Model.deleteFee(id).then(res => {
+                Api.deleteFee(id).then(res => {
                     if (res.success) {
                         feeSchedule.value = res.data || [];
                         loadData();
@@ -1049,7 +1087,7 @@
             };
 
             const updateRoadmapStep = (refNum, stepId, status) => {
-                Model.updateRoadmapStep(refNum, stepId, status).then(res => {
+                Api.updateRoadmapStep(refNum, stepId, status).then(res => {
                     if (res.success) {
                         loadData();
                     }

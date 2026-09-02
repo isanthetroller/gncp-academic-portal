@@ -172,8 +172,14 @@ try {
             requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN']);
             return RegistrarService::updateRoadmapStep($pdo, $p);
         },
-        'registrar/sections'      => fn($p) => SectionService::getSectionsForProgram($pdo, $_GET['program'] ?? ($p['program'] ?? ''), $_GET['year_level'] ?? ($p['year_level'] ?? '1st Year'), $_GET['semester'] ?? ($p['semester'] ?? '1st Semester')),
+        'registrar/sections'      => function($p) use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN', 'HELPDESK']);
+            return SectionService::getSectionsForProgram($pdo, $_GET['program'] ?? ($p['program'] ?? ''), $_GET['year_level'] ?? ($p['year_level'] ?? '1st Year'), $_GET['semester'] ?? ($p['semester'] ?? '1st Semester'));
+        },
 
+        'admin/analytics'         => fn($p) => (new AdminController($pdo))->getAnalytics($_GET),
+        'fetch_dashboard_stats'   => fn($p) => (new AdminController($pdo))->getAnalytics($_GET),
         'admin/catalog'           => fn($p) => (new AdminController($pdo))->getCatalog(),
         'admin/sections'          => fn($p) => (new AdminController($pdo))->getSections(),
         'admin/terms'             => fn($p) => (new AdminController($pdo))->getTerms(),

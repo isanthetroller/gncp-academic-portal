@@ -41,6 +41,69 @@ class StudentController {
             return ['success' => false, 'message' => 'Application record not found.', 'code' => 404];
         }
 
+        // Sensitive field protection: Require staff session, matching student, or valid PIN for full PII
+        require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
+        initSession();
+        $adminSess   = $_SESSION['gncp_admin_user'] ?? null;
+        $stationSess = $_SESSION['gncp_station_user'] ?? null;
+        $studentSess = $_SESSION['gncp_student'] ?? null;
+        $sessStudentId = is_array($studentSess) ? ($studentSess['id'] ?? '') : '';
+        $isStaff = ($adminSess !== null || $stationSess !== null);
+        $isMatchingStudent = (!empty($sessStudentId) && (strcasecmp($sessStudentId, (string)($student['id'] ?? '')) === 0 || strcasecmp($sessStudentId, (string)($student['referenceNumber'] ?? '')) === 0));
+        session_write_close();
+
+        $reqPin = trim($_GET['pin'] ?? ($_POST['pin'] ?? ''));
+        $storedPin = (string)($student['tempPin'] ?? '');
+        $isVerifiedPin = (!empty($reqPin) && !empty($storedPin) && hash_equals($storedPin, $reqPin));
+
+        $hasFullAccess = ($isStaff || $isMatchingStudent || $isVerifiedPin);
+
+        if (!$hasFullAccess) {
+            // Data Minimization for public tracking:
+            // Mask applicant name so scrapers cannot harvest PII
+            $firstName = $student['firstName'] ?? '';
+            $lastName = $student['lastName'] ?? '';
+            $maskedFirst = $firstName ? (substr($firstName, 0, 1) . str_repeat('*', max(1, strlen($firstName) - 1))) : '***';
+            $maskedLast = $lastName ? (substr($lastName, 0, 1) . str_repeat('*', max(1, strlen($lastName) - 1))) : '***';
+
+            // Sanitize roadmap to only show high-level stage progress without internal IDs or payloads
+            $sanitizedRoadmap = [];
+            foreach ($student['roadmap'] ?? [] as $step) {
+                $sanitizedRoadmap[] = [
+                    'id' => $step['id'] ?? null,
+                    'stepId' => $step['stepId'] ?? null,
+                    'name' => $step['name'] ?? null,
+                    'status' => $step['status'] ?? 'PENDING'
+                ];
+            }
+
+            $sanitized = [
+                'referenceNumber'       => $student['referenceNumber'] ?? $refNo,
+                'name'                  => $maskedFirst . ' ' . $maskedLast,
+                'firstName'             => $maskedFirst,
+                'lastName'              => $maskedLast,
+                'courseCode'            => $student['courseCode'] ?? ($student['program'] ?? ''),
+                'program'               => $student['program'] ?? ($student['courseCode'] ?? ''),
+                'yearLevelApplied'      => $student['yearLevelApplied'] ?? ($student['yearLevel'] ?? '1st Year'),
+                'sectionCode'           => !empty($student['sectionCode']) ? 'Assigned' : 'Pending',
+                'status'                => $student['status'] ?? 'PENDING',
+                'activeStation'         => $student['activeStation'] ?? 'registrar',
+                'stationName'           => $student['stationName'] ?? 'Registrar Office',
+                'stationLocation'       => $student['stationLocation'] ?? 'Ground Floor',
+                'queueRank'             => $student['queueRank'] ?? 1,
+                'aheadCount'            => $student['aheadCount'] ?? 0,
+                'currentTicket'         => $student['currentTicket'] ?? 'Q-001',
+                'roadmap'               => $sanitizedRoadmap,
+                'isPublicView'          => true,
+                'requiresPinForDetails' => true
+            ];
+
+            return [
+                'success' => true,
+                'data' => $sanitized
+            ];
+        }
+
         return [
             'success' => true,
             'data' => $student
@@ -107,7 +170,7 @@ class StudentController {
             return ['success' => false, 'message' => 'Student identifier and document requirement key are required.', 'code' => 400];
         }
 
-        // Authorization check: Must be staff, matching student session, or valid applicant identifier
+        // Authorization check: Must be staff, matching student session, or valid applicant with verified PIN
         require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
         initSession();
         $adminSess   = $_SESSION['gncp_admin_user'] ?? null;
@@ -119,10 +182,17 @@ class StudentController {
         $isMatchingStudent = (!empty($sessStudentId) && strcasecmp($sessStudentId, $identifier) === 0);
 
         if (!$isStaff && !$isMatchingStudent) {
-            $peCheck = $this->pdo->prepare("SELECT id FROM `pre_enrollments` WHERE LOWER(`temp_student_id`) = LOWER(:id1) OR LOWER(COALESCE(`existing_student_id`, '')) = LOWER(:id2) LIMIT 1");
+            $reqPin = trim($payload['pin'] ?? ($payload['tempPin'] ?? ($_GET['pin'] ?? ($_POST['pin'] ?? ''))));
+            if (empty($reqPin)) {
+                session_write_close();
+                return ['success' => false, 'message' => 'Unauthorized: Valid security PIN is required to upload student documents.', 'code' => 401];
+            }
+            $peCheck = $this->pdo->prepare("SELECT `temp_pin` FROM `pre_enrollments` WHERE LOWER(`temp_student_id`) = LOWER(:id1) OR LOWER(COALESCE(`existing_student_id`, '')) = LOWER(:id2) LIMIT 1");
             $peCheck->execute(['id1' => $identifier, 'id2' => $identifier]);
-            if (!$peCheck->fetch()) {
-                return ['success' => false, 'message' => 'Unauthorized: Invalid student session for document upload.', 'code' => 401];
+            $storedPin = (string)$peCheck->fetchColumn();
+            if (empty($storedPin) || !hash_equals($storedPin, $reqPin)) {
+                session_write_close();
+                return ['success' => false, 'message' => 'Unauthorized: Invalid security PIN credentials for document upload.', 'code' => 401];
             }
         }
         session_write_close();

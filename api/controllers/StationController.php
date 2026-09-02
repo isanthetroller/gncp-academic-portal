@@ -37,7 +37,11 @@ class StationController {
         // Fine-grained Station RBAC Validation
         if (!in_array($userRole, ['ADMIN', 'SUPER_ADMIN'], true)) {
             if (isset($updateData['payment']) || !empty($updateData['or_number'])) {
-                if ($userRole !== 'CASHIER') {
+                $pPayload = $updateData['payment'] ?? [];
+                $isActualPayment = (isset($pPayload['amountPaid']) && (float)$pPayload['amountPaid'] > 0) ||
+                                   in_array(strtoupper($pPayload['status'] ?? ''), ['PAID', 'PARTIAL', 'COMPLETED'], true) ||
+                                   !empty($updateData['or_number']);
+                if ($isActualPayment && $userRole !== 'CASHIER') {
                     return ['success' => false, 'message' => 'Unauthorized: Only Cashier officers may process payment updates or issue Official Receipts.', 'code' => 403];
                 }
             }
@@ -56,9 +60,27 @@ class StationController {
                     return ['success' => false, 'message' => 'Unauthorized: Only Registrar officers may verify applicant requirements.', 'code' => 403];
                 }
             }
-            if (isset($updateData['enrollment']) || (isset($updateData['status']) && strtoupper($updateData['status']) === 'ENROLLED')) {
+            if (isset($updateData['enrollment'])) {
                 if ($userRole !== 'IT_CENTER') {
-                    return ['success' => false, 'message' => 'Unauthorized: Only IT Center officers may activate student portal accounts and promote enrollment status.', 'code' => 403];
+                    return ['success' => false, 'message' => 'Unauthorized: Only IT Center officers may activate student portal accounts.', 'code' => 403];
+                }
+            }
+            if (isset($updateData['status'])) {
+                $targetSt = strtoupper(trim($updateData['status']));
+                if (in_array($targetSt, ['VERIFIED', 'REJECTED'], true) && $userRole !== 'REGISTRAR') {
+                    return ['success' => false, 'message' => "Unauthorized: Only Registrar officers may transition application status to {$targetSt}.", 'code' => 403];
+                }
+                if ($targetSt === 'ADVISED' && $userRole !== 'HELPDESK') {
+                    return ['success' => false, 'message' => "Unauthorized: Only Helpdesk officers may transition status to ADVISED.", 'code' => 403];
+                }
+                if ($targetSt === 'MEDICAL_CLEARED' && $userRole !== 'MEDICAL') {
+                    return ['success' => false, 'message' => "Unauthorized: Only Medical officers may transition status to MEDICAL_CLEARED.", 'code' => 403];
+                }
+                if ($targetSt === 'PAID' && $userRole !== 'CASHIER') {
+                    return ['success' => false, 'message' => "Unauthorized: Only Cashier officers may transition status to PAID.", 'code' => 403];
+                }
+                if ($targetSt === 'ENROLLED' && $userRole !== 'IT_CENTER') {
+                    return ['success' => false, 'message' => "Unauthorized: Only IT Center officers may promote enrollment status to ENROLLED.", 'code' => 403];
                 }
             }
         }

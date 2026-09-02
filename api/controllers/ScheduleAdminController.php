@@ -13,10 +13,12 @@ class ScheduleAdminController {
     }
 
     public function getSections(): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN', 'REGISTRAR', 'HELPDESK']);
         return ['success' => true, 'data' => $this->sectionModel->getAllSections()];
     }
 
     public function getTerms(): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN', 'REGISTRAR', 'HELPDESK']);
         return ['success' => true, 'data' => $this->sectionModel->getAllTerms()];
     }
 

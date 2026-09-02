@@ -16,6 +16,7 @@ if (!defined('GNCP_SECURITY_GUARD_LOADED')) {
         header('X-Frame-Options: SAMEORIGIN');
         header('X-Content-Type-Options: nosniff');
         header('X-XSS-Protection: 1; mode=block');
+        header('X-Permitted-Cross-Domain-Policies: none');
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()');
         
@@ -30,6 +31,7 @@ if (!defined('GNCP_SECURITY_GUARD_LOADED')) {
         if (session_status() === PHP_SESSION_NONE) {
             @ini_set('session.cookie_httponly', 1);
             @ini_set('session.use_only_cookies', 1);
+            @ini_set('session.use_strict_mode', 1);
             @ini_set('session.cookie_samesite', 'Lax');
             if ($isHttps) {
                 @ini_set('session.cookie_secure', 1);
@@ -67,7 +69,7 @@ if (!defined('GNCP_SECURITY_GUARD_LOADED')) {
         // Path / Directory Traversal
         '#(?:\.\.[\\\\/]|%2e%2e)#i',
         // PHP Wrapper Exploits
-        '#(?:php://|data://|expect://|input://)#i',
+        '#(?:php://|data://text|expect://|input://)#i',
         // Null Byte Injections
         '#[\x00]|%00#i',
         // Common Command Execution Fuzzers

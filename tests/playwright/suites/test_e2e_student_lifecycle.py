@@ -333,7 +333,7 @@ class E2EStudentLifecycleSuite:
 
         row = self.page.locator(f"tr:has-text('{self.ref_no}'), tr:has-text('{self.last_name}')").first
         if row.is_visible():
-            row.locator("button:has-text('Check-up'), button:has-text('Review'), button:has-text('View')").first.click()
+            row.locator("button:has-text('Examine'), button:has-text('Check-up'), button:has-text('Review'), button:has-text('View')").first.click()
             time.sleep(1.5)
 
             # Select assessments if enabled

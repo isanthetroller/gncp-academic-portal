@@ -7,6 +7,8 @@ require_once __DIR__ . '/ScheduleAdminController.php';
 require_once __DIR__ . '/UserAdminController.php';
 require_once __DIR__ . '/../../shared/backend/services/AnnouncementService.php';
 require_once __DIR__ . '/../../shared/backend/services/MilestoneService.php';
+require_once __DIR__ . '/../../shared/backend/services/AnalyticsService.php';
+require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
 
 class AdminController {
     private $catalogCtrl;
@@ -19,6 +21,11 @@ class AdminController {
         $this->catalogCtrl = new CatalogAdminController($pdo);
         $this->scheduleCtrl = new ScheduleAdminController($pdo);
         $this->userCtrl = new UserAdminController($pdo);
+    }
+
+    public function getAnalytics($filters = []) {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
+        return AnalyticsService::getAnalytics($this->pdo, $filters);
     }
 
     public function getCatalog() { return $this->catalogCtrl->getCatalog(); }

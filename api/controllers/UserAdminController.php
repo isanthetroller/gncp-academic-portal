@@ -45,7 +45,7 @@ class UserAdminController {
         }
 
         // Auto-generate temp password if not explicitly supplied
-        $rawPassword = !empty($userData['password']) ? $userData['password'] : 'Gncp#' . rand(1000, 9999) . '!';
+        $rawPassword = !empty($userData['password']) ? $userData['password'] : 'Gncp#' . random_int(1000, 9999) . '!';
         $userData['password'] = $rawPassword;
         $userData['must_change_password'] = 1;
 

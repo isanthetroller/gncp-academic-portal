@@ -20,6 +20,27 @@
             const selectedStudent = ref(null);
             const studentsList = ref([]);
 
+            // Authentication State
+            const getStoredUser = () => {
+                try {
+                    const raw = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user');
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed && ['IT_CENTER', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                            return parsed;
+                        }
+                    }
+                } catch (e) {}
+                return null;
+            };
+            const currentUser = ref(getStoredUser());
+            const isLoggingIn = ref(false);
+            const loginError = ref('');
+            const loginForm = reactive({
+                username: '',
+                password: ''
+            });
+
             const timeGreeting = computed(() => {
                 const hour = new Date().getHours();
                 if (hour < 12) return 'Great Morning';
@@ -89,15 +110,6 @@
                 toast.show    = true;
                 toastTimer = setTimeout(() => { toast.show = false; }, 3800);
             };
-
-            // Authentication State
-            const currentUser = ref(null);
-            const isLoggingIn = ref(false);
-            const loginError = ref('');
-            const loginForm = reactive({
-                username: '',
-                password: ''
-            });
 
             // Date & Time
             const currentDateTime = ref('');

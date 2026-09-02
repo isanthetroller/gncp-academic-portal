@@ -32,7 +32,26 @@ class SectionModel {
             $activePeriodId = $activeTerm['id'] ?? 1;
         }
 
-        if (!empty($sec['id'])) {
+        $targetId = !empty($sec['id']) ? (int)$sec['id'] : null;
+        if (!$targetId) {
+            $checkStmt = $this->pdo->prepare("
+                SELECT id FROM `sections` 
+                WHERE `code` = :code AND `program` = :prog AND `year_level` = :yl AND `academic_period_id` = :ap_id 
+                LIMIT 1
+            ");
+            $checkStmt->execute([
+                'code'  => $sec['code'],
+                'prog'  => $sec['program'],
+                'yl'    => $sec['yearLevel'] ?? $sec['year_level'] ?? '1st Year',
+                'ap_id' => (int)$activePeriodId
+            ]);
+            $foundId = $checkStmt->fetchColumn();
+            if ($foundId) {
+                $targetId = (int)$foundId;
+            }
+        }
+
+        if ($targetId) {
             $stmt = $this->pdo->prepare("
                 UPDATE `sections` 
                 SET `code` = :code, 
@@ -52,7 +71,7 @@ class SectionModel {
                 'cver'    => $sec['curriculumVersion'] ?? $sec['curriculum_version'] ?? '2022 Curriculum',
                 'cap'     => (int)($sec['capacity'] ?? 40),
                 'adviser' => $sec['adviser'] ?? null,
-                'id'      => (int)$sec['id']
+                'id'      => $targetId
             ]);
         } else {
             $stmt = $this->pdo->prepare("

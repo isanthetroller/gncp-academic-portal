@@ -5,6 +5,22 @@
  * state machine transitions, and local library assets.
  */
 
+// Access control: allow CLI unconditionally, require ADMIN session for HTTP requests
+if (php_sapi_name() !== 'cli') {
+    require_once __DIR__ . '/shared/backend/utils/session_guard.php';
+    initSession();
+    $adminSess = $_SESSION['gncp_admin_user'] ?? null;
+    $stationSess = $_SESSION['gncp_station_user'] ?? null;
+    $sess = $adminSess ?: $stationSess;
+    $user = is_array($sess) ? $sess : (is_string($sess) ? json_decode($sess, true) : null);
+    $role = strtoupper($user['role'] ?? '');
+    if (!in_array($role, ['ADMIN', 'SUPER_ADMIN', 'DEVELOPER'], true)) {
+        http_response_code(403);
+        header('Content-Type: text/html; charset=utf-8');
+        die("<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body style='font-family:sans-serif;text-align:center;padding:50px;'><h1>403 Forbidden</h1><p>Access to the System Diagnostic Suite requires an active Administrator session.</p><a href='/systemtest/index.html' style='color:#0ea5e9;'>Go to Portal Login</a></body></html>");
+    }
+}
+
 // 1. Diagnostics / Environment Check (Pre-DB)
 $phpVersion = PHP_VERSION;
 $phpOk = version_compare($phpVersion, '8.0.0', '>=');
@@ -242,7 +258,7 @@ if ($dbConnected) {
         ]);
 
         $insEnroll = $pdo->prepare("INSERT INTO `enrollments` (`student`, `course`, `status`, `updated`) 
-                                    VALUES ('TestStudent SystemVerifier', 'BSIT', 'Enrolled', 'Just now')");
+                                    VALUES ('TestStudent SystemVerifier', 'BSIT', 'Enrolled', NOW())");
         $insEnroll->execute();
 
         // Delete the pre_enrollment record as part of finalization
@@ -315,7 +331,6 @@ $filesToCheck = [
     'tlc-helpdesk' => __DIR__ . '/stations/tlc-helpdesk/assets/js/app.js',
     'medical-checkup' => __DIR__ . '/stations/medical-checkup/assets/js/app.js',
     'payment-processing' => __DIR__ . '/stations/payment-processing/assets/js/app.js',
-    'scholarship-verification' => __DIR__ . '/stations/scholarship-verification/assets/js/app.js',
     'it-center' => __DIR__ . '/stations/it-center/assets/js/app.js'
 ];
 $syncCheck = [];

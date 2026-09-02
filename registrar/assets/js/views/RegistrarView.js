@@ -45,7 +45,6 @@
                            :placeholder="searchPlaceholder">
                     
                     <!-- Action buttons based on current catalog view -->
-                    <button v-if="isAdmin && currentView === 'programs'" @click="$emit('open-program-modal', 'add')" class="btn-add"><i class="fa-solid fa-plus me-1"></i> Add Program</button>
                     <button v-if="isAdmin && currentView === 'subjects'" @click="$emit('open-subject-modal', 'add')" class="btn-add"><i class="fa-solid fa-plus me-1"></i> Add Subject</button>
                     <button v-if="isAdmin && currentView === 'curriculum'" @click="$emit('open-curriculum-modal', 'add')" class="btn-add"><i class="fa-solid fa-plus me-1"></i> Map Subject</button>
                     <button v-if="isAdmin && currentView === 'academic-periods'" @click="$emit('open-period-modal', 'add')" class="btn-add"><i class="fa-solid fa-plus me-1"></i> Add Period</button>
@@ -114,6 +113,14 @@
             }
         },
         computed: {
+            availablePrograms() {
+                const set = new Set();
+                (this.students || []).forEach(s => {
+                    if (s.program) set.add(s.program.trim());
+                });
+                ['BSIT', 'BSCS', 'BSN', 'BSBA', 'BSCpE'].forEach(p => set.add(p));
+                return ['ALL', ...Array.from(set).sort()];
+            },
             filteredStudents() {
                 // 1. Text Search Filter
                 const query = this.searchText ? this.searchText.trim().toLowerCase() : '';
@@ -177,7 +184,7 @@
                         </div>
                         <div class="col-md-6 d-flex flex-wrap align-items-center gap-2 justify-content-md-end">
                             <span class="text-muted small fw-bold text-uppercase me-2"><i class="fa-solid fa-graduation-cap text-success me-1"></i>Program:</span>
-                            <button v-for="p in ['ALL', 'BSIT', 'BSCS', 'BSN', 'BSBA']" 
+                            <button v-for="p in availablePrograms" 
                                     :key="p" 
                                     class="btn-pill btn-pill-sm py-1"
                                     :class="filterProgram === p ? 'btn-pill-green' : 'btn-pill-outline'"
@@ -214,6 +221,7 @@
                                     <th class="cursor-pointer select-none" @click="toggleSort('year_level')">
                                         Year Level <i :class="getSortIcon('year_level')"></i>
                                     </th>
+                                    <th>Section</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -224,6 +232,12 @@
                                     <td><strong>{{ student.name }}</strong></td>
                                     <td><span class="badge bg-light text-dark font-monospace border">{{ student.program }}</span></td>
                                     <td><span class="fw-semibold text-secondary">{{ student.year_level || '1st Year' }}</span></td>
+                                    <td>
+                                        <span v-if="student.assignedSection || student.sectionCode" class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 font-monospace">
+                                            <i class="fa-solid fa-shapes me-1"></i>{{ student.assignedSection || student.sectionCode }}
+                                        </span>
+                                        <span v-else class="text-muted small">Unassigned</span>
+                                    </td>
                                     <td><span class="status-badge" :class="student.status.toLowerCase()">{{ student.status }}</span></td>
                                     <td>
                                         <button class="btn-pill btn-pill-outline btn-pill-sm py-1.5" 
@@ -235,7 +249,7 @@
                                     </td>
                                 </tr>
                                 <tr v-if="filteredStudents.length === 0">
-                                    <td colspan="6">
+                                    <td colspan="7">
                                         <div class="empty-state">
                                             <i class="fa-solid fa-users-slash"></i>
                                             <p>No matching student records found.</p>
@@ -393,34 +407,35 @@
                 if (!this.sections || this.sections.length === 0) return [];
                 const search = (programCode || '').trim().toLowerCase();
 
-                // Dynamic lookup of program name from program code
-                const progObj = this.programs ? this.programs.find(p => (p.code || '').trim().toLowerCase() === search) : null;
+                // Dynamic lookup of program name and code
+                const progObj = this.programs ? this.programs.find(p => (p.code || '').trim().toLowerCase() === search || (p.name || '').trim().toLowerCase() === search) : null;
                 const searchName = progObj ? progObj.name.trim().toLowerCase() : search;
+                const searchCode = progObj ? progObj.code.trim().toLowerCase() : search;
 
-                const targetYear = (yearLevel || '1st Year').trim().toLowerCase();
-                const targetSem = (semester || '1st Semester').trim().toLowerCase();
+                const targetYear = (yearLevel || '').trim().toLowerCase();
+                const targetSem = (semester || '').trim().toLowerCase();
 
                 let matched = this.sections.filter(s => {
                     const progName = (s.program || '').trim().toLowerCase();
                     const isProgMatch = (progName === searchName ||
+                        progName === searchCode ||
                         progName.includes(search) ||
                         search.includes(progName));
 
-                    const secYear = (s.yearLevel || '1st Year').trim().toLowerCase();
-                    const secSem = (s.semester || '1st Semester').trim().toLowerCase();
+                    const secYear = (s.yearLevel || '').trim().toLowerCase();
+                    const secSem = (s.semester || '').trim().toLowerCase();
 
-                    return isProgMatch && secYear === targetYear && secSem === targetSem;
+                    const yearMatch = !targetYear || secYear === targetYear || secYear.includes(targetYear) || targetYear.includes(secYear);
+                    const semMatch = !targetSem || secSem === targetSem || secSem.includes(targetSem) || targetSem.includes(secSem);
+
+                    return isProgMatch && yearMatch && semMatch;
                 });
 
                 if (matched.length === 0) {
                     matched = this.sections.filter(s => {
                         const progName = (s.program || '').trim().toLowerCase();
-                        return progName === searchName || progName.includes(search) || search.includes(progName);
+                        return progName === searchName || progName === searchCode || progName.includes(search) || search.includes(progName);
                     });
-                }
-
-                if (matched.length === 0) {
-                    matched = this.sections;
                 }
 
                 return matched;

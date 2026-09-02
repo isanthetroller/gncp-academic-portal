@@ -91,6 +91,12 @@ if ($action === 'save_academic_period') {
     $prog  = trim($sec['program'] ?? '');
     $yl    = trim($sec['yearLevel'] ?? '');
     $ap_id = (int)($sec['academicPeriodId'] ?? 0);
+    if ($ap_id <= 0) {
+        $activePer = $pdo->query("SELECT id FROM academic_periods WHERE status = 'Active' LIMIT 1")->fetch();
+        if ($activePer) {
+            $ap_id = (int)$activePer['id'];
+        }
+    }
     $curr_v = trim($sec['curriculumVersion'] ?? '2022 Curriculum');
     $cap   = (int)($sec['capacity'] ?? 40);
     $adv   = isset($sec['adviser']) && trim($sec['adviser']) !== '' ? trim($sec['adviser']) : null;

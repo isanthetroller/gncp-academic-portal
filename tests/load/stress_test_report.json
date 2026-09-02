@@ -1,0 +1,359 @@
+{
+  "total_requests": 16000,
+  "stages": [
+    {
+      "stage": "Stage 1 (1,000 Requests)",
+      "total_requests": 1000,
+      "concurrency": 25,
+      "total_time_sec": 3.63,
+      "requests_per_sec": 275.26,
+      "successful": 973,
+      "failed": 27,
+      "status_codes": {
+        "200": 973,
+        "429": 27
+      },
+      "avg_ms": 42.36,
+      "median_ms": 36.23,
+      "min_ms": 5.88,
+      "max_ms": 142.2,
+      "p95_ms": 86.54,
+      "p99_ms": 113.14,
+      "cpu_start": 14.4,
+      "cpu_end": 47.4,
+      "mem_start": 55.2,
+      "mem_end": 55.9
+    },
+    {
+      "stage": "Stage 2 (5,000 Requests)",
+      "total_requests": 5000,
+      "concurrency": 50,
+      "total_time_sec": 9.22,
+      "requests_per_sec": 542.47,
+      "successful": 4812,
+      "failed": 188,
+      "status_codes": {
+        "200": 4812,
+        "429": 188
+      },
+      "avg_ms": 90.37,
+      "median_ms": 59.02,
+      "min_ms": 13.0,
+      "max_ms": 314.09,
+      "p95_ms": 215.9,
+      "p99_ms": 249.84,
+      "cpu_start": 4.9,
+      "cpu_end": 83.3,
+      "mem_start": 55.8,
+      "mem_end": 56.4
+    },
+    {
+      "stage": "Stage 3 (10,000 Requests)",
+      "total_requests": 10000,
+      "concurrency": 100,
+      "total_time_sec": 17.45,
+      "requests_per_sec": 573.13,
+      "successful": 9676,
+      "failed": 324,
+      "status_codes": {
+        "200": 9676,
+        "429": 324
+      },
+      "avg_ms": 170.59,
+      "median_ms": 93.84,
+      "min_ms": 10.87,
+      "max_ms": 655.39,
+      "p95_ms": 447.01,
+      "p99_ms": 513.05,
+      "cpu_start": 2.0,
+      "cpu_end": 80.3,
+      "mem_start": 56.3,
+      "mem_end": 58.3
+    }
+  ],
+  "overall": {
+    "total_requests": 16000,
+    "successful": 15461,
+    "failed": 539,
+    "status_2xx": 15461,
+    "status_3xx": 0,
+    "status_4xx": 539,
+    "status_5xx": 0,
+    "timeouts": 0,
+    "conn_errors": 0,
+    "avg_ms": 137.5,
+    "median_ms": 80.7,
+    "min_ms": 5.88,
+    "max_ms": 655.39,
+    "p95_ms": 420.79,
+    "p99_ms": 494.25
+  },
+  "endpoint_stats": {
+    "admin/terms (Read)": {
+      "category": "Read",
+      "count": 1615,
+      "success_count": 1615,
+      "success_rate": 100.0,
+      "avg_ms": 62.02,
+      "p95_ms": 111.44,
+      "status_codes": {
+        "200": 1615
+      },
+      "errors": {}
+    },
+    "registrar/get_sections_for_program (BSN, 1st Year)": {
+      "category": "Registrar",
+      "count": 619,
+      "success_count": 619,
+      "success_rate": 100.0,
+      "avg_ms": 61.89,
+      "p95_ms": 111.86,
+      "status_codes": {
+        "200": 619
+      },
+      "errors": {}
+    },
+    "admin/catalog (Read)": {
+      "category": "Read",
+      "count": 1607,
+      "success_count": 1607,
+      "success_rate": 100.0,
+      "avg_ms": 276.11,
+      "p95_ms": 447.17,
+      "status_codes": {
+        "200": 1607
+      },
+      "errors": {}
+    },
+    "registrar/get_sections_for_program (BSIT, 3rd Year)": {
+      "category": "Registrar",
+      "count": 474,
+      "success_count": 474,
+      "success_rate": 100.0,
+      "avg_ms": 61.79,
+      "p95_ms": 110.3,
+      "status_codes": {
+        "200": 474
+      },
+      "errors": {}
+    },
+    "admin/save_section (Safe Write)": {
+      "category": "Write",
+      "count": 816,
+      "success_count": 816,
+      "success_rate": 100.0,
+      "avg_ms": 79.32,
+      "p95_ms": 141.44,
+      "status_codes": {
+        "200": 816
+      },
+      "errors": {}
+    },
+    "announcements/list (Read)": {
+      "category": "Read",
+      "count": 1492,
+      "success_count": 1492,
+      "success_rate": 100.0,
+      "avg_ms": 62.34,
+      "p95_ms": 110.14,
+      "status_codes": {
+        "200": 1492
+      },
+      "errors": {}
+    },
+    "registrar/fetch_all_data (Registrar)": {
+      "category": "Registrar",
+      "count": 1546,
+      "success_count": 1546,
+      "success_rate": 100.0,
+      "avg_ms": 298.73,
+      "p95_ms": 479.39,
+      "status_codes": {
+        "200": 1546
+      },
+      "errors": {}
+    },
+    "student_portal/dashboard (Student)": {
+      "category": "Student",
+      "count": 836,
+      "success_count": 836,
+      "success_rate": 100.0,
+      "avg_ms": 92.62,
+      "p95_ms": 148.95,
+      "status_codes": {
+        "200": 836
+      },
+      "errors": {}
+    },
+    "student/documents (Student)": {
+      "category": "Student",
+      "count": 1033,
+      "success_count": 1033,
+      "success_rate": 100.0,
+      "avg_ms": 72.21,
+      "p95_ms": 124.38,
+      "status_codes": {
+        "200": 1033
+      },
+      "errors": {}
+    },
+    "registrar/update_status (Safe Section Assign Write)": {
+      "category": "Write",
+      "count": 831,
+      "success_count": 831,
+      "success_rate": 100.0,
+      "avg_ms": 69.39,
+      "p95_ms": 126.06,
+      "status_codes": {
+        "200": 831
+      },
+      "errors": {}
+    },
+    "stations/stats (Station Metrics)": {
+      "category": "Course/Section",
+      "count": 733,
+      "success_count": 733,
+      "success_rate": 100.0,
+      "avg_ms": 76.09,
+      "p95_ms": 130.09,
+      "status_codes": {
+        "200": 733
+      },
+      "errors": {}
+    },
+    "student/track (Rate-Limited Monitor)": {
+      "category": "Student",
+      "count": 596,
+      "success_count": 57,
+      "success_rate": 9.56,
+      "avg_ms": 63.06,
+      "p95_ms": 109.83,
+      "status_codes": {
+        "200": 57,
+        "429": 539
+      },
+      "errors": {}
+    },
+    "admin/sections (Course/Section)": {
+      "category": "Course/Section",
+      "count": 812,
+      "success_count": 812,
+      "success_rate": 100.0,
+      "avg_ms": 70.04,
+      "p95_ms": 121.61,
+      "status_codes": {
+        "200": 812
+      },
+      "errors": {}
+    },
+    "registrar/sections (Central Course/Section)": {
+      "category": "Course/Section",
+      "count": 805,
+      "success_count": 805,
+      "success_rate": 100.0,
+      "avg_ms": 64.93,
+      "p95_ms": 113.98,
+      "status_codes": {
+        "200": 805
+      },
+      "errors": {}
+    },
+    "stations/queue (Read)": {
+      "category": "Read",
+      "count": 1664,
+      "success_count": 1664,
+      "success_rate": 100.0,
+      "avg_ms": 315.39,
+      "p95_ms": 493.79,
+      "status_codes": {
+        "200": 1664
+      },
+      "errors": {}
+    },
+    "registrar/get_sections_for_program (BSCS, 4th Year)": {
+      "category": "Registrar",
+      "count": 521,
+      "success_count": 521,
+      "success_rate": 100.0,
+      "avg_ms": 61.44,
+      "p95_ms": 108.15,
+      "status_codes": {
+        "200": 521
+      },
+      "errors": {}
+    }
+  },
+  "rate_limit_events": [
+    {
+      "endpoint": "student/track (Rate-Limited Monitor)",
+      "status": 429,
+      "retry_after": "15",
+      "body": "{\"success\":false,\"message\":\"Too many requests. Please wait 15 seconds before trying again.\",\"code\":429,\"retryAfter\":15}"
+    },
+    {
+      "endpoint": "student/track (Rate-Limited Monitor)",
+      "status": 429,
+      "retry_after": "15",
+      "body": "{\"success\":false,\"message\":\"Too many requests. Please wait 15 seconds before trying again.\",\"code\":429,\"retryAfter\":15}"
+    },
+    {
+      "endpoint": "student/track (Rate-Limited Monitor)",
+      "status": 429,
+      "retry_after": "15",
+      "body": "{\"success\":false,\"message\":\"Too many requests. Please wait 15 seconds before trying again.\",\"code\":429,\"retryAfter\":15}"
+    },
+    {
+      "endpoint": "student/track (Rate-Limited Monitor)",
+      "status": 429,
+      "retry_after": "14",
+      "body": "{\"success\":false,\"message\":\"Too many requests. Please wait 14 seconds before trying again.\",\"code\":429,\"retryAfter\":14}"
+    },
+    {
+      "endpoint": "student/track (Rate-Limited Monitor)",
+      "status": 429,
+      "retry_after": "14",
+      "body": "{\"success\":false,\"message\":\"Too many requests. Please wait 14 seconds before trying again.\",\"code\":429,\"retryAfter\":14}"
+    }
+  ],
+  "recovery_tests": [
+    [
+      "Post-Load Authentication",
+      true
+    ],
+    [
+      "Post-Load Registrar Loading (HTTP 200)",
+      true
+    ],
+    [
+      "Post-Load Section Query BSN",
+      true
+    ]
+  ],
+  "integrity_checks": [
+    [
+      "Curriculum Integrity (502 unchanged)",
+      true
+    ],
+    [
+      "Programs Integrity (6 unchanged)",
+      true
+    ],
+    [
+      "Departments Integrity (6 unchanged)",
+      true
+    ],
+    [
+      "Students Directory Integrity",
+      true
+    ],
+    [
+      "Pre-Enrollment Applicants Integrity",
+      true
+    ],
+    [
+      "Florence Nightingale Section Valid",
+      true
+    ]
+  ],
+  "app_errors_today": 7
+}

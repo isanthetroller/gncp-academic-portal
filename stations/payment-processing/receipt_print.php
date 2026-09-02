@@ -24,10 +24,6 @@ try {
         }
     }
 
-    if (!$isLoggedInStaff) {
-        die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>Error: Access Denied. Cashier authorization required.</h1>");
-    }
-
     // Retrieve pre-enrollment details
     $stmt = $pdo->prepare("
         SELECT p.*, pr.name as program_name, ap.semester as ap_semester
@@ -81,6 +77,29 @@ try {
 
     if (!$student) {
         die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>Error: Student record not found.</h1>");
+    }
+
+    // Access control: allow staff, matching authenticated student, or valid PIN
+    $isAuthorized = $isLoggedInStaff;
+    if (!$isAuthorized && !empty($_SESSION['gncp_student'])) {
+        $studentUser = is_array($_SESSION['gncp_student']) ? $_SESSION['gncp_student'] : json_decode($_SESSION['gncp_student'], true);
+        $sId = strtolower($studentUser['id'] ?? ($studentUser['username'] ?? ''));
+        $targetId = strtolower($student['temp_student_id'] ?? ($student['id'] ?? ''));
+        if ($sId && ($sId === $targetId || strcasecmp($sId, $ref) === 0)) {
+            $isAuthorized = true;
+        }
+    }
+    if (!$isAuthorized) {
+        $reqPin = trim($_GET['pin'] ?? '');
+        $storedPin = (string)($student['temp_pin'] ?? '');
+        if (!empty($reqPin) && !empty($storedPin) && hash_equals($storedPin, $reqPin)) {
+            $isAuthorized = true;
+        }
+    }
+
+    if (!$isAuthorized) {
+        http_response_code(401);
+        die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px; color:#dc2626;'>401 Unauthorized: Cashier authorization or valid security PIN required. Access denied.</h1>");
     }
 
     // Decode JSON payment details

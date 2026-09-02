@@ -27,7 +27,19 @@ window.app = createApp({
         });
 
         // Authentication State
-        const currentUser = ref(null);
+        const getStoredUser = () => {
+            try {
+                const raw = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && ['HELPDESK', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                        return parsed;
+                    }
+                }
+            } catch (e) {}
+            return null;
+        };
+        const currentUser = ref(getStoredUser());
         const isLoggingIn = ref(false);
         const loginError = ref('');
         const loginForm = reactive({

@@ -2,27 +2,22 @@
 # GNCP Academic & Enrollment System — Production Server Configuration & Caching
 # ==============================================================================
 
-DirectoryIndex index.html index.php
+DirectoryIndex index.php index.html
 
 # ------------------------------------------------------------------------------
-# 1. URL Rewriting: Hide .html and index.html for clean, modern URLs
+# 1. URL Rewriting: Clean extensionless URLs & Server-Side Portal Protection
 # ------------------------------------------------------------------------------
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteBase /systemtest/
 
-    # A. Redirect /folder/index.html to /folder/ (trailing slash)
-    RewriteCond %{THE_REQUEST} \s/+(.*?)/index\.html[?\s] [NC]
-    RewriteRule ^ /%1/ [R=301,L,NE]
+    # Reroute direct requests for protected station HTML pages to their server-side auth PHP wrappers
+    RewriteRule ^admin/(index\.html)?$ admin/index.php [L,QSA]
+    RewriteRule ^registrar/(index\.html)?$ registrar/index.php [L,QSA]
+    RewriteRule ^stations/([^/]+)/(index\.html)?$ stations/$1/index.php [L,QSA]
+    RewriteRule ^monitoring/(index\.html)?$ monitoring/index.php [L,QSA]
 
-    # B. Redirect root /index.html to /
-    RewriteCond %{THE_REQUEST} \s/+index\.html[?\s] [NC]
-    RewriteRule ^ / [R=301,L,NE]
-
-    # C. Redirect /path/file.html to /path/file (Hide .html extension on GET requests)
-    RewriteCond %{THE_REQUEST} \s/+([^?]+)\.html[\s?] [NC]
-    RewriteRule ^ /%1 [R=301,L,NE]
-
-    # D. Internally resolve extensionless URL to .html if file exists
+    # Internally resolve extensionless URL to .html if file exists
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME}.html -f

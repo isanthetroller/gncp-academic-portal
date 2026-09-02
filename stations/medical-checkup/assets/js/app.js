@@ -15,10 +15,31 @@ window.app = createApp({
         const searchQuery = ref('');
         const activeFilter = ref('All');
         const sortBy = ref('arrivedAt');
-        const sortDesc = ref(false); // FIFO: Earliest clinic arrivals served first (First In, First Out)
+        const sortDesc = ref(false);
         const selectedStudent = ref(null);
         const students = ref([]);
         const hasSubmitted = ref(false);
+
+        // Authentication State
+        const getStoredUser = () => {
+            try {
+                const raw = sessionStorage.getItem('gncp_station_user') || sessionStorage.getItem('gncp_admin_user');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && ['MEDICAL', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                        return parsed;
+                    }
+                }
+            } catch (e) {}
+            return null;
+        };
+        const currentUser = ref(getStoredUser());
+        const isLoggingIn = ref(false);
+        const loginError = ref('');
+        const loginForm = reactive({
+            username: '',
+            password: ''
+        });
 
         const calculateAge = (dob) => {
             if (!dob) return '';
@@ -158,15 +179,6 @@ window.app = createApp({
                 openReview(nextInQueue.value);
             }
         };
-
-        // Authentication State
-        const currentUser = ref(null);
-        const isLoggingIn = ref(false);
-        const loginError = ref('');
-        const loginForm = reactive({
-            username: '',
-            password: ''
-        });
 
         const loadQueue = () => {
             const queue = StationDataBus.getQueue();

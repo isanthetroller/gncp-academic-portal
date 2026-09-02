@@ -50,8 +50,23 @@ const handleFetchResponse = async (res) => {
     }
 };
 
-const post = (action, body) => fetch(`${API}?action=${action}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }).then(handleFetchResponse);
-const get  = (action)        => fetch(`${API}?action=${action}`).then(handleFetchResponse);
+const get = (action, params = {}) => {
+    let url = `${API}?action=${action}`;
+    if (params && typeof params === 'object') {
+        const qs = Object.entries(params)
+            .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+            .join('&');
+        if (qs) url += `&${qs}`;
+    }
+    return fetch(url, { credentials: 'include' }).then(handleFetchResponse);
+};
+const post = (action, body) => fetch(`${API}?action=${action}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body)
+}).then(handleFetchResponse);
 
 const app = createApp({
     components: {
@@ -59,7 +74,19 @@ const app = createApp({
     },
     setup() {
         // Auth
-        const currentAdmin = ref(null);
+        const getStoredAdmin = () => {
+            try {
+                const raw = sessionStorage.getItem('gncp_admin_user') || sessionStorage.getItem('gncp_station_user');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && (parsed.role === 'SUPER_ADMIN' || parsed.role === 'ADMIN')) {
+                        return parsed;
+                    }
+                }
+            } catch (e) {}
+            return null;
+        };
+        const currentAdmin = ref(getStoredAdmin());
         const isLoggingIn  = ref(false);
         const loginError   = ref('');
         const showOperatorPassword = ref(false);
@@ -103,8 +130,20 @@ const app = createApp({
         const isEditOperatorModalOpen = ref(false);
         const isSubmittingOperator = ref(false);
 
-        // Students & Collapsible navigation
+        // Students & Core Entities
         const students = ref([]);
+        const departments = ref([]);
+        const programs    = ref([]);
+        const subjects    = ref([]);
+        const curriculum  = ref([]);
+        const periods     = ref([]);
+        const sections    = ref([]); // cohort sections
+        const classOfferings = ref([]); // class offerings
+        const fees        = ref([]);
+        const users       = ref([]);
+        const filterUserStatus = ref('ALL');
+
+        // Collapsible navigation
         const expandedCats = ref({ catalog: true, term: true, scheduling: true });
         const selectedDeptName = ref('');
         const filterStudentProgram = ref('');
@@ -177,6 +216,65 @@ const app = createApp({
         const dashboardStats = ref(null);
         const isLoadingStats = ref(false);
 
+        // Multi-Dimensional Analytics Filter State
+        const analyticsFilters = reactive({
+            academic_period_id: '',
+            department_code: '',
+            program_code: '',
+            year_level: '',
+            date_from: '',
+            date_to: ''
+        });
+
+        const isFiltered = computed(() => {
+            return !!(analyticsFilters.academic_period_id || analyticsFilters.department_code || analyticsFilters.program_code || analyticsFilters.year_level || analyticsFilters.date_from || analyticsFilters.date_to);
+        });
+
+        const activeFilterSummary = computed(() => {
+            const parts = [];
+            if (analyticsFilters.academic_period_id) {
+                const p = (periods.value || []).find(x => String(x.id) === String(analyticsFilters.academic_period_id));
+                if (p) parts.push(`Period: ${p.name || p.academic_year + ' ' + p.semester}`);
+            }
+            if (analyticsFilters.department_code) {
+                const d = (departments.value || []).find(x => x.code === analyticsFilters.department_code);
+                parts.push(`Dept: ${d ? d.name : analyticsFilters.department_code}`);
+            }
+            if (analyticsFilters.program_code) {
+                parts.push(`Program: ${analyticsFilters.program_code}`);
+            }
+            if (analyticsFilters.year_level) {
+                parts.push(`Year: ${analyticsFilters.year_level}`);
+            }
+            if (analyticsFilters.date_from || analyticsFilters.date_to) {
+                parts.push(`Date: ${analyticsFilters.date_from || 'Start'} to ${analyticsFilters.date_to || 'Now'}`);
+            }
+            return parts.length > 0 ? parts.join(' | ') : 'All Academic Records (Unfiltered)';
+        });
+
+        const printDateFormatted = computed(() => {
+            const now = new Date();
+            return now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        });
+
+        const applyAnalyticsFilters = () => {
+            loadDashboard();
+        };
+
+        const resetAnalyticsFilters = () => {
+            analyticsFilters.academic_period_id = '';
+            analyticsFilters.department_code = '';
+            analyticsFilters.program_code = '';
+            analyticsFilters.year_level = '';
+            analyticsFilters.date_from = '';
+            analyticsFilters.date_to = '';
+            loadDashboard();
+        };
+
+        const printAnalyticsReport = () => {
+            window.print();
+        };
+
         // Sleek Executive Course Chart State & Dual-Metric Logic
         const chartViewMode = ref('spline'); // 'spline' (By Course) | 'timeline' (30-Day) | 'bars' (Pipeline Breakdown)
         const hoveredChartPoint = ref(null);
@@ -212,6 +310,9 @@ const app = createApp({
         };
 
         const courseAnalytics = computed(() => {
+            if (dashboardStats.value && dashboardStats.value.programsDist && dashboardStats.value.programsDist.length > 0 && dashboardStats.value.programsDist[0].code) {
+                return dashboardStats.value.programsDist;
+            }
             const aliasMap = {
                 'BSCOE': 'BSCpE',
                 'CS': 'BSCS',
@@ -522,9 +623,9 @@ const app = createApp({
                 data: b.data
             }));
 
-            const firstX = pointsCum[0].x;
-            const lastX = pointsCum[pointsCum.length - 1].x;
-            const cumArea = cumPath ? `${cumPath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z` : '';
+            const firstX = pointsCum.length > 0 ? pointsCum[0].x : padXLeft;
+            const lastX = pointsCum.length > 0 ? pointsCum[pointsCum.length - 1].x : (width - padXRight);
+            const cumArea = (cumPath && pointsCum.length > 0) ? `${cumPath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z` : '';
             const dailySpline = `M ${padXLeft} ${bottomY} L ${width - padXRight} ${bottomY}`;
 
             return {
@@ -554,8 +655,9 @@ const app = createApp({
             
             const preRegistered = pl.pre_registered ?? (dashboardStats.value ? parseInt(dashboardStats.value.pending) : 0);
             const verified = pl.verified ?? (dashboardStats.value ? parseInt(dashboardStats.value.verified) : 0);
-            const advisedMedical = pl.advised_medical ?? 0;
-            const paid = pl.paid ?? 0;
+            const advised = pl.advised ?? (dashboardStats.value?.stationQueues?.medical ?? 0);
+            const medicalCleared = pl.medical_cleared ?? (dashboardStats.value?.stationQueues?.cashier ?? 0);
+            const paid = pl.paid ?? (dashboardStats.value?.stationQueues?.it_center ?? 0);
             const enrolled = pl.enrolled ?? (dashboardStats.value ? parseInt(dashboardStats.value.enrolled) : 0);
 
             return [
@@ -577,32 +679,42 @@ const app = createApp({
                     pct: Math.min(100, Math.round((verified / total) * 100)),
                     color: '#0d9488',
                     icon: 'fa-solid fa-clipboard-check',
-                    desc: 'Credentials verified, ready for sectioning'
+                    desc: 'Credentials verified; ready for advising'
                 },
                 {
                     id: 'stage_advised',
-                    name: 'Advising & Medical',
-                    label: 'Evaluated & Medically Cleared',
-                    count: advisedMedical,
-                    pct: Math.min(100, Math.round((advisedMedical / total) * 100)),
-                    color: '#7c3aed',
-                    icon: 'fa-solid fa-user-doctor',
-                    desc: 'Section allocated and physical exam completed'
+                    name: 'Academic Advised',
+                    label: 'Advised & Sectioned',
+                    count: advised,
+                    pct: Math.min(100, Math.round((advised / total) * 100)),
+                    color: '#8b5cf6',
+                    icon: 'fa-solid fa-user-graduate',
+                    desc: 'Subjects evaluated and section locked'
+                },
+                {
+                    id: 'stage_medical',
+                    name: 'Medical Cleared',
+                    label: 'Clinic Fitness Examined',
+                    count: medicalCleared,
+                    pct: Math.min(100, Math.round((medicalCleared / total) * 100)),
+                    color: '#059669',
+                    icon: 'fa-solid fa-stethoscope',
+                    desc: 'Health examination completed and cleared'
                 },
                 {
                     id: 'stage_paid',
-                    name: 'Treasury / Cashier',
+                    name: 'Cashier Paid',
                     label: 'Downpayment Settled',
                     count: paid,
                     pct: Math.min(100, Math.round((paid / total) * 100)),
                     color: '#d97706',
                     icon: 'fa-solid fa-cash-register',
-                    desc: 'Official Receipt issued, ready for promotion'
+                    desc: 'Official Receipt issued; pending IT promotion'
                 },
                 {
                     id: 'stage_enrolled',
-                    name: 'Official Students',
-                    label: 'Officially Enrolled',
+                    name: 'Officially Enrolled',
+                    label: 'Permanent Student Account',
                     count: enrolled,
                     pct: Math.min(100, Math.round((enrolled / total) * 100)),
                     color: '#006A4E',
@@ -612,21 +724,33 @@ const app = createApp({
             ];
         });
 
+        // Academic & Financial Distributions
+        const yearLevelBreakdown = computed(() => {
+            return (dashboardStats.value && dashboardStats.value.yearLevelDist) ? dashboardStats.value.yearLevelDist : [];
+        });
+
+        const departmentBreakdown = computed(() => {
+            return (dashboardStats.value && dashboardStats.value.departmentDist) ? dashboardStats.value.departmentDist : [];
+        });
+
+        const financialMetrics = computed(() => {
+            return (dashboardStats.value && dashboardStats.value.financials) ? dashboardStats.value.financials : {
+                total_assessed: 0,
+                total_collected: 0,
+                outstanding_balance: 0,
+                collection_rate: 0,
+                payment_modes: { CASH: 0, GCASH: 0, MAYA: 0, ONLINE_BANKING: 0, OTHER: 0 },
+                payment_statuses: { PAID: 0, PARTIAL: 0, UNPAID: 0 }
+            };
+        });
+
+        const detailedProgramStats = computed(() => {
+            return courseAnalytics.value;
+        });
+
         // Notifications
         const successMsg = ref('');
         const errorMsg   = ref('');
-
-        // Data
-        const departments = ref([]);
-        const programs    = ref([]);
-        const subjects    = ref([]);
-        const curriculum  = ref([]);
-        const periods     = ref([]);
-        const sections    = ref([]); // cohort sections
-        const classOfferings = ref([]); // class offerings
-        const fees        = ref([]);
-        const users       = ref([]);
-        const filterUserStatus = ref('ALL');
 
         // ── Computed labels ──
         const eyebrow = computed(() => {
@@ -1007,8 +1131,21 @@ const app = createApp({
             return subjects.value.filter(s => titles.includes(s.title));
         });
 
+
+
+        const getSectionsForPeriod = (periodId) => {
+            if (!Array.isArray(sections.value)) return [];
+            return sections.value.filter(s => s && s.academicPeriodId === parseInt(periodId));
+        };
+
+        const getClassOfferingsForSection = (sectionId) => {
+            if (!Array.isArray(classOfferings.value)) return [];
+            return classOfferings.value.filter(o => o && o.sectionId === parseInt(sectionId));
+        };
+
         const getSectionCohortCode = (id) => {
-            const sec = sections.value.find(s => s.id === id);
+            if (!Array.isArray(sections.value)) return 'Unassigned';
+            const sec = sections.value.find(s => s && s.id === parseInt(id));
             return sec ? `${sec.program} - ${sec.yearLevel} - ${sec.code}` : 'Unassigned';
         };
 
@@ -1075,9 +1212,9 @@ const app = createApp({
         
         const loadDashboard = (silent = false) => {
             if (!silent) isLoadingStats.value = true;
-            get('fetch_dashboard_stats').then(r => {
+            get('fetch_dashboard_stats', { ...analyticsFilters }).then(r => {
                 if (!silent) isLoadingStats.value = false;
-                if (r && r.success) dashboardStats.value = r.data;
+                if (r && r.success) dashboardStats.value = r.data || r;
             }).catch(() => { if (!silent) isLoadingStats.value = false; });
         };
 
@@ -2463,7 +2600,7 @@ const app = createApp({
             openAddCurriculumForSemester, openCloneCurriculumModal, submitCloneCurriculum, deleteCurrentCurriculumVersion, quickToggleElective,
             uniqueProgramDepts, uniqueSubjectDepts, uniqueCurriculumVersions, programStats,
             curriculumGrouped, toggleCurrGroup,
-            getPeriodName, getSectionCohortCode, onSectionSelect, onSubjectSelect,
+            getPeriodName, getSectionsForPeriod, getClassOfferingsForSection, getSectionCohortCode, onSectionSelect, onSubjectSelect,
             
             // New state & helpers
             expandedCats, selectedDeptName, filterStudentProgram, filterStudentYear, filterStudentStatus,
@@ -2482,6 +2619,10 @@ const app = createApp({
             milestones, milestoneForm, isSavingMilestone, openMilestoneModal, updateMilestoneDisplayDate,
             saveMilestone, deleteMilestone, fetchAdminMilestones,
             isMobileMenuOpen,
+            // Multi-Dimensional Analytics State & Print Helpers
+            analyticsFilters, isFiltered, activeFilterSummary, printDateFormatted,
+            applyAnalyticsFilters, resetAnalyticsFilters, printAnalyticsReport,
+            yearLevelBreakdown, departmentBreakdown, financialMetrics, detailedProgramStats,
             // Sleek Course & Timeline Spline Chart
             chartViewMode, hoveredChartPoint, hoveredTimelinePoint, setHoveredPoint,
             getTooltipStyle, courseAnalytics, graphMetrics, timelineData, timelineGraphMetrics,

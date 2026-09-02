@@ -51,12 +51,21 @@ register_shutdown_function(function() {
 });
 
 function sendResponse($success, $data = null, $error = null, $statusCode = 200) {
-    // CORS headers - dynamically reflect request origin if present
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+    // CORS headers - enforce strict origin validation before reflection
     if (!headers_sent()) {
-        header("Access-Control-Allow-Origin: {$origin}");
-        header('Access-Control-Allow-Credentials: true');
-        header('Access-Control-Allow-Headers: Content-Type, X-Request-ID');
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        $rawHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $allowedHost = explode(':', $rawHost)[0];
+        if (!empty($origin)) {
+            $parsed = parse_url($origin);
+            $originHost = $parsed['host'] ?? '';
+            $isAllowed = ($originHost === 'localhost' || $originHost === '127.0.0.1' || $originHost === $allowedHost || (strlen($allowedHost) > 0 && str_ends_with($originHost, '.' . $allowedHost)));
+            if ($isAllowed) {
+                header("Access-Control-Allow-Origin: {$origin}");
+                header('Access-Control-Allow-Credentials: true');
+            }
+        }
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Request-ID');
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
         http_response_code($statusCode);
     }

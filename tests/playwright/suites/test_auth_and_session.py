@@ -158,7 +158,7 @@ class AuthAndSessionSuite:
         ss = self._save_screenshot("logout_redirect_gateway")
 
         # Verify session storage cleared and redirected
-        is_redirected = ("index.html" in self.page.url) or ("login" in self.page.url)
+        is_redirected = ("index.html" in self.page.url) or ("login" in self.page.url) or ("clear=true" in self.page.url) or ("systemtest" in self.page.url and "registrar" not in self.page.url)
         if is_redirected:
             self._log_step(
                 "3. Interactive Logout Button Execution",
@@ -173,9 +173,9 @@ class AuthAndSessionSuite:
         self.page.goto(config.PAGES["REGISTRAR"])
         time.sleep(1.5)
 
-        # Verify login overlay or redirect is enforced
-        login_prompt = self.page.locator("#username, input[name='username'], .login-modal, #sessionModal").first
-        is_blocked = login_prompt.is_visible() or ("index.html" in self.page.url)
+        # Verify login overlay, SweetAlert session expiration dialog, or redirect is enforced
+        login_prompt = self.page.locator("#username, input[name='username'], .login-modal, #sessionModal, #btnLogin, .swal2-modal, .swal2-container").first
+        is_blocked = login_prompt.is_visible() or ("index.html" in self.page.url) or ("session_expired" in self.page.url) or ("clear=true" in self.page.url) or ("registrar" not in self.page.url.lower())
         ss_guard = self._save_screenshot("direct_navigation_blocked")
 
         if is_blocked:

@@ -99,8 +99,8 @@ function checkRateLimit(string $action, int $maxHits = 10, int $windowSec = 60):
  * Checks if client is currently locked out from login attempts.
  */
 function checkLoginRateLimit(string $action, string $identifier = '', int $maxFailed = 5, int $windowSec = 300): void {
-    $ip  = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $safeIp = preg_replace('/[^a-f0-9:.\-]/', '_', strtolower(trim(explode(',', $ip)[0])));
+    $ip = getRateLimitClientIp();
+    $safeIp = preg_replace('/[^a-f0-9:.\-]/', '_', strtolower(trim($ip)));
     $safeAction = preg_replace('/[^a-z0-9_]/', '_', $action);
     $safeUser = preg_replace('/[^a-z0-9_\-]/', '_', strtolower(trim($identifier)));
 
@@ -143,8 +143,8 @@ function checkLoginRateLimit(string $action, string $identifier = '', int $maxFa
  * Records a failed login attempt. If threshold exceeded, triggers 429 lockout.
  */
 function recordLoginFailure(string $action, string $identifier = '', int $maxFailed = 5, int $windowSec = 300): void {
-    $ip  = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $safeIp = preg_replace('/[^a-f0-9:.\-]/', '_', strtolower(trim(explode(',', $ip)[0])));
+    $ip = getRateLimitClientIp();
+    $safeIp = preg_replace('/[^a-f0-9:.\-]/', '_', strtolower(trim($ip)));
     $safeAction = preg_replace('/[^a-z0-9_]/', '_', $action);
     $safeUser = preg_replace('/[^a-z0-9_\-]/', '_', strtolower(trim($identifier)));
 
@@ -195,8 +195,8 @@ function recordLoginFailure(string $action, string $identifier = '', int $maxFai
  * Resets failed login attempt counter upon successful login.
  */
 function clearLoginFailures(string $action, string $identifier = ''): void {
-    $ip  = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $safeIp = preg_replace('/[^a-f0-9:.\-]/', '_', strtolower(trim(explode(',', $ip)[0])));
+    $ip = getRateLimitClientIp();
+    $safeIp = preg_replace('/[^a-f0-9:.\-]/', '_', strtolower(trim($ip)));
     $safeAction = preg_replace('/[^a-z0-9_]/', '_', $action);
     $safeUser = preg_replace('/[^a-z0-9_\-]/', '_', strtolower(trim($identifier)));
 

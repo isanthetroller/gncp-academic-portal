@@ -597,6 +597,9 @@ class StudentPortalService {
                 INDEX `idx_code` (`code`)
             ) ENGINE=InnoDB;
         ");
+        try {
+            $pdo->exec("ALTER TABLE `password_resets` ADD COLUMN IF NOT EXISTS `attempts` INT DEFAULT 0 AFTER `code`");
+        } catch (Exception $e) {}
 
         $pdo->prepare("DELETE FROM `password_resets` WHERE `email` = :email")->execute(['email' => $targetEmail]);
 

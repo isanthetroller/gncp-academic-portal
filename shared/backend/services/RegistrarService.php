@@ -31,6 +31,10 @@ class RegistrarService {
 
             if ($studRecord) {
                 $studRoadmap = json_decode((string)($studRecord['roadmap'] ?? ''), true) ?: [];
+                $enrollData = json_decode((string)($studRecord['enrollment_data'] ?? ''), true) ?: [];
+                if ($sectionCode !== null && $sectionCode !== '') {
+                    $enrollData['assignedSection'] = $sectionCode;
+                }
                 if (strcasecmp($status, 'Approved') === 0) {
                     foreach ($studRoadmap as &$step) {
                         if (($step['stepId'] ?? '') === 'registrar_verification') {
@@ -39,19 +43,30 @@ class RegistrarService {
                         }
                     }
                 }
-                $upStmt = $pdo->prepare("UPDATE `students` SET `roadmap` = :roadmap, `requirements_data` = :req_data WHERE `id` = :id");
+                $upStmt = $pdo->prepare("UPDATE `students` SET `roadmap` = :roadmap, `requirements_data` = :req_data, `enrollment_data` = :enroll_data WHERE `id` = :id");
                 $upStmt->execute([
-                    'roadmap'  => json_encode($studRoadmap),
-                    'req_data' => $reqData ? json_encode($reqData) : $studRecord['requirements_data'],
-                    'id'       => $studRecord['id']
+                    'roadmap'     => json_encode($studRoadmap),
+                    'req_data'    => $reqData ? json_encode($reqData) : $studRecord['requirements_data'],
+                    'enroll_data' => json_encode($enrollData),
+                    'id'          => $studRecord['id']
                 ]);
+
+                // Also update pre_enrollments section_code if temp_reference_no matches
+                if (!empty($studRecord['temp_reference_no']) && $sectionCode) {
+                    $upPre = $pdo->prepare("UPDATE `pre_enrollments` SET `section_code` = :sc WHERE `temp_student_id` = :tref");
+                    $upPre->execute(['sc' => $sectionCode, 'tref' => $studRecord['temp_reference_no']]);
+                }
+
                 return [
                     'success' => true,
                     'data' => [
                         'referenceNumber' => $studRecord['temp_reference_no'] ?? $studRecord['id'],
                         'applicantName'   => $studRecord['name'],
                         'program'         => $studRecord['program'],
+                        'yearLevel'       => $studRecord['year_level'] ?? '1st Year',
                         'status'          => $studRecord['status'],
+                        'sectionCode'     => $sectionCode ?: ($enrollData['assignedSection'] ?? null),
+                        'assignedSection' => $sectionCode ?: ($enrollData['assignedSection'] ?? null),
                         'reviewedToday'   => true,
                         'roadmap'         => $studRoadmap
                     ]
@@ -129,6 +144,7 @@ class RegistrarService {
                 'referenceNumber' => $updatedRow['temp_student_id'],
                 'applicantName'   => $fullName ?: 'New Applicant',
                 'program'         => $updatedRow['course_code'],
+                'yearLevel'       => !empty($updatedRow['year_level_applied']) ? $updatedRow['year_level_applied'] : '1st Year',
                 'studentType'     => $updatedRow['student_type'] ?? 'FRESHMAN',
                 'nstp'            => $updatedRow['nstp'] ?? 'N/A',
                 'dateSubmitted'   => date('Y-m-d', strtotime($updatedRow['created_at'])),

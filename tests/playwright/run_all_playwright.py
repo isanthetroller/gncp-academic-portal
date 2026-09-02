@@ -17,13 +17,14 @@ from suites.test_auth_and_session import AuthAndSessionSuite
 from suites.test_file_uploads import FileUploadsSuite
 from suites.test_e2e_student_lifecycle import E2EStudentLifecycleSuite
 from suites.test_admin_portal import AdminPortalSuite
+from suites.test_admin_analytics import AdminAnalyticsSuite
 
 def main():
     parser = argparse.ArgumentParser(description="Master Playwright End-to-End Test Runner")
     parser.add_argument("--headless", action="store_true", default=True, help="Run browser in headless mode (default: True)")
     parser.add_argument("--headed", dest="headless", action="store_false", help="Run browser in headed/visible mode")
     parser.add_argument("--slowmo", type=int, default=0, help="Slow down Playwright operations by N milliseconds")
-    parser.add_argument("--suite", type=str, default="all", help="Specific suite to execute (auth, uploads, lifecycle, admin, all)")
+    parser.add_argument("--suite", type=str, default="all", help="Specific suite to execute (auth, uploads, lifecycle, admin, analytics, all)")
     args = parser.parse_args()
 
     print("================================================================================")
@@ -85,6 +86,12 @@ def main():
             suite4 = AdminPortalSuite(page)
             res4 = suite4.run()
             suite_results.append(res4)
+
+        # ── Suite 5: Admin Analytics Dashboard & Printable Reports ─
+        if args.suite in ["all", "analytics", "5"]:
+            suite5 = AdminAnalyticsSuite(page)
+            res5 = suite5.run()
+            suite_results.append(res5)
 
         context.close()
         browser.close()

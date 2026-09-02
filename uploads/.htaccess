@@ -1,9 +1,14 @@
-# GNCP Uploads Security Configuration
-# Disables PHP script execution and direct directory listing
+# GNCP Uploads Security Hardening
+# Prevents execution of server-side scripts and disables directory browsing
 
-<FilesMatch "\.(php|phtml|php3|php4|php5|php7|phps|cgi|pl|py|exe|sh|bat|cmd|pht)$">
-    Order Deny,Allow
-    Deny from all
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|php8|phps|phar|inc|cgi|pl|py|exe|sh|bat|cmd|pht|asp|aspx|jsp|shtml|htaccess|htpasswd)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Deny,Allow
+        Deny from all
+    </IfModule>
 </FilesMatch>
 
 <IfModule mod_php.c>
@@ -14,6 +19,10 @@
 </IfModule>
 <IfModule mod_php8.c>
     php_flag engine off
+</IfModule>
+
+<IfModule mod_mime.c>
+    RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phar .cgi .pl .py .sh
 </IfModule>
 
 Options -ExecCGI -Indexes

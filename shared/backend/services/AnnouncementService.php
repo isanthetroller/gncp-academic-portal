@@ -223,13 +223,26 @@ class AnnouncementService {
             return ['success' => false, 'message' => 'Invalid image format. Allowed formats: JPG, PNG, WEBP, GIF.', 'code' => 400];
         }
 
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $uploadDir = __DIR__ . '/../../uploads/announcements/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
+        $mimeToExt = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+            'image/gif'  => 'gif'
+        ];
+        $ext = $mimeToExt[$mime] ?? 'jpg';
+
+        // Polyglot / Embedded Executable Script Check
+        $rawBytes = @file_get_contents($file['tmp_name']);
+        if ($rawBytes && preg_match('/<\?php|<\?=|<script\b|eval\s*\(|base64_decode\s*\(/i', $rawBytes)) {
+            return ['success' => false, 'message' => 'Security Error: Executable script patterns detected inside image file.', 'code' => 400];
         }
 
-        $filename = 'post_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $uploadDir = __DIR__ . '/../../uploads/announcements/';
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0755, true);
+        }
+
+        $filename = 'post_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
         $targetPath = $uploadDir . $filename;
 
         if (move_uploaded_file($file['tmp_name'], $targetPath)) {

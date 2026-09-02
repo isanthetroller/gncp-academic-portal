@@ -23,10 +23,9 @@
     <script src="../shared/js/components/EmployeeSidebar.js?v=20260826_v9" defer></script>
     <script src="../shared/js/StationPipeline.js?v=20260826_v9" defer></script>
     <!-- Application MVC & Service Layer -->
-    <script src="assets/js/services/RegistrarApiService.js?v=20260826_v9" defer></script>
-    <script src="assets/js/models/RegistrarModel.js?v=20260826_v9" defer></script>
-    <script src="assets/js/views/RegistrarView.js?v=20260826_v9" defer></script>
-    <script src="assets/js/controllers/RegistrarController.js?v=20260826_v9" defer></script>
+    <script src="assets/js/services/RegistrarApiService.js?v=20260826_v10" defer></script>
+    <script src="assets/js/views/RegistrarView.js?v=20260826_v10" defer></script>
+    <script src="assets/js/controllers/RegistrarController.js?v=20260826_v10" defer></script>
     <style>
         [v-cloak] {
             display: none !important;
@@ -339,7 +338,7 @@
 
                     <!-- Pending Applications View -->
                     <pending-applications-view v-else-if="currentView === 'pending-applications'"
-                        :pending-applications="pendingApplications" :sections="subjectSections" :programs="programs"
+                        :pending-applications="pendingApplications" :sections="sections" :programs="programs"
                         :search-text="searchText" @open-application-modal="openApplicationModal">
                     </pending-applications-view>
 
@@ -626,7 +625,7 @@
                                     <i class="fas fa-layer-group text-success me-2 fs-6"></i>
                                     Assign Block Section (Required)
                                 </h6>
-                                <span class="badge bg-light text-muted border font-monospace" style="font-size: 0.70rem;">1st Year, 1st Semester</span>
+                                <span class="badge bg-light text-muted border font-monospace" style="font-size: 0.70rem;">{{ selectedApplication.yearLevel || '1st Year' }} ({{ selectedApplication.program }})</span>
                             </div>
                             <div class="table-responsive border border-light-subtle rounded-3 bg-white shadow-sm mb-0"
                                 style="max-height: 220px; overflow-y: auto;">
@@ -645,19 +644,18 @@
                                     <tbody>
                                         <tr v-for="sect in availableSectionsForApplication" :key="sect.code"
                                             :class="{'table-success': selectedApplication.sectionCode === sect.code}"
-                                            @click="['Approved', 'APPROVED', 'REGISTRAR_APPROVED', 'ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status) ? null : selectedApplication.sectionCode = sect.code"
-                                            :style="{ cursor: ['Approved', 'APPROVED', 'REGISTRAR_APPROVED', 'ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status) ? 'default' : 'pointer' }">
+                                            @click="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status) ? null : selectedApplication.sectionCode = sect.code"
+                                            :style="{ cursor: ['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status) ? 'default' : 'pointer' }">
                                             <td class="text-center">
                                                 <input class="form-check-input" type="radio"
                                                     name="modalSectionChoice" :value="sect.code"
                                                     :checked="selectedApplication.sectionCode === sect.code"
-                                                    :disabled="['Approved', 'APPROVED', 'REGISTRAR_APPROVED', 'ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
+                                                    :disabled="['ENROLLED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
                                                     @change="selectedApplication.sectionCode = sect.code">
                                             </td>
                                             <td>
                                                 <div class="fw-bold text-dark">Section {{ sect.code }}</div>
-                                                <div class="text-muted small" style="font-size: 0.72rem;">{{ sect.sectionName || (sect.program + ' ' + sect.yearLevel) }}
-                                                </div>
+                                                <div class="text-muted small" style="font-size: 0.72rem;">{{ sect.sectionName || (sect.program + ' ' + (sect.yearLevel || '1st Year')) }}</div>
                                             </td>
                                             <td>
                                                 <span class="text-secondary fw-semibold">{{ sect.adviser || 'Unassigned' }}</span>
@@ -686,7 +684,7 @@
                                             v-if="!availableSectionsForApplication || availableSectionsForApplication.length === 0">
                                             <td colspan="7" class="text-center text-danger py-3">
                                                 <i class="fas fa-exclamation-triangle me-1"></i> No active block
-                                                sections found for program <strong>{{ selectedApplication.program }}</strong> (1st Year, 1st Semester). Please verify
+                                                sections found for program <strong>{{ selectedApplication.program }}</strong> ({{ selectedApplication.yearLevel || '1st Year' }}). Please verify
                                                 configurations in Admin.
                                             </td>
                                         </tr>
@@ -711,10 +709,14 @@
                             @click="updateApplicationStatus('Rejected')"><i class="fa-solid fa-times me-1"></i>
                             Reject</button>
                         <button
-                            v-if="selectedApplication && !['ENROLLED', 'APPROVED', 'Approved', 'REGISTRAR_APPROVED', 'Rejected', 'REJECTED'].includes(selectedApplication.status)"
+                            v-if="selectedApplication && !['ENROLLED', 'APPROVED', 'Approved', 'REGISTRAR_APPROVED', 'Rejected', 'REJECTED', 'VERIFIED'].includes(selectedApplication.status)"
                             type="button" class="btn-pill btn-pill-green"
                             @click="updateApplicationStatus('Approved')"><i class="fa-solid fa-check me-1"></i> Approve
                             &amp; Verify</button>
+                        <button
+                            v-if="selectedApplication && ['APPROVED', 'Approved', 'REGISTRAR_APPROVED', 'VERIFIED'].includes(selectedApplication.status)"
+                            type="button" class="btn-pill btn-pill-green"
+                            @click="updateApplicationStatus('Approved')"><i class="fa-solid fa-save me-1"></i> Update Section</button>
                     </div>
                 </div>
             </div>
@@ -750,16 +752,16 @@
                             <!-- Top Metric Stat Tiles -->
                             <div class="col-12">
                                 <div class="row g-3">
-                                    <div class="col-sm-6 col-lg-3">
+                                    <div class="col-sm-6 col-md-4 col-lg">
                                         <div class="profile-stat-tile">
                                             <div class="profile-stat-icon icon-id"><i class="fa-solid fa-id-card"></i></div>
                                             <div class="min-w-0">
                                                 <div class="profile-stat-label">Permanent ID</div>
-                                                <div class="profile-stat-val font-monospace text-truncate">{{ selectedStudent.id }}</div>
+                                                <div class="profile-stat-val text-truncate">{{ selectedStudent.id }}</div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-sm-6 col-lg-3">
+                                    <div class="col-sm-6 col-md-4 col-lg">
                                         <div class="profile-stat-tile">
                                             <div class="profile-stat-icon icon-program"><i class="fa-solid fa-graduation-cap"></i></div>
                                             <div class="min-w-0">
@@ -768,7 +770,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-sm-6 col-lg-3">
+                                    <div class="col-sm-6 col-md-4 col-lg">
                                         <div class="profile-stat-tile">
                                             <div class="profile-stat-icon icon-year"><i class="fa-solid fa-layer-group"></i></div>
                                             <div class="min-w-0">
@@ -777,7 +779,16 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-sm-6 col-lg-3">
+                                    <div class="col-sm-6 col-md-4 col-lg">
+                                        <div class="profile-stat-tile">
+                                            <div class="profile-stat-icon icon-status" style="background:rgba(0,106,78,0.1);color:#006A4E;"><i class="fa-solid fa-shapes"></i></div>
+                                            <div class="min-w-0">
+                                                <div class="profile-stat-label">Assigned Section</div>
+                                                <div class="profile-stat-val text-truncate text-success fw-bold">{{ selectedStudent.assignedSection || selectedStudent.sectionCode || 'Unassigned' }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6 col-md-4 col-lg">
                                         <div class="profile-stat-tile">
                                             <div class="profile-stat-icon icon-status"><i class="fa-solid fa-shield-halved"></i></div>
                                             <div class="min-w-0">

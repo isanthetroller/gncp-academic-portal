@@ -175,7 +175,7 @@ function promotePreEnrollmentToStudent($pdo, $record, $refNum, $roadmapJson, $it
         if (empty($email)) {
             $cleanFirst = preg_replace('/[^a-z]/', '', strtolower(explode(' ', $record['first_name'])[0]));
             $cleanLast = preg_replace('/[^a-z]/', '', strtolower(explode(' ', $record['last_name'])[0]));
-            $randomSuffix = rand(10, 99);
+            $randomSuffix = random_int(10, 99);
             $email = "{$cleanFirst}.{$cleanLast}{$randomSuffix}@gncp.edu.ph";
         }
 

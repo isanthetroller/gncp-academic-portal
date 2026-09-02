@@ -9,12 +9,11 @@
     <link rel="stylesheet" href="../shared/libs/fonts/fonts.css">
     <link href="../shared/libs/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../shared/libs/font-awesome/css/all.min.css">
-    <link rel="stylesheet" href="../shared/css/admin_workstation_theme.css?v=20260825_light">
-    <link rel="stylesheet" href="assets/css/sidebar.css?v=11">
+    <link rel="stylesheet" href="../shared/css/admin_workstation_theme.css?v=20260828_v2">
+    <link rel="stylesheet" href="assets/css/sidebar.css?v=20260828_v2">
     <script src="../shared/libs/bootstrap.bundle.min.js"></script>
     <script src="../shared/libs/vue.global.js"></script>
-    <script src="assets/js/models/AdminModel.js?v=20260822"></script>
-    <script src="assets/js/components/AdminSidebar.js?v=11"></script>
+    <script src="assets/js/components/AdminSidebar.js?v=20260828_v2"></script>
     <script src="../shared/libs/sweetalert2.all.min.js"></script>
     <script src="../shared/js/SessionExpirationGuard.js?v=20260823"></script>
     <script src="../shared/js/PasswordChangeGuard.js"></script>
@@ -958,6 +957,299 @@
             color: var(--primary, #006A4E);
         }
 
+        /* ── ANALYTICS FILTER TOOLBAR & CONTROLS ── */
+        .analytics-filter-toolbar {
+            background: #ffffff;
+            border: 1px solid var(--border, #e2e8f0);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .analytics-filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .analytics-filter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .analytics-filter-label {
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted, #64748b);
+        }
+
+        .analytics-select, .analytics-date-input {
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid var(--border, #e2e8f0);
+            background: #f8fafc;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text, #1e293b);
+            padding: 0 10px;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.15s ease;
+        }
+
+        .analytics-select:focus, .analytics-date-input:focus {
+            border-color: var(--primary, #006A4E);
+            background: #ffffff;
+        }
+
+        .btn-analytics-action {
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 14px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .btn-analytics-reset {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: #475569;
+        }
+
+        .btn-analytics-reset:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .btn-analytics-print {
+            background: linear-gradient(135deg, #00553e 0%, #003d2b 100%);
+            border: 1px solid var(--gold, #d4af37);
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(0, 61, 43, 0.2);
+        }
+
+        .btn-analytics-print:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+
+        /* ── 6-CARD EXECUTIVE KPI GRID ── */
+        .db-grid.kpi-grid-6 {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .kpi-subtext {
+            font-size: 0.70rem;
+            color: #64748b;
+            font-weight: 600;
+            margin-top: 3px;
+        }
+
+        /* ── DEMOGRAPHICS & FINANCIALS SPLIT PANEL ── */
+        .analytics-sub-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        @media (max-width: 991.98px) {
+            .analytics-sub-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .demo-bar-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .demo-bar-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .demo-bar-track {
+            height: 6px;
+            background: #f1f5f9;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .demo-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .fin-badge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .fin-badge-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 10px;
+            text-align: center;
+        }
+
+        .fin-badge-card .fin-val {
+            font-family: var(--font-head);
+            font-weight: 800;
+            font-size: 0.95rem;
+            color: var(--primary, #006A4E);
+        }
+
+        .fin-badge-card .fin-lbl {
+            font-size: 0.65rem;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
+        /* ── PRINT ONLY & INSTITUTIONAL REPORT CSS ── */
+        .print-only-block {
+            display: none;
+        }
+
+        @media print {
+            @page {
+                size: portrait;
+                margin: 10mm 12mm;
+            }
+
+            html, body {
+                background: #ffffff !important;
+                background-color: #ffffff !important;
+                color: #0f172a !important;
+                height: auto !important;
+                overflow: visible !important;
+                font-size: 10pt !important;
+                font-family: 'Plus Jakarta Sans', sans-serif !important;
+            }
+
+            .shell {
+                display: block !important;
+                height: auto !important;
+                overflow: visible !important;
+                background: #ffffff !important;
+            }
+
+            .sidebar, .topbar, .mobile-header-bar, .sidebar-backdrop, .analytics-filter-toolbar,
+            .chart-view-toggle, .btn-analytics-action, .chart-pills-row, .modal, .modal-backdrop,
+            .confirm-overlay, .btn-add, .filter-bar, .nav-body, .sidebar-footer, .alert-ok, .alert-err {
+                display: none !important;
+            }
+
+            .main, .content {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                background: #ffffff !important;
+            }
+
+            .print-only-block {
+                display: block !important;
+            }
+
+            .card {
+                box-shadow: none !important;
+                border: 1px solid #cbd5e1 !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                margin-bottom: 12px !important;
+                padding: 12px !important;
+            }
+
+            .db-grid.kpi-grid-6 {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 8px !important;
+                page-break-inside: avoid !important;
+            }
+
+            .db-card {
+                border: 1px solid #cbd5e1 !important;
+                box-shadow: none !important;
+                padding: 8px 10px !important;
+            }
+
+            .db-card-val {
+                font-size: 1.3rem !important;
+            }
+
+            .chart-svg-container {
+                height: 170px !important;
+                page-break-inside: avoid !important;
+            }
+
+            .tbl {
+                border-collapse: collapse !important;
+                width: 100% !important;
+                page-break-inside: auto !important;
+            }
+
+            .tbl th {
+                background: #f1f5f9 !important;
+                color: #0f172a !important;
+                border-bottom: 2px solid #94a3b8 !important;
+                font-size: 8pt !important;
+                padding: 6px 8px !important;
+            }
+
+            .tbl td {
+                border-bottom: 1px solid #e2e8f0 !important;
+                font-size: 8pt !important;
+                padding: 6px 8px !important;
+            }
+
+            .print-sign-grid {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 20px !important;
+                margin-top: 30px !important;
+                page-break-inside: avoid !important;
+            }
+
+            .sign-box {
+                text-align: center;
+                border-top: 1px solid #334155;
+                padding-top: 4px;
+                font-size: 8pt;
+            }
+        }
+
         /* ── MOBILE & TABLET RESPONSIVE OVERHAUL (<= 991.98px) ── */
         .mobile-header-bar {
             display: none;
@@ -1449,37 +1741,126 @@
                         </h3>
                         <p class="m-0 small text-white-50" style="font-size: 0.82rem; margin-top: 2px;">Welcome to GNCP Super Admin Control Panel &amp; Academic Management System.</p>
                     </div>
-                    <div v-if="dashboardStats && !isLoadingStats" class="db-grid">
+
+                    <!-- Multi-Dimensional Analytics Filter Toolbar -->
+                    <div class="analytics-filter-toolbar">
+                        <div class="analytics-filter-group">
+                            <!-- Academic Period Filter -->
+                            <div class="analytics-filter-item">
+                                <label class="analytics-filter-label"><i class="fa-solid fa-calendar-days"></i> Academic Period</label>
+                                <select class="analytics-select" v-model="analyticsFilters.academic_period_id" @change="applyAnalyticsFilters">
+                                    <option value="">All Academic Terms</option>
+                                    <option v-for="p in periods" :key="p.id" :value="p.id">
+                                        {{ p.name || (p.academic_year + ' - ' + p.semester) }}
+                                    </option>
+                                </select>
+                            </div>
+                            <!-- Department Filter -->
+                            <div class="analytics-filter-item">
+                                <label class="analytics-filter-label"><i class="fa-solid fa-school"></i> Department</label>
+                                <select class="analytics-select" v-model="analyticsFilters.department_code" @change="applyAnalyticsFilters">
+                                    <option value="">All Colleges / Depts</option>
+                                    <option v-for="d in departments" :key="d.id" :value="d.code">
+                                        {{ d.code }} - {{ d.name }}
+                                    </option>
+                                </select>
+                            </div>
+                            <!-- Program Filter -->
+                            <div class="analytics-filter-item">
+                                <label class="analytics-filter-label"><i class="fa-solid fa-graduation-cap"></i> Program</label>
+                                <select class="analytics-select" v-model="analyticsFilters.program_code" @change="applyAnalyticsFilters">
+                                    <option value="">All Degree Programs</option>
+                                    <option v-for="pr in programs" :key="pr.id" :value="pr.code">
+                                        {{ pr.code }} ({{ pr.name }})
+                                    </option>
+                                </select>
+                            </div>
+                            <!-- Year Level Filter -->
+                            <div class="analytics-filter-item">
+                                <label class="analytics-filter-label"><i class="fa-solid fa-layer-group"></i> Year Level</label>
+                                <select class="analytics-select" v-model="analyticsFilters.year_level" @change="applyAnalyticsFilters">
+                                    <option value="">All Year Levels</option>
+                                    <option value="1">1st Year</option>
+                                    <option value="2">2nd Year</option>
+                                    <option value="3">3rd Year</option>
+                                    <option value="4">4th Year</option>
+                                </select>
+                            </div>
+                            <!-- Date Range Filters -->
+                            <div class="analytics-filter-item">
+                                <label class="analytics-filter-label"><i class="fa-regular fa-calendar"></i> From Date</label>
+                                <input type="date" class="analytics-date-input" v-model="analyticsFilters.date_from" @change="applyAnalyticsFilters">
+                            </div>
+                            <div class="analytics-filter-item">
+                                <label class="analytics-filter-label"><i class="fa-regular fa-calendar"></i> To Date</label>
+                                <input type="date" class="analytics-date-input" v-model="analyticsFilters.date_to" @change="applyAnalyticsFilters">
+                            </div>
+                        </div>
+
+                        <!-- Filter Actions & Print Trigger -->
+                        <div class="d-flex align-items-center gap-2">
+                            <button v-if="isFiltered" type="button" class="btn-analytics-action btn-analytics-reset" @click="resetAnalyticsFilters">
+                                <i class="fa-solid fa-rotate-left"></i> Reset
+                            </button>
+                            <button type="button" class="btn-analytics-action btn-analytics-print" @click="printAnalyticsReport">
+                                <i class="fa-solid fa-print"></i> Print Official Report
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 6-Card Executive KPI Ribbon -->
+                    <div v-if="dashboardStats && !isLoadingStats" class="db-grid kpi-grid-6">
                         <div class="db-card">
                             <div class="db-card-info">
-                                <div class="db-card-val">{{ dashboardStats.total }}</div>
+                                <div class="db-card-val">{{ dashboardStats.kpi?.total ?? dashboardStats.total }}</div>
                                 <div class="db-card-lbl">Total Registrations</div>
+                                <div class="kpi-subtext">Cumulative Student Intake</div>
                             </div>
                             <div class="db-card-icon progress"><i class="fa-solid fa-users"></i></div>
                         </div>
                         <div class="db-card">
                             <div class="db-card-info">
-                                <div class="db-card-val">{{ dashboardStats.pending }}</div>
-                                <div class="db-card-lbl">Pending Review</div>
+                                <div class="db-card-val" style="color:var(--primary, #006A4E)">{{ dashboardStats.kpi?.enrolled ?? dashboardStats.enrolled }}</div>
+                                <div class="db-card-lbl">Fully Enrolled</div>
+                                <div class="kpi-subtext"><span class="badge badge-active" style="font-size:0.65rem;padding:2px 5px;">{{ dashboardStats.kpi?.conversion_rate ?? totalEnrolledRate }}% Conversion</span></div>
                             </div>
-                            <div class="db-card-icon pending"><i class="fa-solid fa-clock"></i></div>
+                            <div class="db-card-icon success"><i class="fa-solid fa-check-double"></i></div>
                         </div>
                         <div class="db-card">
                             <div class="db-card-info">
-                                <div class="db-card-val">{{ dashboardStats.verified }}</div>
-                                <div class="db-card-lbl">In Progress</div>
+                                <div class="db-card-val">{{ dashboardStats.kpi?.in_pipeline ?? dashboardStats.verified }}</div>
+                                <div class="db-card-lbl">In-Pipeline</div>
+                                <div class="kpi-subtext">Active Staging Lifecycle</div>
                             </div>
                             <div class="db-card-icon progress"><i class="fa-solid fa-spinner"></i></div>
                         </div>
                         <div class="db-card">
                             <div class="db-card-info">
-                                <div class="db-card-val">{{ dashboardStats.enrolled }}</div>
-                                <div class="db-card-lbl">Fully Enrolled</div>
+                                <div class="db-card-val">{{ dashboardStats.kpi?.pending ?? dashboardStats.pending }}</div>
+                                <div class="db-card-lbl">Pending Registrar</div>
+                                <div class="kpi-subtext">Awaiting Document Audit</div>
                             </div>
-                            <div class="db-card-icon success"><i class="fa-solid fa-check-double"></i></div>
+                            <div class="db-card-icon pending"><i class="fa-solid fa-clock"></i></div>
+                        </div>
+                        <div class="db-card">
+                            <div class="db-card-info">
+                                <div class="db-card-val" style="font-size:1.15rem">₱{{ Number(financialMetrics.total_assessed || 0).toLocaleString() }}</div>
+                                <div class="db-card-lbl">Total Assessed Fees</div>
+                                <div class="kpi-subtext">Curriculum Tuition Assessment</div>
+                            </div>
+                            <div class="db-card-icon" style="background:rgba(2,132,199,0.1);color:#0284c7"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                        </div>
+                        <div class="db-card">
+                            <div class="db-card-info">
+                                <div class="db-card-val" style="font-size:1.15rem;color:#059669">₱{{ Number(financialMetrics.total_collected || 0).toLocaleString() }}</div>
+                                <div class="db-card-lbl">Revenue Collected</div>
+                                <div class="kpi-subtext"><span class="badge" style="background:rgba(5,150,105,0.12);color:#059669;font-size:0.65rem;padding:2px 5px;">{{ financialMetrics.collection_rate || 0 }}% Settled</span></div>
+                            </div>
+                            <div class="db-card-icon" style="background:rgba(5,150,105,0.1);color:#059669"><i class="fa-solid fa-cash-register"></i></div>
                         </div>
                     </div>
 
+                    <!-- Main Dashboard Sections Grid: Workstations & Registrations Chart -->
                     <div v-if="dashboardStats && !isLoadingStats" class="db-sections-grid">
                         <!-- Left Panel: Workstation Queues -->
                         <div class="card">
@@ -1539,7 +1920,7 @@
                                         <i class="fa-solid fa-chart-area"></i> 30-Day Trend
                                     </button>
                                     <button type="button" class="btn-chart-toggle" :class="{ active: chartViewMode === 'bars' }" @click="chartViewMode = 'bars'">
-                                        <i class="fa-solid fa-filter-circle-dollar"></i> Breakdown
+                                        <i class="fa-solid fa-filter-circle-dollar"></i> Funnel
                                     </button>
                                 </div>
                             </div>
@@ -1592,13 +1973,9 @@
                                     <!-- Bottom Base Axis -->
                                     <line :x1="graphMetrics.padXLeft" :y1="graphMetrics.bottomY" :x2="graphMetrics.width - graphMetrics.padXRight" :y2="graphMetrics.bottomY" stroke="#cbd5e1" stroke-width="1.5" />
 
-                                    <!-- Invisible baseline paths for backwards compatibility -->
-                                    <path v-if="graphMetrics.totalSpline" :d="graphMetrics.totalSpline" fill="none" stroke="transparent" stroke-width="0.1" />
-                                    <path v-if="graphMetrics.enrolledSpline" :d="graphMetrics.enrolledSpline" fill="none" stroke="transparent" stroke-width="0.1" />
-
                                     <!-- Program Column Groups -->
                                     <g v-for="(col, i) in graphMetrics.columns" :key="'col-' + col.data.code">
-                                        <!-- Column Background Column Glow on Hover -->
+                                        <!-- Column Background Glow on Hover -->
                                         <rect v-if="hoveredChartPoint && hoveredChartPoint.data.code === col.data.code"
                                               :x="col.hitbox.x" :y="col.hitbox.y" :width="col.hitbox.width" :height="col.hitbox.height"
                                               fill="rgba(0,106,78,0.04)" rx="6" />
@@ -1704,7 +2081,6 @@
                                     <!-- Cumulative Intake Area Fill & Trend Curve -->
                                     <path v-if="timelineGraphMetrics.cumArea" :d="timelineGraphMetrics.cumArea" fill="url(#timeAreaGrad)" />
                                     <path v-if="timelineGraphMetrics.cumSpline" :d="timelineGraphMetrics.cumSpline" fill="none" stroke="#006A4E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
-                                    <path v-if="timelineGraphMetrics.dailySpline" :d="timelineGraphMetrics.dailySpline" fill="none" stroke="transparent" stroke-width="0.1" />
 
                                     <!-- Daily Registration Column Bars -->
                                     <g v-for="(b, i) in timelineGraphMetrics.bars" :key="'tbar-' + i">
@@ -1713,7 +2089,7 @@
                                               fill="url(#timeDailyBarGrad)" rx="2" ry="2" />
                                         
                                         <!-- X-Axis Labels at key intervals -->
-                                        <text v-if="i === 0 || i === 7 || i === 14 || i === 21 || i === timelineGraphMetrics.bars.length - 1"
+                                        <text v-if="timelineGraphMetrics.bars && (i === 0 || i === 7 || i === 14 || i === 21 || i === timelineGraphMetrics.bars.length - 1)"
                                               :x="b.centerX" :y="timelineGraphMetrics.bottomY + 16"
                                               fill="#64748b" font-size="8" font-weight="600" text-anchor="middle" font-family="'Outfit', sans-serif">
                                             {{ b.data.date }}
@@ -1742,7 +2118,7 @@
                                 </div>
                             </div>
 
-                            <!-- View 3: Admissions Lifecycle Pipeline Funnel -->
+                            <!-- View 3: Admissions Lifecycle 6-Stage Pipeline Funnel -->
                             <div v-else class="pipeline-funnel-list">
                                 <div v-for="stage in pipelineFunnel" :key="stage.id" class="funnel-stage-row">
                                     <div class="funnel-stage-header">
@@ -1786,8 +2162,100 @@
                         </div>
                     </div>
 
+                    <!-- Demographics Panel: Year Level & Department Breakdown -->
+                    <div v-if="dashboardStats && !isLoadingStats" class="card" style="margin-top:16px;">
+                        <div class="card-title"><i class="fa-solid fa-users-rays"></i> Student Demographics Distribution</div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+                            <div>
+                                <div style="font-size:0.72rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">
+                                    Intake by Year Level
+                                </div>
+                                <div v-for="y in yearLevelBreakdown" :key="'yr-' + y.year_level" class="demo-bar-item">
+                                    <div class="demo-bar-header">
+                                        <span>{{ y.label }}</span>
+                                        <span>{{ y.count }} student(s) ({{ y.pct }}%)</span>
+                                    </div>
+                                    <div class="demo-bar-track">
+                                        <div class="demo-bar-fill" :style="{ width: y.pct + '%', background: '#006A4E' }"></div>
+                                    </div>
+                                </div>
+                                <div v-if="yearLevelBreakdown.length === 0" style="color:var(--text-muted);font-size:0.8rem;font-style:italic;">
+                                    No year level records available.
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style="font-size:0.72rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">
+                                    College / Department Distribution
+                                </div>
+                                <div v-for="d in departmentBreakdown" :key="'dept-' + d.code" class="demo-bar-item">
+                                    <div class="demo-bar-header">
+                                        <span>{{ d.code }} &bull; {{ d.name }}</span>
+                                        <span>{{ d.count }} ({{ d.pct }}%)</span>
+                                    </div>
+                                    <div class="demo-bar-track">
+                                        <div class="demo-bar-fill" :style="{ width: d.pct + '%', background: '#d4af37' }"></div>
+                                    </div>
+                                </div>
+                                <div v-if="departmentBreakdown.length === 0" style="color:var(--text-muted);font-size:0.8rem;font-style:italic;">
+                                    No department records available.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comprehensive Program Aggregate Statistics Table -->
+                    <div v-if="dashboardStats && !isLoadingStats" class="card" style="margin-top:16px;">
+                        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+                            <span><i class="fa-solid fa-table-list"></i> Academic Program Statistics &amp; Utilization</span>
+                            <span style="font-size:0.72rem;color:var(--text-muted);">{{ activeFilterSummary }}</span>
+                        </div>
+                        <div class="table-responsive" style="margin-top:10px;">
+                            <table class="tbl">
+                                <thead>
+                                    <tr>
+                                        <th>Program Code</th>
+                                        <th>Degree Title</th>
+                                        <th>Department</th>
+                                        <th style="text-align:center;">Total Registered</th>
+                                        <th style="text-align:center;">Officially Enrolled</th>
+                                        <th style="text-align:center;">In-Progress</th>
+                                        <th style="text-align:center;">Conversion Rate</th>
+                                        <th style="text-align:center;">Section Capacity</th>
+                                        <th style="text-align:center;">Utilization</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="prog in detailedProgramStats" :key="'prog-row-' + prog.code">
+                                        <td><code style="color:var(--primary);font-weight:700">{{ prog.code }}</code></td>
+                                        <td style="font-weight:600">{{ prog.name }}</td>
+                                        <td><span class="badge badge-role">{{ prog.department || 'N/A' }}</span></td>
+                                        <td style="text-align:center;font-weight:700;">{{ prog.count }}</td>
+                                        <td style="text-align:center;font-weight:800;color:#006A4E;">{{ prog.enrolled }}</td>
+                                        <td style="text-align:center;color:#0284c7;">{{ prog.pending }}</td>
+                                        <td style="text-align:center;">
+                                            <span class="badge" :class="prog.conversionRate >= 50 ? 'badge-active' : 'badge-pending'">
+                                                {{ prog.conversionRate }}%
+                                            </span>
+                                        </td>
+                                        <td style="text-align:center;">{{ prog.capacity || 0 }} seats</td>
+                                        <td style="text-align:center;">
+                                            <span class="badge" style="background:#f1f5f9;color:#334155;">
+                                                {{ prog.utilization || 0 }}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="detailedProgramStats.length === 0" class="empty-row">
+                                        <td colspan="9">No academic program records match the selected filters.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <!-- Recent Activity Logs -->
-                    <div v-if="dashboardStats && !isLoadingStats" class="card" style="margin-bottom: 20px;">
+                    <div v-if="dashboardStats && !isLoadingStats" class="card" style="margin-top: 16px; margin-bottom: 20px;">
                         <div class="card-title"><i class="fa-solid fa-receipt"></i> Recent Registrations Feed</div>
                         <div class="activity-list">
                             <div v-for="act in dashboardStats.recent" :key="act.ref" class="activity-item">
@@ -1800,8 +2268,113 @@
                                     <span>{{ act.date }}</span>
                                 </div>
                             </div>
-                            <div v-if="dashboardStats.recent.length === 0" style="text-align:center;color:var(--text-muted);font-style:italic;padding:20px;">
+                            <div v-if="!dashboardStats.recent || dashboardStats.recent.length === 0" style="text-align:center;color:var(--text-muted);font-style:italic;padding:20px;">
                                 No recent activity log.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Official Institutional Printable Report Document Block (Rendered in @media print) -->
+                    <div v-if="dashboardStats" id="printable-analytics-report" class="print-only-block" style="padding:15px;color:#0f172a;">
+                        <!-- Official Letterhead Header -->
+                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #006A4E;padding-bottom:12px;margin-bottom:14px;">
+                            <div style="display:flex;align-items:center;gap:14px;">
+                                <div style="width:48px;height:48px;border-radius:50%;background:#006A4E;color:#d4af37;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.3rem;">
+                                    G
+                                </div>
+                                <div>
+                                    <div style="font-size:0.75rem;font-weight:700;color:#64748b;letter-spacing:1px;text-transform:uppercase;">Republic of the Philippines &bull; Commission on Higher Education</div>
+                                    <div style="font-size:1.15rem;font-weight:900;color:#006A4E;font-family:'Outfit',sans-serif;">GO-ON NATIONAL COLLEGE OF THE PHILIPPINES</div>
+                                    <div style="font-size:0.75rem;font-weight:600;color:#334155;">Office of Academic Affairs, Admissions &amp; Institutional Planning</div>
+                                </div>
+                            </div>
+                            <div style="text-align:right;font-size:0.75rem;color:#475569;">
+                                <div><strong>DOCUMENT:</strong> OFFICIAL ANALYTICS REPORT</div>
+                                <div><strong>GENERATED:</strong> {{ printDateFormatted }}</div>
+                                <div><strong>OPERATOR:</strong> {{ currentAdmin ? (currentAdmin.name || currentAdmin.username) : 'System Administrator' }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Active Scope Parameters Ribbon -->
+                        <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 12px;margin-bottom:14px;font-size:0.78rem;">
+                            <strong>APPLIED SCOPE &amp; FILTERS:</strong> {{ activeFilterSummary }}
+                        </div>
+
+                        <!-- Institutional Executive Summary Grid -->
+                        <div style="margin-bottom:14px;">
+                            <div style="font-size:0.85rem;font-weight:800;color:#006A4E;margin-bottom:6px;text-transform:uppercase;">
+                                I. Executive Enrollment &amp; Financial Summary
+                            </div>
+                            <table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:10px;">
+                                <tr>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;background:#f8fafc;"><strong>Total Registrations:</strong></td>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;">{{ dashboardStats.kpi?.total ?? dashboardStats.total }}</td>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;background:#f8fafc;"><strong>Total Assessed Fees:</strong></td>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;">₱{{ Number(financialMetrics.total_assessed || 0).toLocaleString() }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;background:#f8fafc;"><strong>Officially Enrolled:</strong></td>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;color:#006A4E;font-weight:700;">{{ dashboardStats.kpi?.enrolled ?? dashboardStats.enrolled }} ({{ dashboardStats.kpi?.conversion_rate ?? totalEnrolledRate }}%)</td>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;background:#f8fafc;"><strong>Revenue Collected:</strong></td>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;color:#059669;font-weight:700;">₱{{ Number(financialMetrics.total_collected || 0).toLocaleString() }} ({{ financialMetrics.collection_rate || 0 }}%)</td>
+                                </tr>
+                                <tr>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;background:#f8fafc;"><strong>Active In-Pipeline:</strong></td>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;">{{ dashboardStats.kpi?.in_pipeline ?? dashboardStats.verified }}</td>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;background:#f8fafc;"><strong>Outstanding Balances:</strong></td>
+                                    <td style="border:1px solid #cbd5e1;padding:6px;color:#d97706;font-weight:700;">₱{{ Number(financialMetrics.outstanding_balance || 0).toLocaleString() }}</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Formal Detailed Academic Program Distribution Table -->
+                        <div style="margin-bottom:14px;">
+                            <div style="font-size:0.85rem;font-weight:800;color:#006A4E;margin-bottom:6px;text-transform:uppercase;">
+                                II. Academic Program Enrollment &amp; Utilization Roster
+                            </div>
+                            <table class="tbl" style="width:100%;border-collapse:collapse;font-size:7.5pt;">
+                                <thead>
+                                    <tr style="background:#f1f5f9;">
+                                        <th style="border:1px solid #cbd5e1;padding:5px;">Code</th>
+                                        <th style="border:1px solid #cbd5e1;padding:5px;">Program Title</th>
+                                        <th style="border:1px solid #cbd5e1;padding:5px;">Department</th>
+                                        <th style="border:1px solid #cbd5e1;padding:5px;text-align:center;">Registered</th>
+                                        <th style="border:1px solid #cbd5e1;padding:5px;text-align:center;">Enrolled</th>
+                                        <th style="border:1px solid #cbd5e1;padding:5px;text-align:center;">In-Progress</th>
+                                        <th style="border:1px solid #cbd5e1;padding:5px;text-align:center;">Conversion</th>
+                                        <th style="border:1px solid #cbd5e1;padding:5px;text-align:center;">Capacity</th>
+                                        <th style="border:1px solid #cbd5e1;padding:5px;text-align:center;">Utilization</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="prog in detailedProgramStats" :key="'print-prog-' + prog.code">
+                                        <td style="border:1px solid #e2e8f0;padding:4px 6px;font-weight:700;">{{ prog.code }}</td>
+                                        <td style="border:1px solid #e2e8f0;padding:4px 6px;">{{ prog.name }}</td>
+                                        <td style="border:1px solid #e2e8f0;padding:4px 6px;">{{ prog.department || 'N/A' }}</td>
+                                        <td style="border:1px solid #e2e8f0;padding:4px 6px;text-align:center;">{{ prog.count }}</td>
+                                        <td style="border:1px solid #e2e8f0;padding:4px 6px;text-align:center;font-weight:700;">{{ prog.enrolled }}</td>
+                                        <td style="border:1px solid #e2e8f0;padding:4px 6px;text-align:center;">{{ prog.pending }}</td>
+                                        <td style="border:1px solid #e2e8f0;padding:4px 6px;text-align:center;">{{ prog.conversionRate }}%</td>
+                                        <td style="border:1px solid #e2e8f0;padding:4px 6px;text-align:center;">{{ prog.capacity || 0 }}</td>
+                                        <td style="border:1px solid #e2e8f0;padding:4px 6px;text-align:center;">{{ prog.utilization || 0 }}%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 3-Column Institutional Sign-Off Block -->
+                        <div class="print-sign-grid">
+                            <div class="sign-box">
+                                <div style="font-weight:700;margin-bottom:2px;">{{ currentAdmin ? (currentAdmin.name || currentAdmin.username) : 'System Administrator' }}</div>
+                                <div style="color:#64748b;">Prepared by (Administrator / Analyst)</div>
+                            </div>
+                            <div class="sign-box">
+                                <div style="font-weight:700;margin-bottom:2px;">Office of the College Registrar</div>
+                                <div style="color:#64748b;">Certified Correct &amp; Verified</div>
+                            </div>
+                            <div class="sign-box">
+                                <div style="font-weight:700;margin-bottom:2px;">Executive Vice President / Dean</div>
+                                <div style="color:#64748b;">Approved for Institutional Records</div>
                             </div>
                         </div>
                     </div>
@@ -1853,9 +2426,8 @@
                                 <span><i class="fa-solid fa-graduation-cap"></i> Academic Programs</span>
                                 <span v-if="selectedDeptName" style="font-size:0.7rem;color:var(--gold);margin-top:2px">Filtering: {{ selectedDeptName }}</span>
                             </span>
-                            <div style="display:flex;gap:8px">
-                                <button v-if="selectedDeptName" class="btn-sm-warn" @click="selectedDeptName=''">Clear Filter</button>
-                                <button class="btn-add" @click="openAddProgramModal"><i class="fa-solid fa-plus" style="margin-right:6px"></i>Add Program</button>
+                            <div v-if="selectedDeptName" style="display:flex;gap:8px">
+                                <button class="btn-sm-warn" @click="selectedDeptName=''">Clear Filter</button>
                             </div>
                         </div>
                         <div class="table-responsive" style="margin-top:10px">
@@ -2236,7 +2808,7 @@
                                         <td style="font-size:.78rem">{{ p.enrollmentStart || '—' }}</td>
                                         <td style="font-size:.78rem">{{ p.enrollmentEnd   || '—' }}</td>
                                         <td>
-                                            <span v-if="sections.filter(s => s.academicPeriodId === p.id).length > 0" class="badge badge-active" style="font-size:.65rem" :title="sections.filter(s => s.academicPeriodId === p.id).length + ' section(s) linked'"><i class="fa-solid fa-shapes" style="margin-right:3px"></i>{{ sections.filter(s => s.academicPeriodId === p.id).length }} section(s)</span>
+                                            <span v-if="getSectionsForPeriod(p.id).length > 0" class="badge badge-active" style="font-size:.65rem" :title="getSectionsForPeriod(p.id).length + ' section(s) linked'"><i class="fa-solid fa-shapes" style="margin-right:3px"></i>{{ getSectionsForPeriod(p.id).length }} section(s)</span>
                                             <span v-else style="font-size:.72rem;color:var(--text-light)">None</span>
                                         </td>
                                         <td><span class="badge" :class="p.status==='Active'?'badge-active':'badge-deact'">{{ p.status }}</span></td>
@@ -2366,7 +2938,7 @@
                                     <td><span style="font-size:.78rem;color:var(--text-muted)">{{ s.adviser || 'None' }}</span></td>
                                     <td>{{ s.capacity }}</td>
                                     <td>
-                                        <span v-if="classOfferings.filter(o => o.sectionId === s.id).length > 0" class="badge" style="font-size:.65rem;background:var(--sky);color:#fff" :title="classOfferings.filter(o => o.sectionId === s.id).length + ' class offering(s)'"><i class="fa-solid fa-calendar" style="margin-right:3px"></i>{{ classOfferings.filter(o => o.sectionId === s.id).length }}</span>
+                                        <span v-if="getClassOfferingsForSection(s.id).length > 0" class="badge" style="font-size:.65rem;background:var(--sky);color:#fff" :title="getClassOfferingsForSection(s.id).length + ' class offering(s)'"><i class="fa-solid fa-calendar" style="margin-right:3px"></i>{{ getClassOfferingsForSection(s.id).length }}</span>
                                         <span v-else style="font-size:.72rem;color:var(--text-light)">0</span>
                                     </td>
                                     <td class="text-end"><span style="display:flex;gap:6px;justify-content:flex-end">
@@ -3707,6 +4279,6 @@
 
 </div><!-- /app -->
 
-<script src="assets/js/controllers/AdminController.js?v=20260822_swal"></script>
+<script src="assets/js/controllers/AdminController.js?v=20260828_v2"></script>
 </body>
 </html>

@@ -203,9 +203,143 @@ assertSecurity(
 );
 $htaccessContent = file_get_contents($htaccessPath);
 assertSecurity(
-    str_contains($htaccessContent, 'php_flag engine off') && str_contains($htaccessContent, 'Deny from all'),
+    str_contains($htaccessContent, 'php_flag engine off') && (str_contains($htaccessContent, 'Require all denied') || str_contains($htaccessContent, 'Deny from all')),
     "uploads/.htaccess disables PHP engine and denies script execution"
 );
+
+// ── TEST 7: IDOR Protection on Public Document Uploads ──
+echo "\n7. IDOR Protection on Public Document Uploads\n";
+// Clear session to simulate unauthenticated public applicant
+$_SESSION = [];
+
+require_once __DIR__ . '/../../api/models/StudentModel.php';
+$studentModel = new StudentModel($pdo);
+$seedCreated = $studentModel->createPreEnrollment([
+    'firstName' => 'IDOR',
+    'lastName'  => 'Tester',
+    'email'     => 'idor.test@gncp.edu.ph',
+    'courseCode'=> 'BSIT',
+    'phone'     => '09170000000'
+]);
+$seedRef = $seedCreated['referenceNumber'];
+$seedPin = $seedCreated['tempPin'];
+
+// 7.1: Unauthenticated upload without PIN should be rejected (401)
+$noPinUpload = $studentCtrl->uploadDocument([
+    'studentId' => $seedRef,
+    'docKey'    => 'birth_certificate',
+    'fileName'  => 'birth_cert.pdf',
+    'fileData'  => 'data:application/pdf;base64,' . base64_encode($validPdf)
+]);
+assertSecurity(
+    $noPinUpload['success'] === false && ($noPinUpload['code'] ?? 0) === 401,
+    "Unauthenticated document upload without PIN rejected (401 Unauthorized)"
+);
+
+// 7.2: Unauthenticated upload with wrong PIN should be rejected (401)
+$wrongPinUpload = $studentCtrl->uploadDocument([
+    'studentId' => $seedRef,
+    'pin'       => '000000',
+    'docKey'    => 'birth_certificate',
+    'fileName'  => 'birth_cert.pdf',
+    'fileData'  => 'data:application/pdf;base64,' . base64_encode($validPdf)
+]);
+assertSecurity(
+    $wrongPinUpload['success'] === false && ($wrongPinUpload['code'] ?? 0) === 401,
+    "Unauthenticated document upload with wrong PIN rejected (401 Unauthorized)"
+);
+
+// 7.3: Unauthenticated upload with correct PIN should succeed
+$validPinUpload = $studentCtrl->uploadDocument([
+    'studentId' => $seedRef,
+    'pin'       => $seedPin,
+    'docKey'    => 'birth_certificate',
+    'fileName'  => 'birth_cert.pdf',
+    'fileData'  => 'data:application/pdf;base64,' . base64_encode($validPdf)
+]);
+assertSecurity(
+    $validPinUpload['success'] === true,
+    "Unauthenticated document upload with matching PIN accepted"
+);
+
+// ── TEST 8: Station Role-to-Status Mutation Boundaries ──
+echo "\n8. Station Role-to-Status Mutation Boundaries\n";
+require_once __DIR__ . '/../../api/controllers/StationController.php';
+$stationCtrl = new StationController($pdo);
+
+// 8.1: Helpdesk attempting to transition status to PAID should be rejected (403)
+$_SESSION['gncp_station_user'] = [
+    'username' => 'helpdesk_officer',
+    'role'     => 'HELPDESK',
+    'name'     => 'Helpdesk Staff'
+];
+$helpdeskIllegalPaid = $stationCtrl->updateStudent([
+    'referenceNumber' => $seedRef,
+    'updateData' => ['status' => 'PAID']
+]);
+assertSecurity(
+    $helpdeskIllegalPaid['success'] === false && ($helpdeskIllegalPaid['code'] ?? 0) === 403,
+    "Helpdesk officer prohibited from setting status to PAID (403 Forbidden)"
+);
+
+// 8.2: Helpdesk attempting to promote to ENROLLED should be rejected (403)
+$helpdeskIllegalEnrolled = $stationCtrl->updateStudent([
+    'referenceNumber' => $seedRef,
+    'updateData' => ['status' => 'ENROLLED']
+]);
+assertSecurity(
+    $helpdeskIllegalEnrolled['success'] === false && ($helpdeskIllegalEnrolled['code'] ?? 0) === 403,
+    "Helpdesk officer prohibited from setting status to ENROLLED (403 Forbidden)"
+);
+
+// 8.3: Cashier attempting to transition status to VERIFIED should be rejected (403)
+$_SESSION['gncp_station_user'] = [
+    'username' => 'cashier_officer',
+    'role'     => 'CASHIER',
+    'name'     => 'Cashier Staff'
+];
+$cashierIllegalVerified = $stationCtrl->updateStudent([
+    'referenceNumber' => $seedRef,
+    'updateData' => ['status' => 'VERIFIED']
+]);
+assertSecurity(
+    $cashierIllegalVerified['success'] === false && ($cashierIllegalVerified['code'] ?? 0) === 403,
+    "Cashier officer prohibited from setting status to VERIFIED (403 Forbidden)"
+);
+
+// ── TEST 9: CSPRNG PIN and Password Randomness ──
+echo "\n9. CSPRNG Randomness Verification\n";
+require_once __DIR__ . '/../../api/models/StudentModel.php';
+$studentModel = new StudentModel($pdo);
+$newReg = $studentModel->createPreEnrollment([
+    'firstName' => 'CSPRNG',
+    'lastName'  => 'Verification',
+    'courseCode'=> 'BSIT',
+    'email'     => 'csprng.test@gncp.edu.ph'
+]);
+assertSecurity(
+    isset($newReg['tempPin']) && strlen($newReg['tempPin']) === 6 && is_numeric($newReg['tempPin']),
+    "Pre-enrollment generates cryptographically random 6-digit PIN: " . ($newReg['tempPin'] ?? 'N/A')
+);
+
+// ── TEST 10: PayMongo Tuition Balance Validation ──
+echo "\n10. PayMongo Tuition Balance & Status Verification\n";
+require_once __DIR__ . '/../../shared/backend/services/PayMongoService.php';
+
+// 10.1: Rejection on PRE_REGISTERED applicant
+$pmPreRegRejected = false;
+try {
+    PayMongoService::createCheckoutSession($seedRef, 5000.00);
+} catch (DomainException $e) {
+    $pmPreRegRejected = str_contains($e->getMessage(), 'PRE_REGISTERED');
+} catch (Exception $e) {}
+assertSecurity(
+    $pmPreRegRejected,
+    "PayMongo rejects checkout session for PRE_REGISTERED applicant"
+);
+
+// Clean up test applicant
+$pdo->prepare("DELETE FROM `pre_enrollments` WHERE `temp_student_id` IN (:r1, :r2)")->execute([':r1' => $seedRef, ':r2' => $newReg['referenceNumber'] ?? '']);
 
 // ── SUMMARY ──
 echo "\n====================================================\n";

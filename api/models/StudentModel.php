@@ -26,7 +26,7 @@ class StudentModel {
 
     public function createPreEnrollment($data) {
         $refNo = $this->generateReferenceNumber();
-        $tempPin = str_pad((string)rand(0, 9999), 4, '0', STR_PAD_LEFT);
+        $tempPin = sprintf('%06d', random_int(100000, 999999));
         
         $sql = "INSERT INTO `pre_enrollments` (
             `temp_student_id`, `first_name`, `middle_name`, `last_name`, `email`, `phone`,
@@ -87,8 +87,8 @@ class StudentModel {
             'stype' => $data['studentType'] ?? ($data['student_type'] ?? 'FRESHMAN'),
             'track' => $data['shsTrack'] ?? ($data['shs_track'] ?? ''),
             'prev_college' => $data['previousCollege'] ?? ($data['previous_college'] ?? null),
-            'ccode' => $data['courseCode'] ?? ($data['course_code'] ?? 'BSIT'),
-            'year' => $data['yearLevelApplied'] ?? ($data['year_level_applied'] ?? '1st Year'),
+            'ccode' => $data['courseCode'] ?? ($data['course_code'] ?? ($data['course'] ?? ($data['program'] ?? 'BSIT'))),
+            'year' => $data['yearLevelApplied'] ?? ($data['year_level_applied'] ?? ($data['yearLevel'] ?? ($data['year_level'] ?? '1st Year'))),
             'elem' => $data['elementarySchool'] ?? ($data['elementary_school'] ?? ''),
             'jhs' => $data['juniorHighSchool'] ?? ($data['junior_high_school'] ?? ''),
             'shs' => $data['seniorHighSchool'] ?? ($data['senior_high_school'] ?? ''),

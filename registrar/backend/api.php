@@ -49,15 +49,20 @@ try {
 
             $studentsRaw = $pdo->query("SELECT * FROM `students` ORDER BY `id` DESC")->fetchAll(PDO::FETCH_ASSOC);
             $students = array_map(function($s) {
+                $enrollmentData = json_decode((string)($s['enrollment_data'] ?? ''), true) ?: [];
+                $helpdeskData   = json_decode((string)($s['helpdesk_data'] ?? ''), true) ?: [];
+                $assignedSec    = $enrollmentData['assignedSection'] ?? $helpdeskData['section'] ?? null;
                 return [
                     'id'                => $s['id'],
                     'name'              => $s['name'],
                     'program'           => $s['program'],
                     'email'             => $s['email'],
                     'photo'             => $s['photo'],
-                    'year_level'        => $s['year_level'],
+                    'year_level'        => !empty($s['year_level']) ? $s['year_level'] : '1st Year',
                     'status'            => $s['status'],
                     'temp_reference_no' => $s['temp_reference_no'],
+                    'assignedSection'   => $assignedSec,
+                    'sectionCode'       => $assignedSec,
                     'personalInfo'      => json_decode((string)($s['personal_info'] ?? ''), true) ?: null,
                     'academicInfo'      => json_decode((string)($s['academic_info'] ?? ''), true) ?: null,
                     'roadmap'           => json_decode((string)($s['roadmap'] ?? ''), true) ?: [],
@@ -65,7 +70,8 @@ try {
                     'medicalData'       => json_decode((string)($s['medical_data'] ?? ''), true) ?: null,
                     'scholarshipData'   => json_decode((string)($s['scholarship_data'] ?? ''), true) ?: null,
                     'paymentData'       => json_decode((string)($s['payment_data'] ?? ''), true) ?: null,
-                    'helpdeskData'      => json_decode((string)($s['helpdesk_data'] ?? ''), true) ?: null
+                    'helpdeskData'      => $helpdeskData ?: null,
+                    'enrollmentData'    => $enrollmentData ?: null
                 ];
             }, $studentsRaw);
 
@@ -95,7 +101,7 @@ try {
                     'tempPin'         => $row['temp_pin'],
                     'applicantName'   => $fullName ?: 'New Applicant',
                     'program'         => $row['course_code'],
-                    'yearLevel'       => $row['year_level_applied'] ?? '1st Year',
+                    'yearLevel'       => !empty($row['year_level_applied']) ? $row['year_level_applied'] : '1st Year',
                     'studentType'     => $row['student_type'] ?? 'FRESHMAN',
                     'shsTrack'        => $row['shs_track'] ?? '',
                     'academicInfo'    => [
@@ -143,10 +149,10 @@ try {
 
         case 'get_sections_for_program':
             $prog = $_GET['program'] ?? ($inputData['program'] ?? '');
-            $year = $_GET['year_level'] ?? ($inputData['year_level'] ?? '1st Year');
-            $sem  = $_GET['semester']   ?? ($inputData['semester']   ?? '1st Semester');
+            $year = isset($_GET['year_level']) ? $_GET['year_level'] : ($inputData['year_level'] ?? null);
+            $sem  = isset($_GET['semester']) ? $_GET['semester'] : ($inputData['semester'] ?? null);
             $res = SectionService::getSectionsForProgram($pdo, $prog, $year, $sem);
-            sendResponse($res['success'], $res['data'] ?? null, $res['message'] ?? null, $res['code'] ?? 200);
+            sendResponse($res['success'], $res['data'] ?? null, $res['message'] ?? null, $res['code'] ?? 200, ['allSections' => $res['allSections'] ?? []]);
             break;
 
         case 'save_program':
@@ -155,26 +161,24 @@ try {
         case 'delete_subject':
         case 'save_curriculum':
         case 'delete_curriculum':
+            include __DIR__ . '/../../admin/backend/catalog/catalog.php';
+            break;
+
         case 'save_academic_period':
         case 'delete_academic_period':
         case 'clone_previous_term':
         case 'save_section':
         case 'delete_section':
+        case 'save_fee':
+        case 'delete_fee':
+            include __DIR__ . '/../../admin/backend/term/term.php';
+            break;
+
+        case 'save_block_section':
         case 'save_subject_section':
         case 'delete_subject_section':
         case 'bulk_generate_sections':
-        case 'save_fee':
-        case 'delete_fee':
-            $submodules = [
-                __DIR__ . '/../../admin/backend/catalog/catalog.php',
-                __DIR__ . '/../../admin/backend/term/term.php',
-                __DIR__ . '/../../admin/backend/scheduling/scheduling.php'
-            ];
-            foreach ($submodules as $sub) {
-                if (file_exists($sub)) {
-                    include $sub;
-                }
-            }
+            include __DIR__ . '/../../admin/backend/scheduling/scheduling.php';
             break;
 
         default:

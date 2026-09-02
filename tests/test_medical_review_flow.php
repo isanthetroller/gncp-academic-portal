@@ -56,14 +56,18 @@ try {
         INSERT INTO `pre_enrollments` (
             `temp_student_id`, `temp_pin`, `student_type`, `course_code`, `nstp`,
             `first_name`, `last_name`, `email`, `phone`, `birth_date`, `gender`,
-            `address`, `health_status`, `medical_conditions`, `allergies`,
+            `address`, `elementary_school`, `junior_high_school`, `senior_high_school`,
+            `payment_mode`, `scholarship`,
+            `health_status`, `medical_conditions`, `allergies`,
             `current_medication`, `medication_details`, `fitness_participation`,
             `emergency_contact_name`, `emergency_contact_phone`, `status`,
             `roadmap`, `medical_data`, `created_at`
         ) VALUES (
             :ref, '1234', 'New Regular', 'BSIT', 'ROTC',
             'Alex', 'Reyes', :email, '09171234567', '2005-05-15', 'Male',
-            '123 Test Street, Manila', 'GOOD', 'Asthma', 'Peanuts',
+            '123 Test Street, Manila', 'GNCP Elem', 'GNCP JHS', 'GNCP SHS',
+            'CASH', 'NONE',
+            'GOOD', 'Asthma', 'Peanuts',
             1, 'Inhaler as needed', 1,
             'Maria Reyes', '09179998888', 'ADVISED',
             :roadmap, '{}', NOW()
@@ -168,6 +172,7 @@ try {
     $unfitRoadmap = $savedRoadmap;
     $unfitRoadmap[3]['status'] = 'PENDING';
     $unfitRecord = $dbRecord;
+    $unfitRecord['status'] = 'ADVISED';
     $unfitRecord['roadmap'] = json_encode($unfitRoadmap);
 
     $blocked = false;
