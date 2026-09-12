@@ -327,117 +327,83 @@ class StudentModel {
         return $deleted;
     }
 
-    public static function getDefaultRequirementsCatalog() {
-        return [
-            [
-                'key' => 'form_138',
-                'title' => 'Form 138 / Senior High Report Card',
-                'description' => 'Original or certified true copy of Form 138 / Grade 12 Report Card with passing marks.',
-                'required' => true,
-                'status' => 'NOT_SUBMITTED',
-                'softCopyUrl' => null,
-                'fileName' => null,
-                'fileType' => null,
-                'fileSize' => null,
-                'submittedAt' => null,
-                'verifiedAt' => null,
-                'verifiedBy' => null,
-                'isUndertaking' => false,
-                'undertakingReason' => null,
-                'undertakingDeadline' => null,
-                'registrarRemarks' => null
-            ],
-            [
-                'key' => 'psa_birth_cert',
-                'title' => 'PSA Authenticated Birth Certificate',
-                'description' => 'Clear colored scan or photocopy of Philippine Statistics Authority (PSA) Birth Certificate.',
-                'required' => true,
-                'status' => 'NOT_SUBMITTED',
-                'softCopyUrl' => null,
-                'fileName' => null,
-                'fileType' => null,
-                'fileSize' => null,
-                'submittedAt' => null,
-                'verifiedAt' => null,
-                'verifiedBy' => null,
-                'isUndertaking' => false,
-                'undertakingReason' => null,
-                'undertakingDeadline' => null,
-                'registrarRemarks' => null
-            ],
-            [
-                'key' => 'good_moral',
-                'title' => 'Certificate of Good Moral Character',
-                'description' => 'Original Good Moral Certificate issued by the high school principal or guidance counselor.',
-                'required' => true,
-                'status' => 'NOT_SUBMITTED',
-                'softCopyUrl' => null,
-                'fileName' => null,
-                'fileType' => null,
-                'fileSize' => null,
-                'submittedAt' => null,
-                'verifiedAt' => null,
-                'verifiedBy' => null,
-                'isUndertaking' => false,
-                'undertakingReason' => null,
-                'undertakingDeadline' => null,
-                'registrarRemarks' => null
-            ],
-            [
-                'key' => 'id_pictures',
-                'title' => '2x2 Recent Color ID Pictures',
-                'description' => '2 pieces 2x2 color photographs on white background with printed student name tag.',
-                'required' => true,
-                'status' => 'NOT_SUBMITTED',
-                'softCopyUrl' => null,
-                'fileName' => null,
-                'fileType' => null,
-                'fileSize' => null,
-                'submittedAt' => null,
-                'verifiedAt' => null,
-                'verifiedBy' => null,
-                'isUndertaking' => false,
-                'undertakingReason' => null,
-                'undertakingDeadline' => null,
-                'registrarRemarks' => null
-            ],
-            [
-                'key' => 'medical_clearance',
-                'title' => 'Campus Medical & Health Clearance',
-                'description' => 'Health clearance endorsed by GNCP Medical Services Unit or accredited clinical doctor.',
-                'required' => true,
-                'status' => 'NOT_SUBMITTED',
-                'softCopyUrl' => null,
-                'fileName' => null,
-                'fileType' => null,
-                'fileSize' => null,
-                'submittedAt' => null,
-                'verifiedAt' => null,
-                'verifiedBy' => null,
-                'isUndertaking' => false,
-                'undertakingReason' => null,
-                'undertakingDeadline' => null,
-                'registrarRemarks' => null
-            ],
-            [
-                'key' => 'undertaking_form',
-                'title' => 'Conditional Enrollment Undertaking Form',
-                'description' => 'Signed commitment agreement by student and guardian for temporary submission waivers.',
-                'required' => false,
-                'status' => 'NOT_SUBMITTED',
-                'softCopyUrl' => null,
-                'fileName' => null,
-                'fileType' => null,
-                'fileSize' => null,
-                'submittedAt' => null,
-                'verifiedAt' => null,
-                'verifiedBy' => null,
-                'isUndertaking' => false,
-                'undertakingReason' => null,
-                'undertakingDeadline' => null,
-                'registrarRemarks' => null
-            ]
-        ];
+    public static function getRequirementKey($title) {
+        $text = strtolower(trim((string)$title));
+        if (strpos($text, 'form 138') !== false || (strpos($text, 'report card') !== false && strpos($text, 'old high school') === false)) return 'reportCard';
+        if (strpos($text, 'psa') !== false || strpos($text, 'birth certificate') !== false) return 'psa';
+        if (strpos($text, 'good moral') !== false) return 'goodMoral';
+        if (strpos($text, '2x2') !== false || strpos($text, 'picture') !== false) return '2x2_picture';
+        return preg_replace('/[^a-z0-9]+/', '_', trim($text, '_'));
+    }
+
+    public static function getRequirementDescription($title) {
+        $t = strtolower((string)$title);
+        if (strpos($t, 'form 138') !== false || strpos($t, 'report card') !== false) {
+            return 'Original or certified true copy of Grade 12 Report Card (Form 138) with passing marks.';
+        }
+        if (strpos($t, 'good moral') !== false) {
+            return 'Original Certificate of Good Moral Character issued by the school principal or guidance counselor.';
+        }
+        if (strpos($t, 'psa') !== false || strpos($t, 'birth certificate') !== false) {
+            return 'Clear copy of Philippine Statistics Authority (PSA) authenticated Birth Certificate.';
+        }
+        if (strpos($t, '2x2') !== false || strpos($t, 'picture') !== false) {
+            return 'Two (2) pieces 2x2 color photographs on white background with student name tag.';
+        }
+        if (strpos($t, 'tor') !== false || strpos($t, 'transcript') !== false || strpos($t, 'grades') !== false) {
+            return 'Official Transcript of Records (TOR) or certified copy of grades from previous institution.';
+        }
+        if (strpos($t, 'honorable dismissal') !== false || strpos($t, 'transfer') !== false) {
+            return 'Original Certificate of Honorable Dismissal or Transfer Credentials.';
+        }
+        if (strpos($t, 'als') !== false) {
+            return 'Official Alternative Learning System (ALS) Certificate of Rating / Completion.';
+        }
+        if (strpos($t, 'clearance') !== false) {
+            return 'Institutional student clearance form endorsed from the previous term.';
+        }
+        return 'Official credential required for institutional enrollment verification.';
+    }
+
+    public static function getDefaultRequirementsCatalog($studentType = 'FRESHMAN', $shsTrack = '') {
+        if (!function_exists('getRequirementsForType')) {
+            require_once __DIR__ . '/../../shared/backend/utils/student.php';
+        }
+
+        $titles = function_exists('getRequirementsForType') 
+            ? getRequirementsForType($studentType, $shsTrack) 
+            : [
+                'Form 138 (Original Senior High School Report Card)',
+                'Original Certificate of Good Moral Character (with dry seal)',
+                'PSA Birth Certificate (Photocopy)',
+                '2 pieces recent 2x2 color pictures (white background with name tag)'
+            ];
+
+        $catalog = [];
+        foreach ($titles as $t) {
+            $key = self::getRequirementKey($t);
+            $catalog[] = [
+                'key'                => $key,
+                'title'              => $t,
+                'description'        => self::getRequirementDescription($t),
+                'required'           => true,
+                'status'             => 'NOT_SUBMITTED',
+                'submissionMode'     => 'HARDCOPY',
+                'isActionable'       => true,
+                'softCopyUrl'        => null,
+                'fileName'           => null,
+                'fileType'           => null,
+                'fileSize'           => null,
+                'submittedAt'        => null,
+                'verifiedAt'         => null,
+                'verifiedBy'         => null,
+                'isUndertaking'      => false,
+                'undertakingReason'  => null,
+                'undertakingDeadline'=> null,
+                'registrarRemarks'   => null
+            ];
+        }
+        return $catalog;
     }
 
     public function getStudentRequirements($identifier) {
@@ -467,73 +433,211 @@ class StudentModel {
             return null;
         }
 
-        $existingReqs = json_decode($row['requirements_data'] ?? '[]', true) ?: [];
-        $catalog = self::getDefaultRequirementsCatalog();
-        $mergedReqs = [];
+        $studentType = $row['student_type'] ?? 'FRESHMAN';
+        $shsTrack = $row['shs_track'] ?? '';
 
-        foreach ($catalog as $defaultDoc) {
-            $found = null;
-            // Match by key or title
-            foreach ($existingReqs as $item) {
-                $itemKey = strtolower($item['key'] ?? ($item['name'] ?? ''));
-                $defKey = strtolower($defaultDoc['key']);
-                if ($itemKey === $defKey || stripos($itemKey, str_replace('_', '', $defKey)) !== false || stripos($item['title'] ?? '', $defaultDoc['title']) !== false) {
-                    $found = $item;
-                    break;
+        // Dual-table merge for promoted students
+        if ($isOfficial) {
+            $refLookup = !empty($row['temp_reference_no']) ? $row['temp_reference_no'] : $row['id'];
+            $peStmt = $this->pdo->prepare("SELECT `student_type`, `shs_track`, `requirements_data`, `status`, `roadmap` FROM `pre_enrollments` WHERE `temp_student_id` = :r1 OR `existing_student_id` = :r2 LIMIT 1");
+            $peStmt->execute(['r1' => $refLookup, 'r2' => $row['id']]);
+            $peRow = $peStmt->fetch(PDO::FETCH_ASSOC);
+            if ($peRow) {
+                if (empty($studentType) || $studentType === 'FRESHMAN') {
+                    $studentType = $peRow['student_type'] ?? $studentType;
                 }
-            }
-
-            if ($found) {
-                $status = strtoupper($found['status'] ?? 'NOT_SUBMITTED');
-                $isUndertaking = !empty($found['isUndertaking']) || !empty($found['undertaking']) || $status === 'UNDERTAKING';
-                if ($isUndertaking && $status !== 'VERIFIED') {
-                    $status = 'UNDERTAKING';
+                if (empty($shsTrack)) {
+                    $shsTrack = $peRow['shs_track'] ?? $shsTrack;
                 }
-
-                $mergedReqs[] = [
-                    'key' => $defaultDoc['key'],
-                    'title' => $defaultDoc['title'],
-                    'description' => $defaultDoc['description'],
-                    'required' => $defaultDoc['required'],
-                    'status' => $status,
-                    'softCopyUrl' => $found['softCopyUrl'] ?? ($found['fileUrl'] ?? ($found['url'] ?? null)),
-                    'fileName' => $found['fileName'] ?? ($found['name'] ?? null),
-                    'fileType' => $found['fileType'] ?? ($found['type'] ?? null),
-                    'fileSize' => $found['fileSize'] ?? ($found['size'] ?? null),
-                    'submittedAt' => $found['submittedAt'] ?? ($found['uploadedAt'] ?? null),
-                    'verifiedAt' => $found['verifiedAt'] ?? null,
-                    'verifiedBy' => $found['verifiedBy'] ?? null,
-                    'isUndertaking' => $isUndertaking,
-                    'undertakingReason' => $found['undertakingReason'] ?? ($found['reason'] ?? null),
-                    'undertakingDeadline' => $found['undertakingDeadline'] ?? ($found['deadline'] ?? null),
-                    'registrarRemarks' => $found['registrarRemarks'] ?? ($found['remarks'] ?? null)
-                ];
-            } else {
-                $mergedReqs[] = $defaultDoc;
+                if (empty($row['requirements_data']) && !empty($peRow['requirements_data'])) {
+                    $row['requirements_data'] = $peRow['requirements_data'];
+                }
+                if (empty($row['roadmap']) && !empty($peRow['roadmap'])) {
+                    $row['roadmap'] = $peRow['roadmap'];
+                }
             }
         }
 
-        // Summary calculations
-        $totalRequired = 0;
-        $verifiedCount = 0;
-        $pendingReviewCount = 0;
+        $rawReqData = json_decode((string)($row['requirements_data'] ?? '[]'), true) ?: [];
+
+        // ── Detect Registrar Processing & Approval ────────────────────────────────
+        $recordStatus = strtoupper($row['status'] ?? '');
+        $reqDataStatus = strtoupper($rawReqData['status'] ?? '');
+
+        $roadmap = json_decode((string)($row['roadmap'] ?? '[]'), true) ?: [];
+        $roadmapRegistrarDone = false;
+        if (is_array($roadmap)) {
+            foreach ($roadmap as $step) {
+                $stepId = $step['stepId'] ?? ($step['id'] ?? '');
+                if (($stepId === 'registrar_verification' || $stepId == 2) && strtoupper($step['status'] ?? '') === 'COMPLETED') {
+                    $roadmapRegistrarDone = true;
+                    break;
+                }
+            }
+        }
+
+        // Student is considered processed/approved by Registrar if:
+        // - Already promoted to official students table, OR
+        // - Status is VERIFIED, APPROVED, ADVISED, MEDICAL_CLEARED, PAID, ENROLLED, ACTIVE, OR
+        // - requirements_data.status is VERIFIED, APPROVED, REGISTRAR_APPROVED, COMPLETED, OR
+        // - Roadmap registrar verification step is marked COMPLETED
+        $isRegistrarProcessed = (
+            $isOfficial ||
+            in_array($recordStatus, ['VERIFIED', 'APPROVED', 'REGISTRAR_APPROVED', 'ADVISED', 'MEDICAL_CLEARED', 'PAID', 'ENROLLED', 'ACTIVE']) ||
+            in_array($reqDataStatus, ['VERIFIED', 'APPROVED', 'REGISTRAR_APPROVED', 'COMPLETED']) ||
+            $roadmapRegistrarDone
+        );
+
+        // ── Normalized Map Extraction ─────────────────────────────────────────────
+        $normalizedMap = [];
+
+        // Format A: registrar object with docs sub-key
+        if (!empty($rawReqData['docs']) && is_array($rawReqData['docs'])) {
+            foreach ($rawReqData['docs'] as $docKey => $entry) {
+                if (!is_array($entry)) {
+                    $entry = ['status' => (string)$entry];
+                }
+                $normalizedMap[$docKey] = $entry;
+            }
+        } elseif (is_array($rawReqData) && isset($rawReqData[0])) {
+            // Format B: flat array of requirement objects
+            foreach ($rawReqData as $item) {
+                if (is_array($item) && !empty($item['key'])) {
+                    $normalizedMap[$item['key']] = $item;
+                }
+            }
+        } elseif (is_array($rawReqData) && !empty($rawReqData)) {
+            foreach ($rawReqData as $k => $v) {
+                if (is_string($k) && !in_array($k, ['status','notes','verifiedBy','dateVerified','returnReason','returnedBy','dateReturned','files','transmittal'])) {
+                    $normalizedMap[$k] = is_array($v) ? $v : ['status' => (string)$v];
+                }
+            }
+        }
+
+        // Merge files metadata if available (from pre-enrollment upload)
+        if (!empty($rawReqData['files']) && is_array($rawReqData['files'])) {
+            foreach ($rawReqData['files'] as $fKey => $fMeta) {
+                if (is_array($fMeta)) {
+                    if (!isset($normalizedMap[$fKey])) {
+                        $normalizedMap[$fKey] = [];
+                    }
+                    $normalizedMap[$fKey]['softCopyUrl'] = $fMeta['filePath'] ?? ($fMeta['url'] ?? null);
+                    $normalizedMap[$fKey]['fileName']    = $fMeta['fileName'] ?? null;
+                    $normalizedMap[$fKey]['fileType']    = $fMeta['fileType'] ?? null;
+                    $normalizedMap[$fKey]['fileSize']    = $fMeta['fileSize'] ?? null;
+                    $normalizedMap[$fKey]['submittedAt'] = $fMeta['uploadedAt'] ?? null;
+                }
+            }
+        }
+
+        // ── Build Applicable Requirements Catalog ────────────────────────────────
+        if (!function_exists('getRequirementsForType')) {
+            require_once __DIR__ . '/../../shared/backend/utils/student.php';
+        }
+
+        $applicableTitles = function_exists('getRequirementsForType')
+            ? getRequirementsForType($studentType, $shsTrack)
+            : [
+                'Form 138 (Original Senior High School Report Card)',
+                'Original Certificate of Good Moral Character (with dry seal)',
+                'PSA Birth Certificate (Photocopy)',
+                '2 pieces recent 2x2 color pictures (white background with name tag)'
+            ];
+
+        $mergedReqs = [];
+        $actionableReqs = [];
+        $completedReqs = [];
         $undertakingCount = 0;
         $missingCount = 0;
 
-        foreach ($mergedReqs as $doc) {
-            if ($doc['required']) {
-                $totalRequired++;
+        foreach ($applicableTitles as $title) {
+            $key = self::getRequirementKey($title);
+
+            // Find matching entry in normalized map
+            $found = $normalizedMap[$key] ?? null;
+            if (!$found) {
+                foreach ($normalizedMap as $mKey => $mVal) {
+                    $lowerMKey = strtolower($mKey);
+                    if ($lowerMKey === strtolower($key) ||
+                        ($key === 'reportCard' && in_array($lowerMKey, ['form_138', 'report_card', 'form138'])) ||
+                        ($key === 'psa' && in_array($lowerMKey, ['psa_birth_cert', 'birth_cert', 'psa_birth_certificate'])) ||
+                        ($key === 'goodMoral' && in_array($lowerMKey, ['good_moral', 'moral_character', 'goodmoral'])) ||
+                        (strpos($key, '2x2') !== false && (strpos($lowerMKey, '2x2') !== false || strpos($lowerMKey, 'picture') !== false || strpos($lowerMKey, 'id_picture') !== false))) {
+                        $found = $mVal;
+                        break;
+                    }
+                }
             }
-            if ($doc['status'] === 'VERIFIED') {
-                $verifiedCount++;
-            } elseif ($doc['status'] === 'UNDER_REVIEW' || $doc['status'] === 'SUBMITTED') {
-                $pendingReviewCount++;
-            } elseif ($doc['status'] === 'UNDERTAKING') {
+
+            $rawStatus = strtoupper(is_array($found) ? ($found['status'] ?? '') : (string)($found ?? ''));
+            $isUndertaking = ($rawStatus === 'UNDERTAKING' || !empty($found['isUndertaking']));
+            $softCopyUrl = $found['softCopyUrl'] ?? ($found['fileUrl'] ?? ($found['filePath'] ?? null));
+            $fileName    = $found['fileName'] ?? ($found['name'] ?? null);
+
+            // Determine canonical portal status and actionability
+            if ($isUndertaking) {
+                // Specifically marked as Undertaking by Registrar -> actionable until fulfilled
+                $status = 'UNDERTAKING';
+                $isActionable = true;
+                $submissionMode = 'UNDERTAKING';
                 $undertakingCount++;
+            } elseif ($rawStatus === 'REJECTED') {
+                // Registrar rejected requirement -> requires resubmission/action
+                $status = 'REJECTED';
+                $isActionable = true;
+                $submissionMode = $softCopyUrl ? 'DIGITAL_UPLOAD' : 'HARDCOPY';
+                $missingCount++;
+            } elseif (in_array($rawStatus, ['ORIGINAL', 'PHOTOCOPY', 'VERIFIED', 'APPROVED'])) {
+                // Document received and verified by Registrar (Hardcopy or approved softcopy)
+                $status = 'VERIFIED';
+                $isActionable = false;
+                $submissionMode = in_array($rawStatus, ['ORIGINAL', 'PHOTOCOPY']) ? 'HARDCOPY' : ($softCopyUrl ? 'DIGITAL_UPLOAD' : 'HARDCOPY');
+            } elseif ($isRegistrarProcessed) {
+                // Rule 1 & 2: If the Registrar approved the student, unuploaded documents are Hardcopies
+                // received and approved during in-person verification. They are COMPLETE.
+                $status = 'VERIFIED';
+                $isActionable = false;
+                $submissionMode = in_array($rawStatus, ['ORIGINAL', 'PHOTOCOPY']) ? 'HARDCOPY' : ($softCopyUrl ? 'DIGITAL_UPLOAD' : 'HARDCOPY');
             } else {
-                if ($doc['required']) {
+                // Registrar has NOT yet processed application (PRE_REGISTERED)
+                if ($softCopyUrl || in_array($rawStatus, ['SUBMITTED', 'PENDING_REVIEW'])) {
+                    $status = 'UNDER_REVIEW';
+                    $isActionable = false;
+                    $submissionMode = 'DIGITAL_UPLOAD';
+                } else {
+                    $status = 'NOT_SUBMITTED';
+                    $isActionable = true;
+                    $submissionMode = 'HARDCOPY';
                     $missingCount++;
                 }
+            }
+
+            $docObj = [
+                'key'                 => $key,
+                'title'               => $title,
+                'description'         => self::getRequirementDescription($title),
+                'required'            => true,
+                'status'              => $status,
+                'submissionMode'      => $submissionMode,
+                'isActionable'        => $isActionable,
+                'softCopyUrl'         => $softCopyUrl,
+                'fileName'            => $fileName,
+                'fileType'            => $found['fileType'] ?? null,
+                'fileSize'            => $found['fileSize'] ?? null,
+                'submittedAt'         => $found['submittedAt'] ?? ($found['dateUpdated'] ?? null),
+                'verifiedAt'          => ($status === 'VERIFIED') ? ($rawReqData['dateVerified'] ?? ($found['dateUpdated'] ?? null)) : null,
+                'verifiedBy'          => ($status === 'VERIFIED') ? ($rawReqData['verifiedBy'] ?? 'Registrar Officer') : null,
+                'isUndertaking'       => $isUndertaking,
+                'undertakingReason'   => $found['remarks'] ?? ($found['undertakingReason'] ?? null),
+                'undertakingDeadline' => $found['deadline'] ?? ($found['undertakingDeadline'] ?? null),
+                'registrarRemarks'    => $found['remarks'] ?? ($found['registrarRemarks'] ?? null),
+            ];
+
+            $mergedReqs[] = $docObj;
+            if ($isActionable) {
+                $actionableReqs[] = $docObj;
+            } else {
+                $completedReqs[] = $docObj;
             }
         }
 
@@ -541,118 +645,170 @@ class StudentModel {
         $studentId = $isOfficial ? ($row['id'] ?? '') : ($row['temp_student_id'] ?? '');
 
         return [
-            'studentId' => $studentId,
-            'studentName' => trim($studentName),
-            'email' => $row['email'] ?? '',
-            'program' => $row['program'] ?? ($row['course_code'] ?? ''),
-            'isOfficial' => $isOfficial,
-            'requirements' => $mergedReqs,
+            'studentId'             => $studentId,
+            'studentName'           => trim($studentName),
+            'email'                 => $row['email'] ?? '',
+            'program'               => $row['program'] ?? ($row['course_code'] ?? ''),
+            'studentType'           => $studentType,
+            'isOfficial'            => $isOfficial,
+            'isRegistrarProcessed'  => $isRegistrarProcessed,
+            'requirements'          => $mergedReqs,
+            'pendingRequirements'   => $actionableReqs,
+            'completedRequirements' => $completedReqs,
             'stats' => [
-                'totalRequired' => $totalRequired,
-                'verifiedCount' => $verifiedCount,
-                'pendingReviewCount' => $pendingReviewCount,
-                'undertakingCount' => $undertakingCount,
-                'missingCount' => $missingCount,
-                'isFullyCompliant' => ($verifiedCount >= $totalRequired && $undertakingCount === 0)
+                'totalRequired'       => count($mergedReqs),
+                'completedCount'      => count($completedReqs),
+                'verifiedCount'       => count($completedReqs),
+                'pendingReviewCount'  => count(array_filter($mergedReqs, fn($d) => $d['status'] === 'UNDER_REVIEW')),
+                'undertakingCount'    => $undertakingCount,
+                'actionableCount'     => count($actionableReqs),
+                'missingCount'        => $missingCount,
+                'isFullyCompliant'    => (count($actionableReqs) === 0),
+                'isComplete'          => (count($actionableReqs) === 0)
             ]
         ];
     }
 
     public function saveStudentDocument($identifier, $docKey, $softCopyUrl, $fileName, $fileType, $fileSize, $isUndertaking = false, $undertakingReason = '', $undertakingDeadline = '') {
-        $studentReqs = $this->getStudentRequirements($identifier);
-        if (!$studentReqs) {
-            throw new Exception("Student record not found for reference: {$identifier}");
-        }
-
-        $reqs = $studentReqs['requirements'];
-        $foundIdx = -1;
-
-        foreach ($reqs as $i => $r) {
-            if ($r['key'] === $docKey) {
-                $foundIdx = $i;
-                break;
-            }
-        }
-
-        $newDoc = [
-            'key' => $docKey,
-            'title' => $foundIdx >= 0 ? $reqs[$foundIdx]['title'] : ucwords(str_replace('_', ' ', $docKey)),
-            'description' => $foundIdx >= 0 ? $reqs[$foundIdx]['description'] : '',
-            'required' => $foundIdx >= 0 ? $reqs[$foundIdx]['required'] : true,
-            'status' => 'UNDER_REVIEW',
-            'softCopyUrl' => $softCopyUrl,
-            'fileName' => $fileName,
-            'fileType' => $fileType,
-            'fileSize' => $fileSize,
-            'submittedAt' => date('Y-m-d H:i:s'),
-            'verifiedAt' => null,
-            'verifiedBy' => null,
-            'isUndertaking' => (bool)$isUndertaking,
-            'undertakingReason' => $undertakingReason ?: null,
-            'undertakingDeadline' => $undertakingDeadline ?: null,
-            'registrarRemarks' => null
-        ];
-
-        if ($foundIdx >= 0) {
-            $reqs[$foundIdx] = $newDoc;
-        } else {
-            $reqs[] = $newDoc;
-        }
-
-        $jsonReqs = json_encode($reqs);
         $cleanId = trim((string)$identifier);
+        $studentReqs = $this->getStudentRequirements($cleanId);
+        if (!$studentReqs) {
+            throw new Exception("Student record not found for reference: {$cleanId}");
+        }
+
+        // Fetch existing raw requirements_data to maintain original structure
+        $rawStmt = $this->pdo->prepare($studentReqs['isOfficial']
+            ? "SELECT `requirements_data` FROM `students` WHERE `id` = :id OR `temp_reference_no` = :ref OR `email` = :email LIMIT 1"
+            : "SELECT `requirements_data` FROM `pre_enrollments` WHERE `temp_student_id` = :id OR `email` = :email OR `id` = :ref LIMIT 1"
+        );
+        $rawStmt->execute(['id' => $cleanId, 'ref' => $cleanId, 'email' => $cleanId]);
+        $rawJson = $rawStmt->fetchColumn();
+        $rawObj = json_decode((string)$rawJson, true) ?: [];
+
+        if (is_array($rawObj) && (isset($rawObj['docs']) || isset($rawObj['status']))) {
+            // Format A: preserve registrar object structure
+            if (!isset($rawObj['docs'])) $rawObj['docs'] = [];
+            $prevEntry = $rawObj['docs'][$docKey] ?? [];
+            if (!is_array($prevEntry)) $prevEntry = ['status' => (string)$prevEntry];
+
+            $rawObj['docs'][$docKey] = array_merge($prevEntry, [
+                'status'      => 'UNDER_REVIEW',
+                'softCopyUrl' => $softCopyUrl,
+                'fileName'    => $fileName,
+                'fileType'    => $fileType,
+                'fileSize'    => $fileSize,
+                'submittedAt' => date('Y-m-d H:i:s')
+            ]);
+            if ($isUndertaking) {
+                $rawObj['docs'][$docKey]['isUndertaking'] = true;
+                if ($undertakingReason) $rawObj['docs'][$docKey]['remarks'] = $undertakingReason;
+                if ($undertakingDeadline) $rawObj['docs'][$docKey]['deadline'] = $undertakingDeadline;
+            }
+            $finalPayload = json_encode($rawObj);
+        } else {
+            // Format B: flat list of requirements
+            $reqs = $studentReqs['requirements'];
+            $foundIdx = -1;
+            foreach ($reqs as $i => $r) {
+                if ($r['key'] === $docKey) {
+                    $foundIdx = $i;
+                    break;
+                }
+            }
+            $newDoc = [
+                'key'                 => $docKey,
+                'title'               => $foundIdx >= 0 ? $reqs[$foundIdx]['title'] : ucwords(str_replace('_', ' ', $docKey)),
+                'description'         => $foundIdx >= 0 ? $reqs[$foundIdx]['description'] : '',
+                'required'            => true,
+                'status'              => 'UNDER_REVIEW',
+                'softCopyUrl'         => $softCopyUrl,
+                'fileName'            => $fileName,
+                'fileType'            => $fileType,
+                'fileSize'            => $fileSize,
+                'submittedAt'         => date('Y-m-d H:i:s'),
+                'verifiedAt'          => null,
+                'verifiedBy'          => null,
+                'isUndertaking'       => (bool)$isUndertaking,
+                'undertakingReason'   => $undertakingReason ?: null,
+                'undertakingDeadline' => $undertakingDeadline ?: null,
+                'registrarRemarks'    => null
+            ];
+            if ($foundIdx >= 0) {
+                $reqs[$foundIdx] = $newDoc;
+            } else {
+                $reqs[] = $newDoc;
+            }
+            $finalPayload = json_encode($reqs);
+        }
 
         if ($studentReqs['isOfficial']) {
             $stmt = $this->pdo->prepare("UPDATE `students` SET `requirements_data` = :reqs WHERE `id` = :id OR `temp_reference_no` = :ref OR `email` = :email");
-            $stmt->execute(['reqs' => $jsonReqs, 'id' => $cleanId, 'ref' => $cleanId, 'email' => $cleanId]);
+            $stmt->execute(['reqs' => $finalPayload, 'id' => $cleanId, 'ref' => $cleanId, 'email' => $cleanId]);
         }
 
-        // Also update pre_enrollments if existing
         $stmtPe = $this->pdo->prepare("UPDATE `pre_enrollments` SET `requirements_data` = :reqs WHERE `temp_student_id` = :ref OR `email` = :email OR `id` = :id");
-        $stmtPe->execute(['reqs' => $jsonReqs, 'ref' => $cleanId, 'email' => $cleanId, 'id' => $cleanId]);
+        $stmtPe->execute(['reqs' => $finalPayload, 'ref' => $cleanId, 'email' => $cleanId, 'id' => $cleanId]);
 
-        return $this->getStudentRequirements($identifier);
+        return $this->getStudentRequirements($cleanId);
     }
 
     public function verifyStudentDocument($identifier, $docKey, $status, $remarks = '', $verifiedBy = 'Registrar Officer') {
-        $studentReqs = $this->getStudentRequirements($identifier);
-        if (!$studentReqs) {
-            throw new Exception("Student record not found for reference: {$identifier}");
-        }
-
-        $reqs = $studentReqs['requirements'];
-        $foundIdx = -1;
-
-        foreach ($reqs as $i => $r) {
-            if ($r['key'] === $docKey) {
-                $foundIdx = $i;
-                break;
-            }
-        }
-
-        if ($foundIdx === -1) {
-            throw new Exception("Document requirement {$docKey} not found for student.");
-        }
-
-        $reqs[$foundIdx]['status'] = strtoupper($status);
-        $reqs[$foundIdx]['registrarRemarks'] = $remarks ?: null;
-        $reqs[$foundIdx]['verifiedAt'] = date('Y-m-d H:i:s');
-        $reqs[$foundIdx]['verifiedBy'] = $verifiedBy;
-        if (strtoupper($status) === 'VERIFIED') {
-            $reqs[$foundIdx]['isUndertaking'] = false;
-        }
-
-        $jsonReqs = json_encode($reqs);
         $cleanId = trim((string)$identifier);
+        $studentReqs = $this->getStudentRequirements($cleanId);
+        if (!$studentReqs) {
+            throw new Exception("Student record not found for reference: {$cleanId}");
+        }
+
+        $rawStmt = $this->pdo->prepare($studentReqs['isOfficial']
+            ? "SELECT `requirements_data` FROM `students` WHERE `id` = :id OR `temp_reference_no` = :ref OR `email` = :email LIMIT 1"
+            : "SELECT `requirements_data` FROM `pre_enrollments` WHERE `temp_student_id` = :id OR `email` = :email OR `id` = :ref LIMIT 1"
+        );
+        $rawStmt->execute(['id' => $cleanId, 'ref' => $cleanId, 'email' => $cleanId]);
+        $rawJson = $rawStmt->fetchColumn();
+        $rawObj = json_decode((string)$rawJson, true) ?: [];
+
+        if (is_array($rawObj) && (isset($rawObj['docs']) || isset($rawObj['status']))) {
+            if (!isset($rawObj['docs'])) $rawObj['docs'] = [];
+            $prevEntry = $rawObj['docs'][$docKey] ?? [];
+            if (!is_array($prevEntry)) $prevEntry = ['status' => (string)$prevEntry];
+            $rawObj['docs'][$docKey] = array_merge($prevEntry, [
+                'status'      => strtoupper($status),
+                'remarks'     => $remarks ?: null,
+                'verifiedAt'  => date('Y-m-d H:i:s'),
+                'verifiedBy'  => $verifiedBy,
+                'isUndertaking' => (strtoupper($status) === 'UNDERTAKING')
+            ]);
+            $finalPayload = json_encode($rawObj);
+        } else {
+            $reqs = $studentReqs['requirements'];
+            $foundIdx = -1;
+            foreach ($reqs as $i => $r) {
+                if ($r['key'] === $docKey) {
+                    $foundIdx = $i;
+                    break;
+                }
+            }
+            if ($foundIdx === -1) {
+                throw new Exception("Document requirement {$docKey} not found for student.");
+            }
+            $reqs[$foundIdx]['status'] = strtoupper($status);
+            $reqs[$foundIdx]['registrarRemarks'] = $remarks ?: null;
+            $reqs[$foundIdx]['verifiedAt'] = date('Y-m-d H:i:s');
+            $reqs[$foundIdx]['verifiedBy'] = $verifiedBy;
+            if (strtoupper($status) === 'VERIFIED') {
+                $reqs[$foundIdx]['isUndertaking'] = false;
+            }
+            $finalPayload = json_encode($reqs);
+        }
 
         if ($studentReqs['isOfficial']) {
             $stmt = $this->pdo->prepare("UPDATE `students` SET `requirements_data` = :reqs WHERE `id` = :id OR `temp_reference_no` = :ref OR `email` = :email");
-            $stmt->execute(['reqs' => $jsonReqs, 'id' => $cleanId, 'ref' => $cleanId, 'email' => $cleanId]);
+            $stmt->execute(['reqs' => $finalPayload, 'id' => $cleanId, 'ref' => $cleanId, 'email' => $cleanId]);
         }
 
         $stmtPe = $this->pdo->prepare("UPDATE `pre_enrollments` SET `requirements_data` = :reqs WHERE `temp_student_id` = :ref OR `email` = :email OR `id` = :id");
-        $stmtPe->execute(['reqs' => $jsonReqs, 'ref' => $cleanId, 'email' => $cleanId, 'id' => $cleanId]);
+        $stmtPe->execute(['reqs' => $finalPayload, 'ref' => $cleanId, 'email' => $cleanId, 'id' => $cleanId]);
 
-        return $this->getStudentRequirements($identifier);
+        return $this->getStudentRequirements($cleanId);
     }
 }

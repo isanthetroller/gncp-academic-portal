@@ -83,10 +83,18 @@ class StudentPortalController {
         if (!$adminSess && !$stationSess && (!$sessStudentId || strcasecmp($sessStudentId, $studentId) !== 0)) {
             return ['success' => false, 'message' => 'Unauthorized access to update student profile.', 'code' => 401];
         }
-        session_write_close();
+        $res = StudentPortalService::updateProfile($this->pdo, $studentId, $data);
+        if (!empty($res['success']) && !empty($res['data']['photo'])) {
+            initSession();
+            if (isset($_SESSION['gncp_student']) && is_array($_SESSION['gncp_student'])) {
+                $_SESSION['gncp_student']['photo'] = $res['data']['photo'];
+            }
+            session_write_close();
+        }
 
-        return StudentPortalService::updateProfile($this->pdo, $studentId, $data);
+        return $res;
     }
+
 
     public function changePassword(array $data = []): array {
         $studentId       = $data['studentId'] ?? ($data['student_id'] ?? ($data['id'] ?? ''));

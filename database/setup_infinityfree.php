@@ -6,6 +6,24 @@
 
 $dbConfigFile = __DIR__ . '/../shared/backend/config/db_config.php';
 $schemaFile   = __DIR__ . '/schema.sql';
+$currentConfig = file_exists($dbConfigFile) ? (include $dbConfigFile) : [];
+
+require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+initSession();
+$isSuperAdmin = false;
+$adminSess = $_SESSION['gncp_admin_user'] ?? null;
+if ($adminSess) {
+    $admin = is_array($adminSess) ? $adminSess : (is_string($adminSess) ? json_decode($adminSess, true) : []);
+    if (strtoupper($admin['role'] ?? '') === 'SUPER_ADMIN') {
+        $isSuperAdmin = true;
+    }
+}
+
+$isInstalled = (!empty($currentConfig) && !empty($currentConfig['host']) && !empty($currentConfig['db']));
+if (php_sapi_name() !== 'cli' && $isInstalled && !$isSuperAdmin) {
+    http_response_code(403);
+    die("<!DOCTYPE html><html><head><title>403 Forbidden</title><style>body{background:#0b1512;color:#fff;font-family:sans-serif;text-align:center;padding:60px;}a{color:#D4AF37;text-decoration:none;font-weight:bold;}</style></head><body><h1>403 Forbidden</h1><p>Database is already provisioned and locked. Modifying database settings requires an active Super Administrator session.</p><p><a href='../admin/'>Go to Super Admin Portal</a></p></body></html>");
+}
 
 $statusMsg = '';
 $statusType = '';
@@ -142,11 +160,11 @@ $currentConfig = file_exists($dbConfigFile) ? include $dbConfigFile : [];
             <h5 class="text-success fw-bold"><i class="fa-solid fa-circle-check me-2"></i>Deployment Ready!</h5>
             <p class="text-secondary small mb-3">All tables initialized and system administrators provisioned.</p>
             <div class="d-flex gap-2 justify-content-center flex-wrap">
-                <a href="../index.html" class="btn btn-outline-warning btn-sm"><i class="fa-solid fa-house me-1"></i> Gateway Home</a>
-                <a href="../school-website/index.html" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-globe me-1"></i> School Website</a>
-                <a href="../enrollment-system/index.html" class="btn btn-outline-success btn-sm"><i class="fa-solid fa-user-plus me-1"></i> Online Registration</a>
-                <a href="../registrar/index.html" class="btn btn-outline-info btn-sm"><i class="fa-solid fa-id-card me-1"></i> Registrar Portal</a>
-                <a href="../admin/index.html" class="btn btn-outline-danger btn-sm"><i class="fa-solid fa-shield-halved me-1"></i> Super Admin</a>
+                <a href="../" class="btn btn-outline-warning btn-sm"><i class="fa-solid fa-house me-1"></i> Gateway Home</a>
+                <a href="../school-website/" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-globe me-1"></i> School Website</a>
+                <a href="../enrollment-system/" class="btn btn-outline-success btn-sm"><i class="fa-solid fa-user-plus me-1"></i> Online Registration</a>
+                <a href="../registrar/" class="btn btn-outline-info btn-sm"><i class="fa-solid fa-id-card me-1"></i> Registrar Portal</a>
+                <a href="../admin/" class="btn btn-outline-danger btn-sm"><i class="fa-solid fa-shield-halved me-1"></i> Super Admin</a>
             </div>
         </div>
     <?php endif; ?>

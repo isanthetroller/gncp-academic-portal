@@ -105,6 +105,14 @@ if ($action === 'save_academic_period') {
         sendResponse(false, null, 'Program, Year Level, Period, and Section Code are required.', 400);
     }
 
+    // Verify academic period exists and is Active
+    $perCheck = $pdo->prepare("SELECT `status` FROM `academic_periods` WHERE `id` = :id");
+    $perCheck->execute(['id' => $ap_id]);
+    $perStatus = $perCheck->fetchColumn();
+    if (!$perStatus || strtoupper($perStatus) !== 'ACTIVE') {
+        sendResponse(false, null, 'Cannot create or assign sections to an Inactive academic period. Please activate the term under Enrollment Semesters first.', 400);
+    }
+
     // Uniqueness check: Program + Year Level + Academic Period + Code
     $checkStmt = $pdo->prepare("SELECT `id` FROM `sections` WHERE `code` = :code AND `program` = :prog AND `year_level` = :yl AND `academic_period_id` = :ap_id");
     $checkStmt->execute(['code' => $code, 'prog' => $prog, 'yl' => $yl, 'ap_id' => $ap_id]);
@@ -273,10 +281,11 @@ if ($action === 'save_academic_period') {
 
         // 4. Clone Class Offerings (Schedules)
         if ($cloneOfferings && !empty($sectionIdMap)) {
-            $oldSecIds = array_keys($sectionIdMap);
-            $inClause = implode(',', $oldSecIds);
-            
-            $offRaw = $pdo->query("SELECT * FROM `subject_sections` WHERE `section_id` IN ($inClause)")->fetchAll();
+            $oldSecIds = array_map('intval', array_keys($sectionIdMap));
+            $placeholders = implode(',', array_fill(0, count($oldSecIds), '?'));
+            $offStmt = $pdo->prepare("SELECT * FROM `subject_sections` WHERE `section_id` IN ($placeholders)");
+            $offStmt->execute($oldSecIds);
+            $offRaw = $offStmt->fetchAll();
             
             foreach ($offRaw as $oldOff) {
                 $newSecId = $sectionIdMap[(int)$oldOff['section_id']];
@@ -386,6 +395,14 @@ if ($action === 'save_academic_period') {
 
     if (!$program || !$yearLevel || !$periodId || $count <= 0) {
         sendResponse(false, null, 'Program, Year Level, Academic Period, and Section count are required.', 400);
+    }
+
+    // Verify academic period exists and is Active
+    $perCheck = $pdo->prepare("SELECT `status` FROM `academic_periods` WHERE `id` = :id");
+    $perCheck->execute(['id' => $periodId]);
+    $perStatus = $perCheck->fetchColumn();
+    if (!$perStatus || strtoupper($perStatus) !== 'ACTIVE') {
+        sendResponse(false, null, 'Cannot generate sections for an Inactive academic period. Please activate the term under Enrollment Semesters first.', 400);
     }
 
     $alphabet = range('A', 'Z');

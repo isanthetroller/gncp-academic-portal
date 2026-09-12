@@ -41,6 +41,28 @@ class UserModel {
         return $stmt->execute(['id' => $id, 'status' => strtoupper(trim($status))]);
     }
 
+    public function findById($id) {
+        $stmt = $this->pdo->prepare("SELECT `id`, `username`, `name`, `email`, `role`, UPPER(COALESCE(NULLIF(`status`, ''), 'ACTIVE')) AS `status`, `must_change_password` FROM `station_users` WHERE `id` = :id LIMIT 1");
+        $stmt->execute(['id' => (int)$id]);
+        return $stmt->fetch();
+    }
+
+    public function setOperatorPassword($id, $hashedPassword, $mustChange = 1, $email = null) {
+        $sql = "UPDATE `station_users` SET `password` = :pass, `must_change_password` = :must_change";
+        $params = [
+            'pass'        => $hashedPassword,
+            'must_change' => (int)$mustChange,
+            'where_id'    => (int)$id
+        ];
+        if (!empty($email)) {
+            $sql .= ", `email` = :email";
+            $params['email'] = trim($email);
+        }
+        $sql .= " WHERE `id` = :where_id";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute($params);
+    }
+
     public function changePassword($identity, $newPassword) {
         $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
         

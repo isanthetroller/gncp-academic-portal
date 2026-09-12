@@ -13,18 +13,92 @@ function initSession() {
         @ini_set('session.cookie_httponly', '1');
         @ini_set('session.use_strict_mode', '1');
         @ini_set('session.gc_maxlifetime', '86400');
+
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+            || (!empty($_SERVER['HTTP_FRONT_END_HTTPS']) && strtolower($_SERVER['HTTP_FRONT_END_HTTPS']) !== 'off')
+            || (!empty($_SERVER['HTTP_CF_VISITOR']) && str_contains($_SERVER['HTTP_CF_VISITOR'], '"scheme":"https"'));
+
+        // Enforce HTTPS redirection for live production domains
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        $rawHost = strtolower(explode(':', $host)[0]);
+        $isLocalhost = in_array($rawHost, ['localhost', '127.0.0.1', '::1'], true);
+
+        if (!$isLocalhost && !$isHttps && (php_sapi_name() !== 'cli' || defined('GNCP_TEST_HTTPS_CLI'))) {
+            $redirectUrl = 'https://' . $host . ($_SERVER['REQUEST_URI'] ?? '/');
+            if (!headers_sent()) {
+                header('HTTP/1.1 301 Moved Permanently');
+                header('Location: ' . $redirectUrl);
+                header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+                if (!defined('GNCP_TEST_HTTPS_CLI')) {
+                    exit;
+                }
+                return;
+            }
+        }
+
         if (!headers_sent()) {
             session_set_cookie_params([
                 'lifetime' => 86400,
                 'path'     => '/',
                 'domain'   => '',
-                'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+                'secure'   => $isHttps,
                 'httponly' => true,
                 'samesite' => 'Lax'
             ]);
         }
         @session_start();
     }
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+}
+
+function getCsrfToken(): string {
+    initSession();
+    return $_SESSION['csrf_token'] ?? '';
+}
+
+function verifyCsrfOrigin(): bool {
+    $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+    if (!in_array($method, ['POST', 'PUT', 'DELETE', 'PATCH'], true)) {
+        return true;
+    }
+
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    if (empty($origin) && !empty($_SERVER['HTTP_REFERER'])) {
+        $origin = $_SERVER['HTTP_REFERER'];
+    }
+
+    if (!empty($origin)) {
+        $parsed = parse_url($origin);
+        $originHost = strtolower($parsed['host'] ?? '');
+        $currentHost = strtolower(explode(':', $_SERVER['HTTP_HOST'] ?? 'localhost')[0]);
+
+        $isAllowed = ($originHost === 'localhost' 
+            || $originHost === '127.0.0.1' 
+            || $originHost === $currentHost 
+            || ($currentHost !== '' && str_ends_with($originHost, '.' . $currentHost))
+            || str_ends_with($originHost, '.infinityfree.com')
+            || str_ends_with($originHost, '.site.je'));
+
+        if (!$isAllowed) {
+            error_log("[CSRF] Blocked cross-origin mutation attempt from: {$originHost} targeting: {$currentHost}");
+            return false;
+        }
+    }
+
+    // If explicit X-CSRF-Token header provided, verify against session
+    $headerCsrf = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!empty($headerCsrf)) {
+        $sessionCsrf = $_SESSION['csrf_token'] ?? '';
+        if (empty($sessionCsrf) || !hash_equals($sessionCsrf, $headerCsrf)) {
+            error_log("[CSRF] Invalid X-CSRF-Token header received.");
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function requireAuth(array $allowedRoles = []) {
@@ -46,6 +120,12 @@ function requireAuth(array $allowedRoles = []) {
     if (!$user || (empty($user['role']) && empty($user['id']))) {
         session_write_close();
         sendResponse(false, null, 'Invalid session state.', 401);
+    }
+
+    // ── Enforce CSRF Origin Validation for Mutations ──
+    if (!verifyCsrfOrigin()) {
+        session_write_close();
+        sendResponse(false, null, 'Forbidden: Cross-site request or origin validation failed.', 403);
     }
 
     // ── 1. Idle Inactivity Timeout (2 Hours = 7200s) ──

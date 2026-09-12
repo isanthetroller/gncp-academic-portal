@@ -2037,6 +2037,7 @@
 
         <!-- ── AUTHENTICATED STUDENT PORTAL SHELL VIEW ── -->
         <div class="shell" v-if="currentStudent">
+            <input type="file" ref="photoInput" @change="handlePhotoSelect" accept="image/*" style="display:none">
 
             <!-- Mobile Backdrop Overlay -->
             <div class="sidebar-backdrop" :class="{ show: isMobileMenuOpen }" @click="isMobileMenuOpen = false"></div>
@@ -2082,10 +2083,10 @@
                     </button>
                 </nav>
 
-                <div class="sidebar-footer" v-if="currentStudent">
+                <div class="sidebar-footer" v-if="currentStudent" @click="activeTab = 'profile'; isMobileMenuOpen = false" style="cursor: pointer;" title="View My Profile">
                     <div class="footer-avatar">
-                        <img v-if="profile.photo" :src="'../stations/it-center/assets/uploads/' + profile.photo"
-                            @error="profile.photo = null" alt="Avatar">
+                        <img v-if="profile.photo && !avatarLoadError" :src="formattedProfilePhoto(profile.photo)"
+                            @error="onAvatarError" alt="Avatar">
                         <span v-else>{{ (profile.name || 'S').substring(0,2).toUpperCase() }}</span>
                     </div>
                     <div class="footer-info">
@@ -2517,31 +2518,74 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="item in (corData ? corData.schedule : [])" :key="item.code">
-                                            <td class="font-monospace fw-bold">{{ item.code }}</td>
-                                            <td>{{ item.description }}</td>
-                                            <td class="text-center font-monospace">{{ item.units }}</td>
-                                            <td>{{ item.type }}</td>
-                                            <td>{{ item.days }}</td>
-                                            <td>{{ item.start }}</td>
-                                            <td>{{ item.end }}</td>
-                                            <td class="font-monospace">{{ item.section }}</td>
-                                            <td>{{ item.room }}</td>
-                                            <td>{{ item.instructor }}</td>
-                                            <td class="text-center font-monospace">{{ item.s }}</td>
-                                        </tr>
-                                        <tr v-if="!corData || !corData.schedule || corData.schedule.length === 0">
-                                            <td colspan="11" class="text-center text-muted py-3">No enrolled class
-                                                schedule recorded.</td>
-                                        </tr>
-                                        <tr style="font-weight: bold; background-color: #fafafa;">
-                                            <td colspan="2" style="text-align:right">TOTAL UNITS:</td>
-                                            <td class="text-center font-monospace">{{ corData ? corData.totalUnits : '0.00' }}</td>
-                                            <td colspan="8" style="font-size:8.5px; font-weight:normal;">Status Codes
-                                                [S]: A=Added, D=Dropped, Blank=Regular Enrollment</td>
-                                        </tr>
+                                        <template v-if="isLoadingCor">
+                                            <tr v-for="n in 5" :key="'cor-skel-' + n" class="table-skeleton-row">
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 60px;"></div></td>
+                                                <td><div class="skeleton-bar" style="width: 85%;"></div></td>
+                                                <td class="text-center"><div class="skeleton-bar skeleton-bar-sm" style="width: 24px; margin: 0 auto;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 40px;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 35px;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 48px;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 48px;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 60px;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 45px;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 80px;"></div></td>
+                                                <td class="text-center"><div class="skeleton-bar skeleton-bar-sm" style="width: 15px; margin: 0 auto;"></div></td>
+                                            </tr>
+                                        </template>
+                                        <template v-else>
+                                            <tr v-for="item in (corData ? corData.schedule : [])" :key="item.code" class="table-row-enter">
+                                                <td class="font-monospace fw-bold">{{ item.code }}</td>
+                                                <td>{{ item.description }}</td>
+                                                <td class="text-center font-monospace">{{ item.units }}</td>
+                                                <td>{{ item.type }}</td>
+                                                <td>{{ item.days }}</td>
+                                                <td>{{ item.start }}</td>
+                                                <td>{{ item.end }}</td>
+                                                <td class="font-monospace">{{ item.section }}</td>
+                                                <td>{{ item.room }}</td>
+                                                <td>{{ item.instructor }}</td>
+                                                <td class="text-center font-monospace">{{ item.s }}</td>
+                                            </tr>
+                                            <tr v-if="!corData || !corData.schedule || corData.schedule.length === 0">
+                                                <td colspan="11" class="text-center text-muted py-3">No enrolled class schedule recorded.</td>
+                                            </tr>
+                                            <tr style="font-weight: bold; background-color: #fafafa;">
+                                                <td colspan="2" style="text-align:right">TOTAL UNITS:</td>
+                                                <td class="text-center font-monospace">{{ corData ? corData.totalUnits : '0.00' }}</td>
+                                                <td colspan="8" style="font-size:8.5px; font-weight:normal;">Status Codes [S]: A=Added, D=Dropped, Blank=Regular Enrollment</td>
+                                            </tr>
+                                        </template>
                                     </tbody>
                                 </table>
+                            </div>
+
+                            <!-- Authoritative Accounts Ledger Assessment & Official Receipt -->
+                            <div class="cor-ledger-card" style="margin-top: 10px; margin-bottom: 14px; border: 1px solid #000; padding: 8px 12px; background: #fafafa;">
+                                <div style="font-family: Arial, Helvetica, sans-serif; font-size: 8.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span><i class="fa-solid fa-receipt me-1"></i> Accounts Ledger Assessment &amp; Official Payment Record</span>
+                                    <span class="badge" :class="(corData ? corData.balance : (payment ? payment.balance : 0)) <= 0 ? 'bg-success text-white' : 'bg-warning text-dark'" style="font-size: 8px; padding: 3px 6px;">
+                                        {{ (corData ? corData.balance : (payment ? payment.balance : 0)) <= 0 ? 'OFFICIALLY ENROLLED / FULLY PAID' : 'DOWNPAYMENT CLEARED / PARTIALLY PAID' }}
+                                    </span>
+                                </div>
+                                <div class="row g-2 text-center text-md-start" style="margin: 0;">
+                                    <div class="col-6 col-md-3" style="padding: 2px 6px;">
+                                        <span class="cor-label">Total Assessed Fees</span>
+                                        <span class="cor-val font-monospace" style="font-size: 11.5px;">₱ {{ formatCurrency(corData ? (corData.totalFee || corData.cashTotal) : (payment ? payment.totalFee : 0)) }}</span>
+                                    </div>
+                                    <div class="col-6 col-md-3" style="padding: 2px 6px;">
+                                        <span class="cor-label">Amount Paid</span>
+                                        <span class="cor-val font-monospace text-success" style="font-size: 11.5px;">₱ {{ formatCurrency(corData ? corData.amountPaid : (payment ? payment.amountPaid : 0)) }}</span>
+                                    </div>
+                                    <div class="col-6 col-md-3" style="padding: 2px 6px;">
+                                        <span class="cor-label">Remaining Balance</span>
+                                        <span class="cor-val font-monospace" :class="(corData ? corData.balance : (payment ? payment.balance : 0)) > 0 ? 'text-danger' : 'text-muted'" style="font-size: 11.5px;">₱ {{ formatCurrency(corData ? corData.balance : (payment ? payment.balance : 0)) }}</span>
+                                    </div>
+                                    <div class="col-6 col-md-3" style="padding: 2px 6px;">
+                                        <span class="cor-label">Official Receipt (OR) / Ref</span>
+                                        <span class="cor-val font-monospace text-secondary" style="font-size: 11px;">{{ (corData && corData.orNumber) ? corData.orNumber : ((payment && (payment.transactionRef || payment.orNumber)) ? (payment.transactionRef || payment.orNumber) : 'N/A') }}</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Flex Section: Fee Assessment & Payment Schedule -->
@@ -2605,8 +2649,15 @@
                                                 <th>Amount Due</th>
                                             </tr>
                                         </thead>
-                                        <tbody v-if="corData && corData.paymentSchedule && corData.paymentSchedule.items">
-                                            <tr v-for="item in corData.paymentSchedule.items" :key="item.milestone">
+                                        <tbody v-if="isLoadingCor">
+                                            <tr v-for="n in 5" :key="'pay-skel-' + n" class="table-skeleton-row">
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 90px;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 75px;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 65px;"></div></td>
+                                            </tr>
+                                        </tbody>
+                                        <tbody v-else-if="corData && corData.paymentSchedule && corData.paymentSchedule.items">
+                                            <tr v-for="item in corData.paymentSchedule.items" :key="item.milestone" class="table-row-enter">
                                                 <td :style="item.milestone === 'Upon Registration' ? 'font-weight: bold;' : ''">{{ item.milestone }}</td>
                                                 <td :style="item.status === 'CLEARED' ? 'color: #059669; font-style: italic;' : ''">{{ item.dueDate }}</td>
                                                 <td class="font-monospace" :class="item.status === 'PAID' || item.status === 'CLEARED' ? 'text-success fw-bold' : 'fw-bold'">
@@ -2615,32 +2666,32 @@
                                             </tr>
                                         </tbody>
                                         <tbody v-else>
-                                            <tr>
+                                            <tr class="table-row-enter">
                                                 <td style="font-weight: bold;">Upon Registration</td>
                                                 <td>Upon Enrollment</td>
                                                 <td class="font-monospace fw-bold" style="font-style: italic;">
                                                     {{ corData ? corData.paymentMode.toUpperCase() : 'FULL' }}
                                                 </td>
                                             </tr>
-                                            <tr>
+                                            <tr class="table-row-enter">
                                                 <td>PRELIM</td>
                                                 <td>Term Week 5</td>
-                                                <td>{{ corData && corData.paymentMode === 'Installment' ? ('₱ ' + formatCurrency(corData.installmentTotal * 0.2)) : '₱ 0.00' }}</td>
+                                                <td>{{ (corData && (corData.paymentMode === 'Installment' || corData.paymentMode === 'SEMI' || corData.paymentMode === 'QUAD')) ? ('₱ ' + formatCurrency(corData.installmentTotal * 0.2)) : '₱ 0.00' }}</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="table-row-enter">
                                                 <td>MIDTERM</td>
                                                 <td>Term Week 9</td>
-                                                <td>{{ corData && corData.paymentMode === 'Installment' ? ('₱ ' + formatCurrency(corData.installmentTotal * 0.2)) : '₱ 0.00' }}</td>
+                                                <td>{{ (corData && (corData.paymentMode === 'Installment' || corData.paymentMode === 'SEMI' || corData.paymentMode === 'QUAD')) ? ('₱ ' + formatCurrency(corData.installmentTotal * 0.2)) : '₱ 0.00' }}</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="table-row-enter">
                                                 <td>PREFINALS</td>
                                                 <td>Term Week 14</td>
-                                                <td>{{ corData && corData.paymentMode === 'Installment' ? ('₱ ' + formatCurrency(corData.installmentTotal * 0.2)) : '₱ 0.00' }}</td>
+                                                <td>{{ (corData && (corData.paymentMode === 'Installment' || corData.paymentMode === 'SEMI' || corData.paymentMode === 'QUAD')) ? ('₱ ' + formatCurrency(corData.installmentTotal * 0.2)) : '₱ 0.00' }}</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="table-row-enter">
                                                 <td>FINALS</td>
                                                 <td>Term Week 18</td>
-                                                <td>{{ corData && corData.paymentMode === 'Installment' ? ('₱ ' + formatCurrency(corData.installmentTotal * 0.2)) : '₱ 0.00' }}</td>
+                                                <td>{{ (corData && (corData.paymentMode === 'Installment' || corData.paymentMode === 'SEMI' || corData.paymentMode === 'QUAD')) ? ('₱ ' + formatCurrency(corData.installmentTotal * 0.2)) : '₱ 0.00' }}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -2679,14 +2730,15 @@
                             <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
                                 <div>
                                     <h4 class="fw-bold text-dark mb-1" style="font-size: 1.35rem;">Academic Requirements &amp; Undertakings</h4>
-                                    <p class="text-muted fs-7 mb-0">Track official submission status, download uploaded soft copies, and manage conditional undertaking commitments.</p>
+                                    <p class="text-muted fs-7 mb-0">Track official submission status, verified credentials, and active conditional undertakings.</p>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
                                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-semibold shadow-sm"
                                         @click="loadStudentDocuments" :disabled="documentsData.loading">
                                         <i class="fa-solid fa-rotate me-1" :class="{ 'fa-spin': documentsData.loading }"></i> Refresh
                                     </button>
-                                    <button type="button" class="btn btn-sm px-3 fw-bold text-white shadow-sm"
+                                    <button v-if="documentsData.pendingRequirements && documentsData.pendingRequirements.length > 0"
+                                        type="button" class="btn btn-sm px-3 fw-bold text-white shadow-sm"
                                         style="background: var(--primary-green, #006A4E); border-color: var(--primary-green, #006A4E);"
                                         @click="openUploadDocModal()">
                                         <i class="fa-solid fa-cloud-arrow-up me-1"></i> Submit Document
@@ -2702,7 +2754,7 @@
                                             <span class="fs-8 fw-bold text-uppercase text-muted">Required Docs</span>
                                             <i class="fa-solid fa-list-check text-muted"></i>
                                         </div>
-                                        <div class="fs-3 fw-bold text-dark mt-2">{{ documentsData.stats ? documentsData.stats.totalRequired : 5 }}</div>
+                                        <div class="fs-3 fw-bold text-dark mt-2">{{ documentsData.stats ? documentsData.stats.totalRequired : 0 }}</div>
                                         <div class="fs-8 text-muted mt-1">Institutional catalog</div>
                                     </div>
                                 </div>
@@ -2729,138 +2781,277 @@
                                 <div class="col-6 col-md-3">
                                     <div class="card border-0 shadow-sm rounded-3 p-3 h-100" style="border-left: 4px solid #f59e0b !important; background: #ffffff;">
                                         <div class="d-flex align-items-center justify-content-between">
-                                            <span class="fs-8 fw-bold text-uppercase text-warning-emphasis">Missing / Waivers</span>
+                                            <span class="fs-8 fw-bold text-uppercase text-warning-emphasis">Action Required</span>
                                             <i class="fa-solid fa-triangle-exclamation text-warning"></i>
                                         </div>
-                                        <div class="fs-3 fw-bold text-warning-emphasis mt-2">{{ (documentsData.stats ? documentsData.stats.missingCount : 0) + (documentsData.stats ? documentsData.stats.undertakingCount : 0) }}</div>
-                                        <div class="fs-8 text-muted mt-1">Action required</div>
+                                        <div class="fs-3 fw-bold text-warning-emphasis mt-2">{{ documentsData.stats ? documentsData.stats.actionableCount : 0 }}</div>
+                                        <div class="fs-8 text-muted mt-1">Pending submission</div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Compliance Notification Banner -->
-                            <div v-if="documentsData.stats && documentsData.stats.isFullyCompliant"
-                                class="alert alert-success border-0 shadow-sm rounded-3 py-3 px-4 mb-4 d-flex align-items-center gap-3">
-                                <i class="fa-solid fa-circle-check fs-3 text-success"></i>
-                                <div>
-                                    <h6 class="fw-bold text-success mb-1">Complete Document Clearance</h6>
-                                    <p class="mb-0 fs-7 text-dark">All mandatory admission requirements have been verified and officially approved by the Office of the College Registrar.</p>
+                            <!-- Loading State -->
+                            <div v-if="documentsData.loading" class="card border-0 shadow-sm rounded-4 p-5 text-center mb-4">
+                                <div class="spinner-border text-success mb-3" role="status">
+                                    <span class="visually-hidden">Loading...</span>
                                 </div>
+                                <p class="text-muted fs-7 mb-0">Synchronizing admission records and requirement clearance...</p>
                             </div>
 
-                            <div v-else-if="documentsData.stats && documentsData.stats.undertakingCount > 0"
-                                class="alert alert-warning border-0 shadow-sm rounded-3 py-3 px-4 mb-4 d-flex align-items-start gap-3"
-                                style="background: rgba(245, 158, 11, 0.12);">
-                                <i class="fa-solid fa-triangle-exclamation fs-3 text-warning mt-1"></i>
-                                <div>
-                                    <h6 class="fw-bold text-dark mb-1">Conditional Enrollment Notice (Active Undertaking)</h6>
-                                    <p class="mb-1 fs-7 text-dark">You have requirement(s) currently under a conditional undertaking agreement. Please ensure you upload the official soft copies before the committed deadline to maintain full academic clearance.</p>
-                                    <button type="button" class="btn btn-warning btn-sm fw-bold px-3 mt-1 shadow-sm"
-                                        @click="openUploadDocModal()">
-                                        <i class="fa-solid fa-upload me-1"></i> Fulfill Missing Documents
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div v-else-if="documentsData.stats && documentsData.stats.missingCount > 0"
-                                class="alert alert-danger border-0 shadow-sm rounded-3 py-3 px-4 mb-4 d-flex align-items-start gap-3"
-                                style="background: rgba(239, 68, 68, 0.1);">
-                                <i class="fa-solid fa-circle-exclamation fs-3 text-danger mt-1"></i>
-                                <div>
-                                    <h6 class="fw-bold text-danger mb-1">Unsubmitted Admission Documents</h6>
-                                    <p class="mb-1 fs-7 text-dark">Please upload clear digital scans of your missing credentials to complete your official student portfolio.</p>
-                                    <button type="button" class="btn btn-danger btn-sm fw-bold px-3 mt-1 shadow-sm"
-                                        @click="openUploadDocModal()">
-                                        <i class="fa-solid fa-upload me-1"></i> Upload Required Scans
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Requirements List Cards -->
-                            <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
-                                <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between">
-                                    <h6 class="fw-bold text-dark mb-0"><i class="fa-solid fa-folder-tree me-2 text-primary"></i>Required Academic Documents Matrix</h6>
-                                    <span class="badge bg-light text-secondary border fs-8">{{ documentsData.requirements.length }} Requirements</span>
+                            <!-- Loaded Content Area -->
+                            <div v-else>
+                                <!-- SCENARIO D: COMPLETE REQUIREMENTS HERO STATE -->
+                                <div v-if="documentsData.stats && documentsData.stats.isComplete"
+                                    class="card border-0 shadow-sm rounded-4 p-5 text-center mb-4"
+                                    style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border: 1px solid rgba(16, 185, 129, 0.25) !important;">
+                                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm mx-auto"
+                                        style="width: 76px; height: 76px; background: #10b981; color: #ffffff;">
+                                        <i class="fa-solid fa-circle-check fs-1"></i>
+                                    </div>
+                                    <h3 class="fw-bold text-success mb-2">You have complete requirements.</h3>
+                                    <p class="text-muted fs-6 mx-auto mb-4" style="max-width: 580px;">
+                                        All institutional admission and enrollment credentials have been verified, processed, or approved by the Office of the College Registrar. You have no pending submissions, missing documents, or outstanding undertakings.
+                                    </p>
+                                    <div v-if="documentsData.completedRequirements && documentsData.completedRequirements.length > 0" class="d-flex align-items-center justify-content-center gap-3 flex-wrap">
+                                        <button type="button" class="btn btn-outline-success btn-sm px-3 fw-semibold shadow-sm"
+                                            @click="toggleShowCompletedDocs">
+                                            <i class="fa-solid me-1" :class="showCompletedDocs ? 'fa-eye-slash' : 'fa-list-check'"></i>
+                                            <span v-if="!showCompletedDocs">View Cleared Documents ({{ documentsData.completedRequirements.length }})</span>
+                                            <span v-else>Hide Cleared Documents</span>
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div class="list-group list-group-flush">
-                                    <div v-for="doc in documentsData.requirements" :key="doc.key"
-                                        class="list-group-item p-4 border-bottom">
-                                        <div class="row align-items-center g-3">
-                                            <div class="col-12 col-md-5">
-                                                <div class="d-flex align-items-start gap-3">
-                                                    <div class="rounded-3 p-3 text-center flex-shrink-0"
-                                                        :style="doc.status === 'VERIFIED' ? 'background: rgba(16,185,129,0.1); color: #059669;' : (doc.status === 'UNDER_REVIEW' ? 'background: rgba(59,130,246,0.1); color: #2563eb;' : (doc.status === 'UNDERTAKING' ? 'background: rgba(245,158,11,0.1); color: #d97706;' : 'background: rgba(239,68,68,0.1); color: #dc2626;'))"
-                                                        style="width: 50px; height: 50px; display: grid; place-items: center;">
-                                                        <i class="fa-solid" :class="doc.status === 'VERIFIED' ? 'fa-file-circle-check fs-5' : (doc.status === 'UNDER_REVIEW' ? 'fa-file-lines fs-5' : (doc.status === 'UNDERTAKING' ? 'fa-file-signature fs-5' : 'fa-file-circle-xmark fs-5'))"></i>
-                                                    </div>
-                                                    <div>
-                                                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                                                            <h6 class="fw-bold text-dark mb-0">{{ doc.title }}</h6>
-                                                            <span v-if="doc.required" class="badge bg-danger-subtle text-danger border border-danger-subtle fs-9">Mandatory</span>
-                                                            <span v-else class="badge bg-secondary-subtle text-secondary border fs-9">Optional / Waiver</span>
+                                <!-- Cleared Documents Accordion for Complete State -->
+                                <div v-if="documentsData.stats && documentsData.stats.isComplete && showCompletedDocs && documentsData.completedRequirements && documentsData.completedRequirements.length > 0"
+                                    class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+                                    <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between">
+                                        <h6 class="fw-bold text-success mb-0"><i class="fa-solid fa-file-circle-check me-2 text-success"></i>Verified Admission Credentials</h6>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle fs-8">{{ documentsData.completedRequirements.length }} Cleared</span>
+                                    </div>
+                                    <div class="list-group list-group-flush">
+                                        <div v-for="doc in documentsData.completedRequirements" :key="doc.key" class="list-group-item p-4 border-bottom">
+                                            <div class="row align-items-center g-3">
+                                                <div class="col-12 col-md-6">
+                                                    <div class="d-flex align-items-start gap-3">
+                                                        <div class="rounded-3 p-3 text-center flex-shrink-0"
+                                                            style="width: 48px; height: 48px; display: grid; place-items: center; background: rgba(16,185,129,0.1); color: #059669;">
+                                                            <i class="fa-solid fa-file-circle-check fs-5"></i>
                                                         </div>
-                                                        <p class="text-muted fs-7 mb-0 mt-1">{{ doc.description }}</p>
+                                                        <div>
+                                                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                                <h6 class="fw-bold text-dark mb-0">{{ doc.title }}</h6>
+                                                                <span class="badge bg-success-subtle text-success border border-success-subtle fs-9">Complete</span>
+                                                            </div>
+                                                            <p class="text-muted fs-7 mb-0 mt-1">{{ doc.description }}</p>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-
-                                            <div class="col-12 col-md-4">
-                                                <!-- Status Badge & Meta -->
-                                                <div class="d-flex flex-column gap-1">
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <span v-if="doc.status === 'VERIFIED'" class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                                <div class="col-12 col-md-4">
+                                                    <div class="d-flex flex-column gap-1">
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 align-self-start">
                                                             <i class="fa-solid fa-circle-check me-1"></i> Verified &amp; Approved
+                                                            <span v-if="doc.submissionMode === 'HARDCOPY'" class="ms-1 opacity-75">(Hardcopy)</span>
                                                         </span>
-                                                        <span v-else-if="doc.status === 'UNDER_REVIEW'" class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
-                                                            <i class="fa-solid fa-clock me-1"></i> Under Review
-                                                        </span>
-                                                        <span v-else-if="doc.status === 'UNDERTAKING'" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
-                                                            <i class="fa-solid fa-triangle-exclamation me-1"></i> Conditional Undertaking
-                                                        </span>
-                                                        <span v-else class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
-                                                            <i class="fa-solid fa-circle-xmark me-1"></i> Not Submitted / Missing
-                                                        </span>
-                                                    </div>
-
-                                                    <!-- File Attachment Info -->
-                                                    <div v-if="doc.softCopyUrl" class="fs-8 text-secondary mt-1">
-                                                        <i class="fa-solid fa-paperclip me-1"></i>
-                                                        <span class="fw-semibold">{{ doc.fileName || 'Uploaded Scan' }}</span>
-                                                        <span v-if="doc.submittedAt" class="text-muted ms-1">({{ doc.submittedAt }})</span>
-                                                    </div>
-
-                                                    <!-- Undertaking details -->
-                                                    <div v-if="doc.isUndertaking && doc.undertakingReason" class="fs-8 text-warning-emphasis bg-warning bg-opacity-10 p-2 rounded-2 mt-1">
-                                                        <strong>Waiver Reason:</strong> {{ doc.undertakingReason }}
-                                                        <div v-if="doc.undertakingDeadline" class="text-danger fw-bold mt-1">
-                                                            <i class="fa-regular fa-calendar-check me-1"></i>Due by: {{ doc.undertakingDeadline }}
+                                                        <div v-if="doc.softCopyUrl" class="fs-8 text-secondary mt-1">
+                                                            <i class="fa-solid fa-paperclip me-1"></i>
+                                                            <span class="fw-semibold">{{ doc.fileName || 'Uploaded Scan' }}</span>
+                                                        </div>
+                                                        <div v-if="doc.registrarRemarks" class="fs-8 text-dark bg-light p-2 rounded-2 mt-1 border">
+                                                            <strong class="text-secondary"><i class="fa-solid fa-comment-dots me-1"></i>Registrar:</strong> {{ doc.registrarRemarks }}
                                                         </div>
                                                     </div>
-
-                                                    <!-- Registrar Remarks -->
-                                                    <div v-if="doc.registrarRemarks" class="fs-8 text-dark bg-light p-2 rounded-2 mt-1 border">
-                                                        <strong class="text-secondary"><i class="fa-solid fa-comment-dots me-1"></i>Registrar:</strong> {{ doc.registrarRemarks }}
+                                                </div>
+                                                <div class="col-12 col-md-2 text-md-end">
+                                                    <div v-if="doc.softCopyUrl" class="d-flex align-items-center justify-content-md-end gap-2">
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm px-2 fw-semibold"
+                                                            @click="openDocPreview(doc)" title="Preview Document">
+                                                            <i class="fa-solid fa-eye me-1"></i> View
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm px-2"
+                                                            @click="downloadDoc(doc)" title="Download Soft Copy">
+                                                            <i class="fa-solid fa-download"></i>
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                            <div class="col-12 col-md-3 text-md-end">
-                                                <div class="d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
-                                                    <button v-if="doc.softCopyUrl" type="button" class="btn btn-outline-secondary btn-sm px-2 fw-semibold"
-                                                        @click="openDocPreview(doc)" title="Preview Document">
-                                                        <i class="fa-solid fa-eye me-1"></i> Preview
-                                                    </button>
-                                                    <button v-if="doc.softCopyUrl" type="button" class="btn btn-outline-secondary btn-sm px-2"
-                                                        @click="downloadDoc(doc)" title="Download Soft Copy">
-                                                        <i class="fa-solid fa-download"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm px-3 fw-bold text-white shadow-sm"
-                                                        :style="doc.status === 'VERIFIED' ? 'background: #475569;' : 'background: var(--primary-green, #006A4E);'"
-                                                        @click="openUploadDocModal(doc)">
-                                                        <i class="fa-solid" :class="doc.softCopyUrl ? 'fa-arrow-rotate-right me-1' : 'fa-upload me-1'"></i>
-                                                        {{ doc.softCopyUrl ? 'Replace' : 'Upload' }}
-                                                    </button>
+                                <!-- SCENARIOS C & E: ACTIVE / PENDING REQUIREMENTS STATE -->
+                                <div v-if="!documentsData.stats || !documentsData.stats.isComplete">
+                                    <!-- Conditional Undertaking Banner -->
+                                    <div v-if="documentsData.stats && documentsData.stats.undertakingCount > 0"
+                                        class="alert alert-warning border-0 shadow-sm rounded-3 py-3 px-4 mb-4 d-flex align-items-start gap-3"
+                                        style="background: rgba(245, 158, 11, 0.12);">
+                                        <i class="fa-solid fa-triangle-exclamation fs-3 text-warning mt-1"></i>
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-1">Conditional Enrollment Notice (Active Undertaking)</h6>
+                                            <p class="mb-1 fs-7 text-dark">You have requirement(s) currently under conditional undertaking. Please submit or upload the official credentials before the committed deadline to maintain full academic clearance.</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Pending Missing Banner -->
+                                    <div v-else-if="documentsData.stats && documentsData.stats.missingCount > 0"
+                                        class="alert alert-info border-0 shadow-sm rounded-3 py-3 px-4 mb-4 d-flex align-items-start gap-3"
+                                        style="background: rgba(59, 130, 246, 0.1);">
+                                        <i class="fa-solid fa-circle-info fs-3 text-primary mt-1"></i>
+                                        <div>
+                                            <h6 class="fw-bold text-primary mb-1">Pending Action Required</h6>
+                                            <p class="mb-0 fs-7 text-dark">Please upload clear digital scans of the pending credentials below, or submit physical copies to the Registrar.</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Actionable Requirements List -->
+                                    <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+                                        <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between">
+                                            <h6 class="fw-bold text-dark mb-0"><i class="fa-solid fa-file-circle-exclamation me-2 text-warning"></i>Actionable Requirements</h6>
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fs-8">{{ documentsData.pendingRequirements.length }} Pending Action</span>
+                                        </div>
+
+                                        <div class="list-group list-group-flush">
+                                            <div v-for="doc in documentsData.pendingRequirements" :key="doc.key"
+                                                class="list-group-item p-4 border-bottom">
+                                                <div class="row align-items-center g-3">
+                                                    <div class="col-12 col-md-5">
+                                                        <div class="d-flex align-items-start gap-3">
+                                                            <div class="rounded-3 p-3 text-center flex-shrink-0"
+                                                                :style="doc.status === 'UNDERTAKING' ? 'background: rgba(245,158,11,0.1); color: #d97706;' : (doc.status === 'UNDER_REVIEW' ? 'background: rgba(59,130,246,0.1); color: #2563eb;' : 'background: rgba(239,68,68,0.1); color: #dc2626;')"
+                                                                style="width: 50px; height: 50px; display: grid; place-items: center;">
+                                                                <i class="fa-solid" :class="doc.status === 'UNDERTAKING' ? 'fa-file-signature fs-5' : (doc.status === 'UNDER_REVIEW' ? 'fa-file-lines fs-5' : 'fa-file-circle-xmark fs-5')"></i>
+                                                            </div>
+                                                            <div>
+                                                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                                    <h6 class="fw-bold text-dark mb-0">{{ doc.title }}</h6>
+                                                                    <span v-if="doc.isUndertaking" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fs-9">Conditional Undertaking</span>
+                                                                    <span v-else class="badge bg-danger-subtle text-danger border border-danger-subtle fs-9">Action Required</span>
+                                                                </div>
+                                                                <p class="text-muted fs-7 mb-0 mt-1">{{ doc.description }}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-12 col-md-4">
+                                                        <div class="d-flex flex-column gap-1">
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <span v-if="doc.status === 'UNDERTAKING'" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
+                                                                    <i class="fa-solid fa-triangle-exclamation me-1"></i> Conditional Undertaking
+                                                                </span>
+                                                                <span v-else-if="doc.status === 'UNDER_REVIEW'" class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                                                    <i class="fa-solid fa-clock me-1"></i> Under Review
+                                                                </span>
+                                                                <span v-else-if="doc.status === 'REJECTED'" class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                                                    <i class="fa-solid fa-ban me-1"></i> Rejected — Resubmit Required
+                                                                </span>
+                                                                <span v-else class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                                                    <i class="fa-solid fa-circle-xmark me-1"></i> Pending Submission
+                                                                </span>
+                                                            </div>
+
+                                                            <div v-if="doc.softCopyUrl" class="fs-8 text-secondary mt-1">
+                                                                <i class="fa-solid fa-paperclip me-1"></i>
+                                                                <span class="fw-semibold">{{ doc.fileName || 'Uploaded Scan' }}</span>
+                                                                <span v-if="doc.submittedAt" class="text-muted ms-1">({{ doc.submittedAt }})</span>
+                                                            </div>
+
+                                                            <div v-if="doc.isUndertaking && doc.undertakingReason" class="fs-8 text-warning-emphasis bg-warning bg-opacity-10 p-2 rounded-2 mt-1">
+                                                                <strong>Waiver Reason:</strong> {{ doc.undertakingReason }}
+                                                                <div v-if="doc.undertakingDeadline" class="text-danger fw-bold mt-1">
+                                                                    <i class="fa-regular fa-calendar-check me-1"></i>Due by: {{ doc.undertakingDeadline }}
+                                                                </div>
+                                                            </div>
+
+                                                            <div v-if="doc.registrarRemarks" class="fs-8 text-dark bg-light p-2 rounded-2 mt-1 border">
+                                                                <strong class="text-secondary"><i class="fa-solid fa-comment-dots me-1"></i>Registrar:</strong> {{ doc.registrarRemarks }}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-12 col-md-3 text-md-end">
+                                                        <div class="d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
+                                                            <button v-if="doc.softCopyUrl" type="button" class="btn btn-outline-secondary btn-sm px-2 fw-semibold"
+                                                                @click="openDocPreview(doc)" title="Preview Document">
+                                                                <i class="fa-solid fa-eye me-1"></i> Preview
+                                                            </button>
+                                                            <button v-if="doc.softCopyUrl" type="button" class="btn btn-outline-secondary btn-sm px-2"
+                                                                @click="downloadDoc(doc)" title="Download Soft Copy">
+                                                                <i class="fa-solid fa-download"></i>
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm px-3 fw-bold text-white shadow-sm"
+                                                                style="background: var(--primary-green, #006A4E); border-color: var(--primary-green, #006A4E);"
+                                                                @click="openUploadDocModal(doc)">
+                                                                <i class="fa-solid" :class="doc.softCopyUrl ? 'fa-arrow-rotate-right me-1' : 'fa-upload me-1'"></i>
+                                                                <span>{{ doc.isUndertaking ? 'Fulfill Undertaking' : (doc.softCopyUrl ? 'Replace' : 'Upload') }}</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Collapsible Cleared Documents Section -->
+                                    <div v-if="documentsData.completedRequirements && documentsData.completedRequirements.length > 0" class="mt-4 mb-4">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <button type="button" class="btn btn-link text-decoration-none p-0 fs-7 fw-semibold text-secondary"
+                                                @click="toggleShowCompletedDocs">
+                                                <i class="fa-solid me-1" :class="showCompletedDocs ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                                <span v-if="!showCompletedDocs">View Cleared / Registrar-Approved Documents ({{ documentsData.completedRequirements.length }})</span>
+                                                <span v-else>Hide Cleared Documents</span>
+                                            </button>
+                                        </div>
+                                        <div v-if="showCompletedDocs" class="card border-0 shadow-sm rounded-3 overflow-hidden">
+                                            <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between">
+                                                <h6 class="fw-bold text-success mb-0"><i class="fa-solid fa-file-circle-check me-2 text-success"></i>Verified Admission Credentials</h6>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle fs-8">{{ documentsData.completedRequirements.length }} Cleared</span>
+                                            </div>
+                                            <div class="list-group list-group-flush">
+                                                <div v-for="doc in documentsData.completedRequirements" :key="doc.key" class="list-group-item p-4 border-bottom">
+                                                    <div class="row align-items-center g-3">
+                                                        <div class="col-12 col-md-6">
+                                                            <div class="d-flex align-items-start gap-3">
+                                                                <div class="rounded-3 p-3 text-center flex-shrink-0"
+                                                                    style="width: 48px; height: 48px; display: grid; place-items: center; background: rgba(16,185,129,0.1); color: #059669;">
+                                                                    <i class="fa-solid fa-file-circle-check fs-5"></i>
+                                                                </div>
+                                                                <div>
+                                                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                                        <h6 class="fw-bold text-dark mb-0">{{ doc.title }}</h6>
+                                                                        <span class="badge bg-success-subtle text-success border border-success-subtle fs-9">Complete</span>
+                                                                    </div>
+                                                                    <p class="text-muted fs-7 mb-0 mt-1">{{ doc.description }}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-12 col-md-4">
+                                                            <div class="d-flex flex-column gap-1">
+                                                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 align-self-start">
+                                                                    <i class="fa-solid fa-circle-check me-1"></i> Verified &amp; Approved
+                                                                    <span v-if="doc.submissionMode === 'HARDCOPY'" class="ms-1 opacity-75">(Hardcopy)</span>
+                                                                </span>
+                                                                <div v-if="doc.softCopyUrl" class="fs-8 text-secondary mt-1">
+                                                                    <i class="fa-solid fa-paperclip me-1"></i>
+                                                                    <span class="fw-semibold">{{ doc.fileName || 'Uploaded Scan' }}</span>
+                                                                </div>
+                                                                <div v-if="doc.registrarRemarks" class="fs-8 text-dark bg-light p-2 rounded-2 mt-1 border">
+                                                                    <strong class="text-secondary"><i class="fa-solid fa-comment-dots me-1"></i>Registrar:</strong> {{ doc.registrarRemarks }}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-12 col-md-2 text-md-end">
+                                                            <div v-if="doc.softCopyUrl" class="d-flex align-items-center justify-content-md-end gap-2">
+                                                                <button type="button" class="btn btn-outline-secondary btn-sm px-2 fw-semibold"
+                                                                    @click="openDocPreview(doc)" title="Preview Document">
+                                                                    <i class="fa-solid fa-eye me-1"></i> View
+                                                                </button>
+                                                                <button type="button" class="btn btn-outline-secondary btn-sm px-2"
+                                                                    @click="downloadDoc(doc)" title="Download Soft Copy">
+                                                                    <i class="fa-solid fa-download"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -2873,19 +3064,21 @@
 
                     <!-- ══ TAB 3: MY STUDENT PROFILE ═════════════════════════════ -->
                     <template v-if="activeTab === 'profile'">
-                        <input type="file" ref="photoInput" @change="handlePhotoSelect" accept="image/*"
-                            style="display:none">
 
                         <!-- Profile Hero Header (Original shared/profile.html Design) -->
                         <div class="profile-hero">
                             <div class="avatar-wrap" @click="triggerPhotoUpload"
-                                title="Click to change profile picture">
-                                <img v-if="profile.photo" :src="formattedProfilePhoto(profile.photo)"
-                                    @error="profile.photo = null" alt="Profile Picture">
+                                title="Click to change profile picture" style="cursor: pointer; position: relative;">
+                                <img v-if="profile.photo && !avatarLoadError" :src="formattedProfilePhoto(profile.photo)"
+                                    @error="onAvatarError" alt="Profile Picture">
                                 <div v-else class="avatar-initials">{{ (profile.name || 'S').substring(0,2).toUpperCase() }}</div>
-                                <div class="avatar-overlay">
+                                <div class="avatar-overlay" v-if="!isUploadingPhoto">
                                     <i class="fa-solid fa-camera mb-1" style="font-size:1.1rem"></i>
                                     <span>Change Photo</span>
+                                </div>
+                                <div class="avatar-overlay" v-if="isUploadingPhoto" style="opacity: 1; z-index: 10; background: rgba(0,0,0,0.65);">
+                                    <i class="fa-solid fa-spinner fa-spin mb-1" style="font-size: 1.3rem;"></i>
+                                    <span style="font-size: 0.7rem;">Uploading...</span>
                                 </div>
                             </div>
                             <div class="profile-hero-info">
@@ -2894,6 +3087,11 @@
                                 <p><i class="fa-solid fa-envelope me-2"></i>{{ profile.email || 'No email set' }}</p>
                                 <p style="margin-top:4px"><i class="fa-solid fa-id-card me-2"></i>{{ profile.id }}
                                     &nbsp; <i class="fa-solid fa-graduation-cap me-2"></i>{{ profile.program }} ({{ profile.yearLevel }})</p>
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm text-white rounded-pill px-3 py-1" @click="triggerPhotoUpload" :disabled="isUploadingPhoto" style="font-size: 0.8rem; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35); transition: background 0.2s;">
+                                        <i class="fa-solid fa-camera me-1"></i> {{ isUploadingPhoto ? 'Uploading Portrait...' : 'Change Profile Picture' }}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

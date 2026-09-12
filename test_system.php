@@ -17,7 +17,7 @@ if (php_sapi_name() !== 'cli') {
     if (!in_array($role, ['ADMIN', 'SUPER_ADMIN', 'DEVELOPER'], true)) {
         http_response_code(403);
         header('Content-Type: text/html; charset=utf-8');
-        die("<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body style='font-family:sans-serif;text-align:center;padding:50px;'><h1>403 Forbidden</h1><p>Access to the System Diagnostic Suite requires an active Administrator session.</p><a href='/systemtest/index.html' style='color:#0ea5e9;'>Go to Portal Login</a></body></html>");
+        die("<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body style='font-family:sans-serif;text-align:center;padding:50px;'><h1>403 Forbidden</h1><p>Access to the System Diagnostic Suite requires an active Administrator session.</p><a href='/systemtest/' style='color:#0ea5e9;'>Go to Portal Login</a></body></html>");
     }
 }
 

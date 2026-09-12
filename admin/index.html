@@ -288,9 +288,11 @@
 
         /* ── GOOGLE DOCS BULLETIN CREATOR & CARD TEMPLATE ─────────────── */
         .bulletin-modal-card {
-            max-width: 920px;
+            max-width: 960px;
             width: 96vw;
+            height: 92vh;
             max-height: 92vh;
+            min-height: 0;
             display: flex;
             flex-direction: column;
             background: #f8fafc;
@@ -312,10 +314,10 @@
         }
         .bulletin-modal-body {
             padding: 18px 22px 28px;
-            overflow-y: auto;
+            overflow-y: auto !important;
             overflow-x: hidden;
             flex: 1 1 auto;
-            max-height: calc(92vh - 130px);
+            min-height: 0 !important;
             display: flex;
             flex-direction: column;
             gap: 14px;
@@ -344,6 +346,9 @@
             justify-content: space-between;
             flex-shrink: 0;
             z-index: 60;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.04);
+            position: sticky;
+            bottom: 0;
         }
         
         /* Meta Selector Bar */
@@ -465,6 +470,7 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            flex-shrink: 0;
             transition: all 0.2s ease;
         }
         .docs-bulletin-card-container.is-pinned {
@@ -658,6 +664,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
             border: 1px solid #e2e8f0;
             margin: 8px auto 0 auto;
+            max-height: 550px;
         }
         .docs-live-img-container img {
             display: block;
@@ -2249,7 +2256,7 @@
                     </div>
 
                     <!-- Comprehensive Program Aggregate Statistics Table -->
-                    <div v-if="dashboardStats && !isLoadingStats" class="card" style="margin-top:16px;">
+                    <div v-if="dashboardStats" class="card" style="margin-top:16px;">
                         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
                             <span><i class="fa-solid fa-table-list"></i> Academic Program Statistics &amp; Utilization</span>
                             <span style="font-size:0.72rem;color:var(--text-muted);">{{ activeFilterSummary }}</span>
@@ -2269,8 +2276,21 @@
                                         <th style="text-align:center;">Utilization</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <tr v-for="prog in detailedProgramStats" :key="'prog-row-' + prog.code">
+                                <tbody v-if="isLoadingStats">
+                                    <tr v-for="i in 5" :key="'admin-prog-skel-' + i" class="table-skeleton-row">
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 55px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 150px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
+                                        <td style="text-align:center;"><div class="skeleton-shimmer skeleton-bar" style="width: 35px; margin: 0 auto;"></div></td>
+                                        <td style="text-align:center;"><div class="skeleton-shimmer skeleton-bar" style="width: 35px; margin: 0 auto;"></div></td>
+                                        <td style="text-align:center;"><div class="skeleton-shimmer skeleton-bar" style="width: 35px; margin: 0 auto;"></div></td>
+                                        <td style="text-align:center;"><div class="skeleton-shimmer skeleton-pill" style="width: 45px; margin: 0 auto;"></div></td>
+                                        <td style="text-align:center;"><div class="skeleton-shimmer skeleton-bar" style="width: 50px; margin: 0 auto;"></div></td>
+                                        <td style="text-align:center;"><div class="skeleton-shimmer skeleton-pill" style="width: 45px; margin: 0 auto;"></div></td>
+                                    </tr>
+                                </tbody>
+                                <tbody v-else>
+                                    <tr v-for="prog in detailedProgramStats" :key="'prog-row-' + prog.code" class="table-row-enter">
                                         <td><code style="color:var(--primary);font-weight:700">{{ prog.code }}</code></td>
                                         <td style="font-weight:600">{{ prog.name }}</td>
                                         <td><span class="badge badge-role">{{ prog.department || 'N/A' }}</span></td>
@@ -2450,8 +2470,15 @@
                                     <th>College Name</th>
                                     <th>Status</th>
                                 </tr></thead>
-                                <tbody>
-                                    <tr v-for="d in filteredDepartments" :key="d.id" :class="{ 'row-highlight': selectedDeptName === d.name }" @click="selectedDeptName = (selectedDeptName === d.name ? '' : d.name)" style="cursor:pointer">
+                                <tbody v-if="isLoadingAcademicData">
+                                    <tr v-for="n in 4" :key="'dept-skel-' + n" class="table-skeleton-row">
+                                        <td><div class="skeleton-bar skeleton-bar-sm" style="width: 50px;"></div></td>
+                                        <td><div class="skeleton-bar" style="width: 130px;"></div></td>
+                                        <td><div class="skeleton-pill" style="width: 60px;"></div></td>
+                                    </tr>
+                                </tbody>
+                                <tbody v-else>
+                                    <tr v-for="d in filteredDepartments" :key="d.id" :class="{ 'row-highlight': selectedDeptName === d.name }" @click="selectedDeptName = (selectedDeptName === d.name ? '' : d.name)" style="cursor:pointer" class="table-row-enter">
                                         <td><code style="color:var(--primary);font-weight:700">{{ d.code }}</code></td>
                                         <td style="font-weight:600">{{ d.name }}</td>
                                         <td><span :class="'badge badge-' + (d.status === 'Active' ? 'active' : 'deact')">{{ d.status }}</span></td>
@@ -2483,8 +2510,18 @@
                                     <th>Status</th>
                                     <th class="text-end">Actions</th>
                                 </tr></thead>
-                                <tbody>
-                                    <tr v-for="p in filteredProgramsList" :key="p.id">
+                                <tbody v-if="isLoadingAcademicData">
+                                    <tr v-for="i in 5" :key="'admin-proglist-skel-' + i" class="table-skeleton-row">
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 55px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 150px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 110px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 50px;"></div></td>
+                                        <td class="text-end"><div class="skeleton-shimmer skeleton-btn" style="width: 55px; margin-left: auto;"></div></td>
+                                    </tr>
+                                </tbody>
+                                <tbody v-else>
+                                    <tr v-for="p in filteredProgramsList" :key="p.id" class="table-row-enter">
                                         <td><code style="color:var(--gold);font-weight:700">{{ p.code }}</code></td>
                                         <td style="font-weight:600">{{ p.name }}</td>
                                         <td style="font-size:.74rem;color:var(--text-muted)">{{ p.department }}</td>
@@ -2547,21 +2584,32 @@
                                 <th class="th-sortable" @click="sortBy('subjects','labFee')">Lab Fee <span class="sort-icon" :class="{active:sortKey==='subjects_labFee'}">{{ sortKey==='subjects_labFee'?(sortDir===1?'▲':'▼'):'⇅' }}</span></th>
                                 <th class="text-end">Actions</th>
                             </tr></thead>
-                            <tbody>
-                                <tr v-for="s in filteredSubjects" :key="s.id">
-                                    <td><code style="color:var(--sky)">{{ s.code }}</code></td>
-                                    <td style="font-weight:600">{{ s.title }}</td>
-                                    <td style="color:var(--text-muted);font-size:.78rem">{{ s.department }}</td>
-                                    <td>{{ s.lectureUnits }}</td>
-                                    <td>{{ s.labUnits }}</td>
-                                    <td>₱{{ s.labFee.toLocaleString() }}</td>
-                                    <td style="text-align:right"><span style="display:flex;gap:6px;justify-content:flex-end">
-                                        <button class="btn-sm-sky" @click="editSubject(s)"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                        <button class="btn-sm-danger" @click="deleteSubject(s.id)"><i class="fa-solid fa-trash"></i></button>
-                                    </span></td>
-                                </tr>
-                                <tr v-if="filteredSubjects.length===0" class="empty-row"><td colspan="7">No subjects found.</td></tr>
-                            </tbody>
+                                <tbody v-if="isLoadingAcademicData">
+                                    <tr v-for="i in 5" :key="'admin-subj-skel-' + i" class="table-skeleton-row">
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 60px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 160px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 100px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 30px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 30px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 60px;"></div></td>
+                                        <td style="text-align:right"><div class="skeleton-shimmer skeleton-btn" style="width: 60px; margin-left: auto;"></div></td>
+                                    </tr>
+                                </tbody>
+                                <tbody v-else>
+                                    <tr v-for="s in filteredSubjects" :key="s.id" class="table-row-enter">
+                                        <td><code style="color:var(--sky)">{{ s.code }}</code></td>
+                                        <td style="font-weight:600">{{ s.title }}</td>
+                                        <td style="color:var(--text-muted);font-size:.78rem">{{ s.department }}</td>
+                                        <td>{{ s.lectureUnits }}</td>
+                                        <td>{{ s.labUnits }}</td>
+                                        <td>₱{{ s.labFee.toLocaleString() }}</td>
+                                        <td style="text-align:right"><span style="display:flex;gap:6px;justify-content:flex-end">
+                                            <button class="btn-sm-sky" @click="editSubject(s)"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                                            <button class="btn-sm-danger" @click="deleteSubject(s.id)"><i class="fa-solid fa-trash"></i></button>
+                                        </span></td>
+                                    </tr>
+                                    <tr v-if="filteredSubjects.length===0" class="empty-row"><td colspan="7">No subjects found.</td></tr>
+                                </tbody>
                         </table>
                     </div>
                 </div>
@@ -2748,8 +2796,19 @@
                                     <th>Type</th>
                                     <th class="text-end">Actions</th>
                                 </tr></thead>
-                                <tbody>
-                                    <tr v-for="c in filteredCurriculum" :key="c.id">
+                                <tbody v-if="isLoadingAcademicData">
+                                    <tr v-for="i in 5" :key="'admin-curr-skel-' + i" class="table-skeleton-row">
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 120px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 80px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 65px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 75px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 55px;"></div></td>
+                                        <td style="text-align:right"><div class="skeleton-shimmer skeleton-btn" style="width: 60px; margin-left: auto;"></div></td>
+                                    </tr>
+                                </tbody>
+                                <tbody v-else>
+                                    <tr v-for="c in filteredCurriculum" :key="c.id" class="table-row-enter">
                                         <td style="font-size:.78rem;color:var(--text-muted)">{{ c.program }}</td>
                                         <td><span class="badge badge-role" style="font-size:0.68rem">{{ c.curriculumVersion }}</span></td>
                                         <td style="font-weight:600">{{ c.subject }} <span v-if="c.subjectCode" style="font-size:.68rem;color:var(--sky);margin-left:4px">[{{ c.subjectCode }}]</span></td>
@@ -2843,8 +2902,20 @@
                                     <th class="th-sortable" @click="sortBy('periods','status')">Status <span class="sort-icon" :class="{active:sortKey==='periods_status'}">{{ sortKey==='periods_status'?(sortDir===1?'▲':'▼'):'⇅' }}</span></th>
                                     <th class="text-end">Actions</th>
                                 </tr></thead>
-                                <tbody>
-                                    <tr v-for="p in filteredPeriods" :key="p.id">
+                                <tbody v-if="isLoadingAcademicData">
+                                    <tr v-for="i in 4" :key="'admin-period-skel-' + i" class="table-skeleton-row">
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 90px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 75px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 75px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 55px;"></div></td>
+                                        <td style="text-align:right"><div class="skeleton-shimmer skeleton-btn" style="width: 60px; margin-left: auto;"></div></td>
+                                    </tr>
+                                </tbody>
+                                <tbody v-else>
+                                    <tr v-for="p in filteredPeriods" :key="p.id" class="table-row-enter">
                                         <td style="font-weight:600">{{ p.name }}</td>
                                         <td>{{ p.academicYear }}</td>
                                         <td>{{ p.semester }}</td>
@@ -2971,8 +3042,21 @@
                                 <th>Offerings</th>
                                 <th class="text-end">Actions</th>
                             </tr></thead>
-                            <tbody>
-                                <tr v-for="s in filteredSections" :key="s.id">
+                            <tbody v-if="isLoadingAcademicData">
+                                <tr v-for="i in 5" :key="'admin-sect-skel-' + i" class="table-skeleton-row">
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 110px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 40px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 35px;"></div></td>
+                                    <td class="text-end"><div class="skeleton-shimmer skeleton-btn" style="width: 60px; margin-left: auto;"></div></td>
+                                </tr>
+                            </tbody>
+                            <tbody v-else>
+                                <tr v-for="s in filteredSections" :key="s.id" class="table-row-enter">
                                     <td><code style="color:var(--gold);font-weight:700;font-size:1rem">{{ s.code }}</code></td>
                                     <td style="font-weight:600">{{ s.program }}</td>
                                     <td>{{ s.yearLevel }}</td>
@@ -3133,8 +3217,18 @@
                                 <th>Status</th>
                                 <th>Registration Date</th>
                             </tr></thead>
-                            <tbody>
-                                <tr v-for="st in filteredStudents" :key="st.id">
+                            <tbody v-if="isLoadingAcademicData">
+                                <tr v-for="n in 6" :key="'st-skel-' + n" class="table-skeleton-row">
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 100px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 180px;"></div></td>
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 70px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 90px;"></div></td>
+                                </tr>
+                            </tbody>
+                            <tbody v-else>
+                                <tr v-for="st in filteredStudents" :key="st.id" class="table-row-enter">
                                     <td><code style="color:var(--primary);font-weight:700">{{ st.id }}</code></td>
                                     <td style="font-weight:600">{{ st.name }}</td>
                                     <td>{{ st.program }}</td>
@@ -3164,8 +3258,17 @@
                     <div class="table-responsive">
                         <table class="tbl">
                             <thead><tr><th>Type</th><th>Label</th><th>Amount</th><th>Per Unit</th><th class="text-end">Actions</th></tr></thead>
-                            <tbody>
-                                <tr v-for="f in filteredFees" :key="f.id">
+                            <tbody v-if="isLoadingAcademicData">
+                                <tr v-for="n in 5" :key="'fee-skel-' + n" class="table-skeleton-row">
+                                    <td><div class="skeleton-pill" style="width: 70px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 150px;"></div></td>
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 80px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 45px;"></div></td>
+                                    <td style="text-align:right"><div class="skeleton-btn" style="width: 70px; margin-left: auto;"></div></td>
+                                </tr>
+                            </tbody>
+                            <tbody v-else>
+                                <tr v-for="f in filteredFees" :key="f.id" class="table-row-enter">
                                     <td><span class="badge badge-role">{{ f.type }}</span></td>
                                     <td style="font-weight:600">{{ f.label }}</td>
                                     <td>₱{{ f.amount.toLocaleString(undefined,{minimumFractionDigits:2}) }}</td>
@@ -3202,8 +3305,17 @@
                     <div class="table-responsive">
                         <table class="tbl">
                             <thead><tr><th>Name</th><th>Username</th><th>Station / Role</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
-                            <tbody>
-                                <tr v-for="u in filteredUsers" :key="u.id">
+                            <tbody v-if="isLoadingOperators">
+                                <tr v-for="n in 5" :key="'op-skel-' + n" class="table-skeleton-row">
+                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 100px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 70px;"></div></td>
+                                    <td style="text-align:right"><div class="skeleton-btn" style="width: 90px; margin-left: auto;"></div></td>
+                                </tr>
+                            </tbody>
+                            <tbody v-else>
+                                <tr v-for="u in filteredUsers" :key="u.id" class="table-row-enter">
                                     <td style="font-weight:600">{{ u.name }}</td>
                                     <td><code style="color:var(--sky)">{{ u.username }}</code></td>
                                     <td><span class="badge badge-role">{{ u.role }}</span></td>
@@ -3265,8 +3377,19 @@
                                 <th>Account Status</th>
                                 <th>Activated On</th>
                             </tr></thead>
-                            <tbody>
-                                <tr v-for="acc in filteredAccounts" :key="acc.id">
+                            <tbody v-if="isLoadingAcademicData">
+                                <tr v-for="n in 6" :key="'acc-skel-' + n" class="table-skeleton-row">
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 100px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 160px;"></div></td>
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 70px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 60px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 90px;"></div></td>
+                                </tr>
+                            </tbody>
+                            <tbody v-else>
+                                <tr v-for="acc in filteredAccounts" :key="acc.id" class="table-row-enter">
                                     <td><code style="color:var(--primary);font-weight:700">{{ acc.id }}</code></td>
                                     <td style="font-weight:600">{{ acc.name }}</td>
                                     <td>
@@ -3308,8 +3431,22 @@
                                 <th>Published At</th>
                                 <th class="text-end">Actions</th>
                             </tr></thead>
-                            <tbody>
-                                <tr v-for="item in announcements" :key="item.id">
+                            <tbody v-if="isLoadingAnnouncements">
+                                <tr v-for="n in 4" :key="'ann-skel-' + n" class="table-skeleton-row">
+                                    <td>
+                                        <div class="skeleton-bar" style="width: 180px; margin-bottom: 4px;"></div>
+                                        <div class="skeleton-bar skeleton-bar-sm" style="width: 120px;"></div>
+                                    </td>
+                                    <td><div class="skeleton-pill" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 50px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 70px;"></div></td>
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 100px;"></div></td>
+                                    <td class="text-end"><div class="skeleton-btn" style="width: 60px; margin-left: auto;"></div></td>
+                                </tr>
+                            </tbody>
+                            <tbody v-else>
+                                <tr v-for="item in announcements" :key="item.id" class="table-row-enter">
                                     <td>
                                         <div style="font-weight:700;color:var(--text)">{{ item.title }}</div>
                                         <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">
@@ -3367,8 +3504,21 @@
                                     <th>Order</th>
                                     <th class="text-end">Actions</th>
                                 </tr></thead>
-                                <tbody>
-                                    <tr v-for="m in milestones" :key="m.id">
+                                <tbody v-if="isLoadingMilestones">
+                                    <tr v-for="n in 4" :key="'ms-skel-' + n" class="table-skeleton-row">
+                                        <td>
+                                            <div class="skeleton-bar" style="width: 150px; margin-bottom: 4px;"></div>
+                                            <div class="skeleton-bar skeleton-bar-sm" style="width: 60px;"></div>
+                                        </td>
+                                        <td><div class="skeleton-pill" style="width: 90px;"></div></td>
+                                        <td><div class="skeleton-bar skeleton-bar-sm" style="width: 120px;"></div></td>
+                                        <td><div class="skeleton-pill" style="width: 70px;"></div></td>
+                                        <td><div class="skeleton-bar skeleton-bar-sm" style="width: 30px;"></div></td>
+                                        <td class="text-end"><div class="skeleton-btn" style="width: 60px; margin-left: auto;"></div></td>
+                                    </tr>
+                                </tbody>
+                                <tbody v-else>
+                                    <tr v-for="m in milestones" :key="m.id" class="table-row-enter">
                                         <td>
                                             <div style="font-weight:700;color:var(--text)">{{ m.title }}</div>
                                             <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">Ref #{{ m.id }}</div>
@@ -3579,10 +3729,16 @@
                         <option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option>
                     </select></div>
                 <div class="form-group"><label class="form-label">Academic Period</label>
-                    <select class="form-select" v-model="form.academicPeriodId">
-                        <option value="" disabled>Select period…</option>
-                        <option v-for="ap in periods" :key="ap.id" :value="ap.id">{{ ap.name }}</option>
-                    </select></div>
+                    <select class="form-select" v-model="form.academicPeriodId" required>
+                        <option value="" disabled>Select active period…</option>
+                        <option v-for="ap in activePeriods" :key="ap.id" :value="ap.id">
+                            ★ {{ ap.name }} (Active)
+                        </option>
+                    </select>
+                    <small v-if="activePeriods.length === 0" style="color:var(--danger);font-size:0.75rem;margin-top:4px;display:block">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> No active enrollment semester found. Please activate a term under Enrollment Semesters first.
+                    </small>
+                </div>
             </div>
 
             <div class="form-row col2">
@@ -3954,10 +4110,15 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Academic Period</label>
-                    <select class="form-select" v-model="bulkForm.academicPeriodId">
-                        <option value="" disabled>Select period…</option>
-                        <option v-for="ap in periods" :key="ap.id" :value="ap.id">{{ ap.name }}</option>
+                    <select class="form-select" v-model="bulkForm.academicPeriodId" required>
+                        <option value="" disabled>Select active period…</option>
+                        <option v-for="ap in activePeriods" :key="ap.id" :value="ap.id">
+                            ★ {{ ap.name }} (Active)
+                        </option>
                     </select>
+                    <small v-if="activePeriods.length === 0" style="color:var(--danger);font-size:0.75rem;margin-top:4px;display:block">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> No active enrollment semester found. Please activate a term under Enrollment Semesters first.
+                    </small>
                 </div>
             </div>
 
@@ -4175,7 +4336,7 @@
                                         <button type="button" class="docs-size-preset-btn" :class="{ active: announcementForm.image_height === 'auto' || !announcementForm.image_height }" @click="announcementForm.image_height = 'auto'">
                                             Auto (Full)
                                         </button>
-                                        <input type="range" class="docs-range-slider" min="160" max="800" step="20"
+                                        <input type="range" class="docs-range-slider" min="160" max="600" step="20"
                                             :value="announcementForm.image_height === 'auto' ? 500 : (announcementForm.image_height || 450)"
                                             @input="announcementForm.image_height = parseInt($event.target.value)">
                                         <span style="font-size:0.75rem;font-weight:700;color:var(--primary);min-width:48px">
@@ -4204,7 +4365,7 @@
                                     <img :src="uploadImgPreview || announcementForm.image_url"
                                         alt="Notice Banner"
                                         :style="{
-                                            maxHeight: announcementForm.image_height === 'auto' ? '850px' : ((announcementForm.image_height || 450) + 'px'),
+                                            maxHeight: announcementForm.image_height === 'auto' ? '520px' : ((announcementForm.image_height || 450) + 'px'),
                                             width: '100%',
                                             objectFit: announcementForm.image_fit || 'contain'
                                         }">
@@ -4322,6 +4483,6 @@
 
 </div><!-- /app -->
 
-<script src="assets/js/controllers/AdminController.js?v=20260828_v2"></script>
+<script src="assets/js/controllers/AdminController.js?v=20260910_v3"></script>
 </body>
 </html>

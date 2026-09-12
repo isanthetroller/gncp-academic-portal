@@ -3,6 +3,10 @@
  * Automated Test Suite - PayMongo Payment Gateway Simulation
  * Validates checkout generation, centavo calculations, Rule-002 enforcement, and ACID settlement.
  */
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    die('CLI execution only.');
+}
 
 require_once __DIR__ . '/../shared/backend/config/database.php';
 require_once __DIR__ . '/../shared/backend/services/PayMongoService.php';

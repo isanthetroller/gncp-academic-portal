@@ -349,7 +349,8 @@ CREATE TABLE IF NOT EXISTS `curriculum` (
     `semester`           VARCHAR(50) NOT NULL,
     `elective`           TINYINT(1) DEFAULT 0,
     `curriculum_version` VARCHAR(100) DEFAULT '2022 Curriculum',
-    INDEX `idx_curr_lookup` (`program`, `year_level`, `semester`, `curriculum_version`)
+    INDEX `idx_curr_lookup` (`program`, `year_level`, `semester`, `curriculum_version`),
+    UNIQUE KEY `idx_curr_unique` (`program`, `subject`, `year_level`, `semester`, `curriculum_version`)
 ) ENGINE=InnoDB;
 
 INSERT INTO `curriculum` (`program`, `subject`, `year_level`, `semester`, `elective`) VALUES
@@ -616,7 +617,8 @@ CREATE TABLE IF NOT EXISTS `fee_schedule` (
     `label`    VARCHAR(150) NOT NULL,
     `amount`   DECIMAL(10,2) NOT NULL,
     `per_unit` TINYINT(1) DEFAULT 0,
-    INDEX `idx_fee_type` (`type`)
+    INDEX `idx_fee_type` (`type`),
+    UNIQUE KEY `idx_fee_unique` (`type`, `label`)
 ) ENGINE=InnoDB;
 
 INSERT INTO `fee_schedule` (`type`, `label`, `amount`, `per_unit`) VALUES

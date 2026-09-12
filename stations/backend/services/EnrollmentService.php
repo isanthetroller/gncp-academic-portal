@@ -83,7 +83,7 @@ class EnrollmentService {
 
         // Roadmap Normalization and Sequential Validation
         $roadmapSteps = $updateData['roadmap'] ?? json_decode($existingRecord['roadmap'] ?? '[]', true) ?? [];
-        $incomingStatus = $updateData['status'] ?? null;
+        $incomingStatus = $updateData['status'] ?? ($updateData['enrollment']['status'] ?? (isset($updateData['enrollment']) ? 'ENROLLED' : null));
         $currentDbStatus = strtoupper($existingRecord['status'] ?? '');
         $targetStatus = !empty($incomingStatus) ? strtoupper($incomingStatus) : $currentDbStatus;
 
@@ -166,7 +166,7 @@ class EnrollmentService {
         if (!empty($incomingStatus)) {
             $overallStatus = $incomingStatus;
         }
-        if ($allDone && $targetStatus === 'ENROLLED') {
+        if ($targetStatus === 'ENROLLED' || (isset($updateData['enrollment']) && in_array(strtoupper($updateData['enrollment']['status'] ?? ''), ['ENROLLED', 'ACTIVE'], true))) {
             $overallStatus = 'ENROLLED';
         }
 
@@ -206,7 +206,19 @@ class EnrollmentService {
                 $paymentPayload = $updateData['payment'];
                 if (empty($paymentPayload['assessmentSnapshot'])) {
                     $helpdesk = json_decode($existingRecord['helpdesk_data'] ?? '{}', true) ?: [];
-                    $advisedSubjects = $helpdesk['advisedSubjects'] ?? [];
+                    $rawAdvised = $helpdesk['advisedSubjects'] ?? [];
+                    $cleanAdvised = [];
+                    $seenCodes = [];
+                    foreach ($rawAdvised as $sub) {
+                        $code = strtoupper(trim($sub['code'] ?? $sub['subject'] ?? ''));
+                        if ($code !== '' && !isset($seenCodes[$code])) {
+                            $seenCodes[$code] = true;
+                            $cleanAdvised[] = $sub;
+                        } elseif ($code === '') {
+                            $cleanAdvised[] = $sub;
+                        }
+                    }
+                    $advisedSubjects = $cleanAdvised;
                     $nstp = strtoupper($existingRecord['nstp'] ?? 'NONE');
                     $scholarshipData = json_decode($existingRecord['scholarship_data'] ?? '{}', true) ?: [];
                     $discount = (float)($scholarshipData['discount'] ?? 0.00);
@@ -217,6 +229,20 @@ class EnrollmentService {
                 $paymentDataToSave = $updateData['payment'];
             }
             if (isset($updateData['helpdesk'])) {
+                $rawAdvised = $updateData['helpdesk']['advisedSubjects'] ?? [];
+                $cleanAdvised = [];
+                $seenCodes = [];
+                foreach ($rawAdvised as $sub) {
+                    $code = strtoupper(trim($sub['code'] ?? $sub['subject'] ?? ''));
+                    if ($code !== '' && !isset($seenCodes[$code])) {
+                        $seenCodes[$code] = true;
+                        $cleanAdvised[] = $sub;
+                    } elseif ($code === '') {
+                        $cleanAdvised[] = $sub;
+                    }
+                }
+                $updateData['helpdesk']['advisedSubjects'] = $cleanAdvised;
+
                 $sets[] = "`helpdesk_data` = :helpdesk_data";
                 $params['helpdesk_data'] = json_encode($updateData['helpdesk']);
                 
@@ -225,7 +251,7 @@ class EnrollmentService {
                 $params['scholarship'] = $scholarshipName;
 
                 // Freeze assessment snapshot immediately upon Academic Advising (Pre-Payment Protection)
-                $advisedSubjects = $updateData['helpdesk']['advisedSubjects'] ?? [];
+                $advisedSubjects = $cleanAdvised;
                 $nstp = strtoupper($existingRecord['nstp'] ?? 'NONE');
                 $scholarshipData = json_decode($existingRecord['scholarship_data'] ?? '{}', true) ?: [];
                 $discount = (float)($scholarshipData['discount'] ?? 0.00);
@@ -475,8 +501,24 @@ class EnrollmentService {
         }
 
         $imageData = base64_decode($base64Data);
-        if ($imageData === false) {
+        if ($imageData === false || strlen($imageData) === 0) {
             throw new InvalidArgumentException('Invalid base64 image data.');
+        }
+
+        // Maximum size limit: 5MB
+        if (strlen($imageData) > 5 * 1024 * 1024) {
+            throw new InvalidArgumentException('Portrait image exceeds maximum allowed size of 5MB.');
+        }
+
+        // Validate image signature & MIME
+        $imgInfo = @getimagesizefromstring($imageData);
+        if (!$imgInfo || !in_array($imgInfo[2], [IMAGETYPE_PNG, IMAGETYPE_JPEG, IMAGETYPE_WEBP], true)) {
+            throw new InvalidArgumentException('Invalid image format. Only legitimate PNG, JPEG, or WebP images are permitted.');
+        }
+
+        // Detect embedded polyglot or executable script patterns
+        if (preg_match('/<\?php|<\?=|<script\b|eval\s*\(|base64_decode\s*\(/i', $imageData)) {
+            throw new RuntimeException('Security Error: Malicious executable or script patterns detected inside image.');
         }
 
         $uploadDir = __DIR__ . '/../../../uploads/portraits/';
@@ -492,7 +534,7 @@ class EnrollmentService {
             throw new RuntimeException('Failed to write portrait file to disk.');
         }
 
-        $appBase = (isset($_SERVER['SCRIPT_NAME']) && strpos($_SERVER['SCRIPT_NAME'], '/systemtest/') !== false) ? '/systemtest' : '';
+        $appBase = (isset($_SERVER['SCRIPT_NAME']) && preg_match('#^/([^/]+)#', $_SERVER['SCRIPT_NAME'], $m)) ? '/' . $m[1] : '';
         $webPath = $appBase . '/uploads/portraits/' . $finalName;
 
         return [

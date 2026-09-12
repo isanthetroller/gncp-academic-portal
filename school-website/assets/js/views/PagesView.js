@@ -200,7 +200,7 @@ window.PagesView = {
                             <div class="sidebar-card shadow-sm border border-light-subtle p-4 text-center">
                                 <h4 class="fw-bold text-green mb-3">Interested in enrolling?</h4>
                                 <p class="text-muted small mb-4">Undergraduate applications are currently ongoing for the first semester of A.Y. 2026-2027.</p>
-                                <a :href="'../enrollment-system/index.html' + (subPage === 'acad-it' ? '?dept=COIT' : subPage === 'acad-business' ? '?dept=COBA' : subPage === 'acad-health' ? '?dept=COHS' : '')" class="btn btn-pill btn-pill-green w-100 py-3 shadow">APPLY ONLINE</a>
+                                <a :href="'../enrollment-system/' + (subPage === 'acad-it' ? '?dept=COIT' : subPage === 'acad-business' ? '?dept=COBA' : subPage === 'acad-health' ? '?dept=COHS' : '')" class="btn btn-pill btn-pill-green w-100 py-3 shadow">APPLY ONLINE</a>
                             </div>
                         </div>
                     </div>
@@ -634,7 +634,7 @@ window.PagesView = {
                                 <a :href="enrollNowUrl" class="btn btn-pill btn-pill-green shadow px-4 py-3 fw-bold">
                                     <i class="fas fa-graduation-cap me-2"></i>START ONLINE PRE-REGISTRATION
                                 </a>
-                                <a href="../enrollment-system/track.html" class="btn btn-pill btn-outline-light px-4 py-3 fw-bold">
+                                <a href="../enrollment-system/tracker" class="btn btn-pill btn-outline-light px-4 py-3 fw-bold">
                                     <i class="fas fa-route me-2"></i>TRACK SUBMITTED APPLICATION
                                 </a>
                             </div>
@@ -973,7 +973,7 @@ window.PagesView = {
                                         Sign in to view your Certificate of Registration (COR), class schedules, clearance status, and official fee breakdown.
                                     </p>
                                 </div>
-                                <a href="../student-portal/login.html" class="btn btn-pill btn-pill-green w-100 fw-bold py-3">
+                                <a href="../student-portal/login" class="btn btn-pill btn-pill-green w-100 fw-bold py-3">
                                     <i class="fas fa-right-to-bracket me-2"></i>STUDENT PORTAL LOGIN
                                 </a>
                             </div>
@@ -991,7 +991,7 @@ window.PagesView = {
                                         Check the progress of your online pre-registration application using your reference code.
                                     </p>
                                 </div>
-                                <a href="../enrollment-system/tracker.html" class="btn btn-pill btn-pill-white border border-2 border-green text-green w-100 fw-bold py-3">
+                                <a href="../enrollment-system/tracker" class="btn btn-pill btn-pill-white border border-2 border-green text-green w-100 fw-bold py-3">
                                     <i class="fas fa-magnifying-glass me-2"></i>TRACK APPLICATION
                                 </a>
                             </div>

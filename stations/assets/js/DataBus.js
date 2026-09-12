@@ -17,8 +17,13 @@ class StationDataBus {
     static _memoryQueue = null;
 
     static getApiUrl(action) {
-        const isSystemtest = (typeof window !== 'undefined' && window.location && window.location.pathname && window.location.pathname.startsWith('/systemtest'));
-        const basePath = isSystemtest ? '/systemtest' : '';
+        let basePath = '';
+        if (typeof window !== 'undefined' && window.location && window.location.pathname) {
+            const m = window.location.pathname.match(/^\/([^\/]+)/);
+            if (m && ['systemtest', 'systemtest-hardened', 'gncp-hardened', 'systemforsia'].includes(m[1].toLowerCase())) {
+                basePath = '/' + m[1];
+            }
+        }
         return `${basePath}/api/index.php?action=${action}`;
     }
 
@@ -95,8 +100,8 @@ class StationDataBus {
                 } else {
                     const isStation = window.location.pathname.includes('/stations/');
                     const isRegistrar = window.location.pathname.includes('/registrar/');
-                    const redirectTarget = (isStation ? '../../index.html' : (isRegistrar ? '../index.html' : 'index.html')) + '?session_expired=1';
-                    if (!window.location.href.includes('session_expired=1') && !window.location.pathname.endsWith('index.html')) {
+                    const redirectTarget = (isStation ? '../../' : (isRegistrar ? '../' : './')) + '?session_expired=1';
+                    if (!window.location.href.includes('session_expired=1')) {
                         window.location.href = redirectTarget;
                     }
                 }

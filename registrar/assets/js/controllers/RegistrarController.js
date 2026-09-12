@@ -102,6 +102,7 @@
                     category: 'Core Operations',
                     items: [
                         { key: 'pending-applications', label: 'Pending Reviews', icon: 'fa-solid fa-file-signature' },
+                        { key: 'review-history', label: 'Review History', icon: 'fa-solid fa-clock-rotate-left' },
                         { key: 'students', label: 'Student Directory', icon: 'fa-solid fa-users' }
                     ]
                 },
@@ -130,12 +131,33 @@
             const enrollments = ref([]);
             const pendingApplications = ref([]);
             const sections = ref([]);
+            const reviewHistory = ref([]);
+            const isLoadingData = ref(true);
+            const isLoadingHistory = ref(true);
+
+            const fetchReviewHistory = async () => {
+                try {
+                    const basePath = window.location.pathname.startsWith('/systemtest') ? '/systemtest' : '';
+                    const res = await fetch(`${basePath}/api/index.php?action=stations/history&station=REGISTRAR`, {
+                        credentials: 'same-origin'
+                    });
+                    const json = await res.json();
+                    if (json && json.success && Array.isArray(json.data)) {
+                        reviewHistory.value = json.data;
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch review history:', e);
+                } finally {
+                    isLoadingHistory.value = false;
+                }
+            };
 
             const navGroups = computed(() => [
                 {
                     title: 'Core Operations',
                     items: [
-                        { id: 'pending-applications', label: 'Pending Reviews', icon: 'fa-solid fa-file-signature', badge: pendingApplications.value.filter(s => ['PENDING', 'PRE_REGISTERED'].includes(String(s.status).toUpperCase())).length || null },
+                        { id: 'pending-applications', label: 'Pending Reviews', icon: 'fa-solid fa-file-signature', badge: pendingApplications.value.filter(s => ['PENDING', 'PRE_REGISTERED', 'RETURNED', 'NEEDS_CORRECTION'].includes(String(s.status).toUpperCase())).length || null },
+                        { id: 'review-history', label: 'Review History', icon: 'fa-solid fa-clock-rotate-left' },
                         { id: 'students', label: 'Student Directory', icon: 'fa-solid fa-users' }
                     ]
                 },
@@ -153,7 +175,7 @@
                 const totalSubs = subjects.value.length;
                 const totalSecs = subjectSections.value.length;
                 const totalStud = students.value.length;
-                const pendingCount = pendingApplications.value.filter(s => ['PENDING', 'PRE_REGISTERED'].includes(String(s.status).toUpperCase())).length;
+                const pendingCount = pendingApplications.value.filter(s => ['PENDING', 'PRE_REGISTERED', 'RETURNED', 'NEEDS_CORRECTION'].includes(String(s.status).toUpperCase())).length;
 
                 return [
                     { title: 'Registered Students', value: totalStud.toString(), meta: 'Approved and promoted' },
@@ -163,23 +185,34 @@
                 ];
             });
 
+            let isDataRequestInFlight = false;
             const loadData = () => {
+                if (isDataRequestInFlight) return;
+                isDataRequestInFlight = true;
                 Api.fetchAllData()
                     .then(res => {
+                        if (res && res.notModified) {
+                            return;
+                        }
                         const data = (res && res.data) ? res.data : {};
-                        programs.value = data.programs || [];
-                        subjects.value = data.subjects || [];
-                        curriculum.value = data.curriculum || [];
-                        academicPeriods.value = data.academicPeriods || [];
-                        subjectSections.value = data.subjectSections || [];
-                        feeSchedule.value = data.feeSchedule || [];
-                        students.value = data.students || [];
-                        enrollments.value = data.enrollments || [];
-                        pendingApplications.value = data.pendingApplications || [];
-                        sections.value = data.sections || [];
+                        if (data.programs) programs.value = data.programs;
+                        if (data.subjects) subjects.value = data.subjects;
+                        if (data.curriculum) curriculum.value = data.curriculum;
+                        if (data.academicPeriods) academicPeriods.value = data.academicPeriods;
+                        if (data.subjectSections) subjectSections.value = data.subjectSections;
+                        if (data.feeSchedule) feeSchedule.value = data.feeSchedule;
+                        if (data.students) students.value = data.students;
+                        if (data.enrollments) enrollments.value = data.enrollments;
+                        if (data.pendingApplications) pendingApplications.value = data.pendingApplications;
+                        if (data.sections) sections.value = data.sections;
+                        fetchReviewHistory();
                     })
                     .catch(err => {
                         console.error('Error loading registrar data:', err);
+                    })
+                    .finally(() => {
+                        isDataRequestInFlight = false;
+                        isLoadingData.value = false;
                     });
             };
 
@@ -317,14 +350,6 @@
                 window.location.replace('../?clear=true&logout=true');
             };
 
-            onMounted(() => {
-                checkSession();
-            });
-
-            onUnmounted(() => {
-                stopLiveSync();
-            });
-
             // ── Computed Properties ───────────────────────────────────────
             const isAdmin = computed(() => {
                 return currentUser.value && (currentUser.value.role === 'SUPER_ADMIN' || currentUser.value.role === 'ADMIN');
@@ -393,6 +418,9 @@
                 hideModal('sectionModal');
                 hideModal('feeModal');
                 currentView.value = view;
+                if (view === 'review-history') {
+                    fetchReviewHistory();
+                }
             };
 
 
@@ -567,9 +595,60 @@
 
             const getDocFile = (item, studentRecord = null) => {
                 const appRecord = studentRecord || selectedApplication.value;
-                if (!appRecord || !appRecord.requirementsData || !appRecord.requirementsData.files) return null;
+                if (!appRecord || !appRecord.requirementsData) return null;
                 const key = getDocKey(item);
-                return appRecord.requirementsData.files[key] || null;
+                const reqData = appRecord.requirementsData;
+
+                // 1. Check pre-enrollment files dictionary (e.g. reqData.files.reportCard / reqData.files.psa)
+                if (reqData.files && typeof reqData.files === 'object') {
+                    if (reqData.files[key]) return reqData.files[key];
+                    const altKey = key === 'reportCard' ? 'form_138' : (key === 'psa' ? 'psa_birth_cert' : (key === 'goodMoral' ? 'good_moral' : key));
+                    if (reqData.files[altKey]) return reqData.files[altKey];
+                }
+
+                // 2. Check Format A docs dictionary (e.g. reqData.docs.form_138 / reqData.docs.reportCard)
+                if (reqData.docs && typeof reqData.docs === 'object') {
+                    const docEntry = reqData.docs[key] || reqData.docs[key === 'reportCard' ? 'form_138' : (key === 'psa' ? 'psa_birth_cert' : (key === 'goodMoral' ? 'good_moral' : key))];
+                    if (docEntry && typeof docEntry === 'object' && (docEntry.filePath || docEntry.softCopyUrl)) {
+                        return {
+                            fileName: docEntry.fileName || `${item}.pdf`,
+                            filePath: docEntry.filePath || docEntry.softCopyUrl,
+                            fileType: docEntry.fileType || 'application/pdf',
+                            uploadedAt: docEntry.submittedAt || docEntry.uploadedAt || docEntry.dateUpdated || null
+                        };
+                    }
+                }
+
+                // 3. Check Format B array (e.g. [ { key: 'form_138', softCopyUrl: '...' } ])
+                if (Array.isArray(reqData)) {
+                    for (const req of reqData) {
+                        const rKey = (req.key || '').toLowerCase();
+                        if (rKey === key.toLowerCase() ||
+                            rKey === (key === 'reportCard' ? 'form_138' : (key === 'psa' ? 'psa_birth_cert' : (key === 'goodMoral' ? 'good_moral' : key))) ||
+                            (req.title && item && req.title.toLowerCase().includes(item.toLowerCase()))) {
+                            if (req.softCopyUrl || req.filePath) {
+                                return {
+                                    fileName: req.fileName || `${item}.pdf`,
+                                    filePath: req.softCopyUrl || req.filePath,
+                                    fileType: req.fileType || 'application/pdf',
+                                    uploadedAt: req.submittedAt || req.uploadedAt || null
+                                };
+                            }
+                        }
+                    }
+                }
+
+                return null;
+            };
+
+            const getDocFileUrl = (fileObj) => {
+                if (!fileObj) return '';
+                const path = fileObj.filePath || fileObj.softCopyUrl || '';
+                if (!path) return '';
+                if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+                if (path.startsWith('/systemtest/')) return path;
+                if (path.startsWith('/')) return path;
+                return '../' + path.replace(/^\/+/, '');
             };
 
             const openDocumentModal = (fileObj) => {
@@ -600,7 +679,12 @@
                 const key = getDocKey(item);
                 const docs = appRecord.requirementsData.docs || {};
                 const val = docs[key];
-                if (!val) return null;
+                if (!val) {
+                    if ((appRecord.requirementsData.status || '').toUpperCase() === 'VERIFIED') {
+                        return { status: 'ORIGINAL' };
+                    }
+                    return null;
+                }
                 if (typeof val === 'string') {
                     if (val === 'verified' || val === 'ORIGINAL') return { status: 'ORIGINAL' };
                     if (val === 'submitted' || val === 'PHOTOCOPY') return { status: 'PHOTOCOPY' };
@@ -776,11 +860,13 @@
                 if (!selectedApplication.value) return;
 
                 const currentStatus = selectedApplication.value.status;
-                if (['APPROVED', 'Approved', 'REGISTRAR_APPROVED'].includes(currentStatus)) {
+                if (['APPROVED', 'Approved', 'REGISTRAR_APPROVED', 'VERIFIED'].includes(currentStatus) && status === 'Approved') {
+                    // Allowed to re-save block section
+                } else if (['APPROVED', 'Approved', 'REGISTRAR_APPROVED', 'VERIFIED'].includes(currentStatus)) {
                     await Swal.fire({
-                        title: 'Error',
-                        text: 'This application has already been approved.',
-                        icon: 'error',
+                        title: 'Notice',
+                        text: 'This application has already been verified and cleared.',
+                        icon: 'info',
                         confirmButtonColor: '#198754'
                     });
                     return;
@@ -831,46 +917,73 @@
                     requirementsError.value = '';
                 }
 
-                let msg = '';
-                if (status === 'Approved') {
-                    if (isAlreadyApproved) {
-                        msg = `Update block section assignment to <strong>${selectedApplication.value.sectionCode || 'Unassigned'}</strong> for application ${refNum}?`;
-                    } else if (undertakingsCount > 0) {
-                        msg = `Approve application ${refNum} under <strong>Conditional Promissory Undertaking</strong>? (${undertakingsCount} document(s) pending promissory compliance). This will clear the applicant for station advising and medical checkup.`;
-                    } else {
-                        msg = `Approve application ${refNum}? All required documents are verified and complete. This will advance the enrollment roadmap.`;
-                    }
-                } else if (status === 'Rejected') {
-                    msg = `Reject application ${refNum}? This action is permanent and cannot be undone. The applicant must submit a completely new pre-registration application if they wish to apply again.`;
+                let customNotes = undertakingsCount > 0 ? `Conditional Enrollment: ${undertakingsCount} document(s) under Promissory Undertaking.` : '';
+
+                if (status === 'Pending' || status === 'RETURNED' || status === 'Needs_Correction') {
+                    const promptRes = await Swal.fire({
+                        title: 'Return for Correction',
+                        input: 'textarea',
+                        inputLabel: 'Reason for returning application to student',
+                        inputPlaceholder: 'Detail specifically what requires correction or re-upload...',
+                        inputValidator: (value) => {
+                            if (!value || !value.trim()) {
+                                return 'Please specify the correction reason for the student.';
+                            }
+                        },
+                        showCancelButton: true,
+                        confirmButtonColor: '#f59e0b',
+                        confirmButtonText: 'Return Application',
+                        cancelButtonColor: '#6c757d'
+                    });
+                    if (!promptRes.isConfirmed) return;
+                    status = 'RETURNED';
+                    customNotes = promptRes.value.trim();
                 } else {
-                    msg = `Send application ${refNum} back for correction? The student will be asked to resubmit or update information.`;
+                    let msg = '';
+                    if (status === 'Approved') {
+                        if (isAlreadyApproved) {
+                            msg = `Update block section assignment to <strong>${selectedApplication.value.sectionCode || 'Unassigned'}</strong> for application ${refNum}?`;
+                        } else if (undertakingsCount > 0) {
+                            msg = `Approve application ${refNum} under <strong>Conditional Promissory Undertaking</strong>? (${undertakingsCount} document(s) pending promissory compliance). This will clear the applicant for station advising and medical checkup.`;
+                        } else {
+                            msg = `Approve application ${refNum}? All required documents are verified and complete. This will advance the enrollment roadmap.`;
+                        }
+                    } else if (status === 'Rejected') {
+                        msg = `Reject application ${refNum}? This action is permanent and cannot be undone. The applicant must submit a completely new pre-registration application if they wish to apply again.`;
+                    }
+
+                    const confirmRes = await Swal.fire({
+                        title: 'Confirm Action',
+                        html: msg.replace(/\n/g, '<br>'),
+                        icon: status === 'Rejected' ? 'error' : status === 'Approved' ? 'question' : 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: status === 'Rejected' ? '#dc3545' : '#198754',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, proceed'
+                    });
+                    if (!confirmRes.isConfirmed) return;
                 }
 
-                const confirmRes = await Swal.fire({
-                    title: 'Confirm Action',
-                    html: msg.replace(/\n/g, '<br>'),
-                    icon: status === 'Rejected' ? 'error' : status === 'Approved' ? 'question' : 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: status === 'Rejected' ? '#dc3545' : '#198754',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Yes, proceed'
-                });
-                if (!confirmRes.isConfirmed) return;
-
-                const notes = undertakingsCount > 0 ? `Conditional Enrollment: ${undertakingsCount} document(s) under Promissory Undertaking.` : '';
                 const reqData = selectedApplication.value.requirementsData;
                 const sectionCode = selectedApplication.value.sectionCode;
-                Api.updateApplicationStatus(refNum, status, notes, reqData, sectionCode).then(res => {
+                Api.updateApplicationStatus(refNum, status, customNotes, reqData, sectionCode).then(res => {
                     if (res.success) {
-                        const index = pendingApplications.value.findIndex(a => a.referenceNumber === refNum);
-                        if (index !== -1) {
-                            pendingApplications.value[index] = res.data;
+                        if (['APPROVED', 'Approved', 'VERIFIED', 'Rejected', 'REJECTED'].includes(status)) {
+                            pendingApplications.value = pendingApplications.value.filter(a => a.referenceNumber !== refNum);
+                        } else if (res.data) {
+                            const index = pendingApplications.value.findIndex(a => a.referenceNumber === refNum);
+                            if (index !== -1) {
+                                pendingApplications.value[index] = res.data;
+                            } else {
+                                pendingApplications.value.unshift(res.data);
+                            }
                         }
+                        fetchReviewHistory();
                         loadData();
                         hideModal('applicationModal');
                         Swal.fire({
                             title: 'Success',
-                            text: `Application ${refNum} has been ${status.toLowerCase()} successfully.`,
+                            text: `Application ${refNum} has been ${status === 'Approved' ? 'approved & verified' : (status === 'RETURNED' ? 'returned for correction' : 'rejected')} successfully.`,
                             icon: 'success',
                             confirmButtonColor: '#198754',
                             timer: 2000,
@@ -878,12 +991,20 @@
                         });
                     } else {
                         Swal.fire({
-                            title: 'Update Failed',
-                            text: res.error || 'Failed to update application status.',
+                            title: 'Failed',
+                            text: res.message || 'An error occurred while updating the status.',
                             icon: 'error',
                             confirmButtonColor: '#dc3545'
                         });
                     }
+                }).catch(err => {
+                    console.error('Status update failed:', err);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'An unexpected network error occurred.',
+                        icon: 'error',
+                        confirmButtonColor: '#dc3545'
+                    });
                 });
             };
 
@@ -1131,6 +1252,13 @@
                 return '../uploads/avatars/' + filename;
             });
 
+            const formattedStudentPhoto = (photo) => {
+                if (!photo) return '';
+                if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:')) return photo;
+                const filename = photo.split('/').pop();
+                return '../uploads/avatars/' + filename;
+            };
+
             const passStrengthLabel = computed(() => {
                 const l = passStrengthLevel.value;
                 if (l <= 1) return 'Weak'; if (l === 2) return 'Fair'; if (l === 3) return 'Good'; return 'Strong';
@@ -1290,6 +1418,7 @@
                 topBarTitle,
                 searchPlaceholder,
 
+                currentView,
                 setView,
 
                 pendingCount,
@@ -1331,11 +1460,12 @@
                 // Profile & Security Management
                 user, pass, saving, updatingPass, showCurrentPass, showNewPass, fileInput,
                 passStrengthLevel, passStrengthLabel, passStrengthColor, passStrengthWidth,
-                initials, formattedAvatar, checkPassStrength, triggerFileInput, onFileSelected,
+                initials, formattedAvatar, formattedStudentPhoto, checkPassStrength, triggerFileInput, onFileSelected,
                 saveStaffProfile, updatePassword, loadProfile,
 
                 activePreviewDoc,
                 getDocFile,
+                getDocFileUrl,
                 openDocumentModal,
                 isImageFile,
                 isPdfFile,
@@ -1369,6 +1499,10 @@
                 openSectionModal,
                 saveSubjectSection,
                 deleteSubjectSection,
+                reviewHistory,
+                fetchReviewHistory,
+                isLoadingData,
+                isLoadingHistory,
                 openFeeModal,
                 saveFee,
                 deleteFee,
@@ -1390,6 +1524,7 @@
         if (View.TopBar) app.component('top-bar', View.TopBar);
         if (View.StudentsView) app.component('students-view', View.StudentsView);
         if (View.PendingApplicationsView) app.component('pending-applications-view', View.PendingApplicationsView);
+        if (View.ReviewHistoryView) app.component('review-history-view', View.ReviewHistoryView);
         if (View.EnrollmentOverviewView) app.component('enrollment-overview-view', View.EnrollmentOverviewView);
         if (View.ReportsView) app.component('reports-view', View.ReportsView);
         if (View.ProgramsView) app.component('programs-view', View.ProgramsView);

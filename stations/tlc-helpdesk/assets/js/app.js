@@ -18,6 +18,8 @@ window.app = createApp({
         const sortDesc = ref(false); // FIFO: Earliest arrivals served first (First In, First Out)
         const selectedStudent = ref(null);
         const students = ref([]);
+        const isLoadingQueue = ref(true);
+        const isLoadingHistory = ref(false);
 
         const timeGreeting = computed(() => {
             const hour = new Date().getHours();
@@ -96,6 +98,8 @@ window.app = createApp({
                 result.push(normalized);
             }
             students.value = result;
+            isLoadingQueue.value = false;
+            fetchReviewHistory();
         };
 
         const fetchCurrentProfile = () => {
@@ -124,7 +128,7 @@ window.app = createApp({
             if (cachedRaw) {
                 try {
                     const parsed = JSON.parse(cachedRaw);
-                    if (parsed && ['HELPDESK', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                    if (parsed && ['HELPDESK', 'SUPER_ADMIN', 'ADMIN'].includes(parsed.role)) {
                         currentUser.value = parsed;
                     }
                 } catch (e) {}
@@ -137,7 +141,7 @@ window.app = createApp({
                 const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
                 if (res.ok) {
                     const result = await res.json();
-                    const allowedRoles = ['HELPDESK', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'];
+                    const allowedRoles = ['HELPDESK', 'SUPER_ADMIN', 'ADMIN'];
                     if (result.success && result.data && allowedRoles.includes(result.data.role)) {
                         currentUser.value = result.data;
                         const sessionKey = (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
@@ -255,11 +259,39 @@ window.app = createApp({
             return idx >= 0 ? idx + 1 : null;
         };
 
+        const reviewHistory = ref([]);
+        const fetchReviewHistory = async () => {
+            isLoadingHistory.value = true;
+            try {
+                const basePath = window.location.pathname.startsWith('/systemtest') ? '/systemtest' : '';
+                const res = await fetch(`${basePath}/api/index.php?action=stations/history&station=HELPDESK`, {
+                    credentials: 'same-origin'
+                });
+                const json = await res.json();
+                if (json && json.success && Array.isArray(json.data)) {
+                    reviewHistory.value = json.data;
+                }
+            } catch (e) {
+                console.warn('[Helpdesk] History fetch error:', e);
+            } finally {
+                isLoadingHistory.value = false;
+            }
+        };
+
+        const completedStudents = computed(() => {
+            const histList = reviewHistory.value || [];
+            if (histList.length > 0) return histList;
+            return students.value.filter(s => s.status === 'COMPLETED');
+        });
+
         const filteredStudents = computed(() => {
             const query = searchQuery.value.trim().toLowerCase();
             const result = [];
             for (let i = 0; i < students.value.length; i++) {
                 const student = students.value[i];
+
+                // Active queue strictly excludes completed students
+                if (student.status === 'COMPLETED') continue;
                 
                 // Matches query
                 let matchesQuery = true;
@@ -272,11 +304,7 @@ window.app = createApp({
 
                 // Matches filter
                 let matchesFilter = false;
-                if (activeFilter.value === 'All') {
-                    matchesFilter = true;
-                } else if (activeFilter.value === 'Pending' && student.status === 'PENDING') {
-                    matchesFilter = true;
-                } else if ((activeFilter.value === 'Cleared' || activeFilter.value === 'Completed') && student.status === 'COMPLETED') {
+                if (activeFilter.value === 'All' || activeFilter.value === 'Pending') {
                     matchesFilter = true;
                 } else if (activeFilter.value === 'Flagged' && student.status === 'FLAGGED') {
                     matchesFilter = true;
@@ -325,6 +353,7 @@ window.app = createApp({
         });
 
         const completedToday = computed(() => {
+            if (reviewHistory.value.length > 0) return reviewHistory.value.length;
             let count = 0;
             for (let i = 0; i < students.value.length; i++) {
                 if (students.value[i].status === 'COMPLETED') {
@@ -395,8 +424,20 @@ window.app = createApp({
                         s.roadmap[currentStepIdx].status = 'COMPLETED';
                         s.status = 'ADVISED';
 
-                        // Compute dynamic tuition assessment based on prospectus subjects
-                        const subjects = student.prospectusSubjects || [];
+                        // Compute dynamic tuition assessment based on prospectus subjects (deduplicated by code)
+                        const rawSubjects = student.prospectusSubjects || [];
+                        const subjects = [];
+                        const seenCodes = new Set();
+                        rawSubjects.forEach(sub => {
+                            const code = String(sub.code || sub.subject || '').toUpperCase().trim();
+                            if (code && !seenCodes.has(code)) {
+                                seenCodes.add(code);
+                                subjects.push(sub);
+                            } else if (!code) {
+                                subjects.push(sub);
+                            }
+                        });
+
                         let totalUnits = 0;
                         let totalLabFee = 0;
                         subjects.forEach(sub => {
@@ -730,7 +771,12 @@ window.app = createApp({
             getSortIcon,
             selectedStudent,
             students,
+            isLoadingQueue,
+            isLoadingHistory,
             filteredStudents,
+            reviewHistory,
+            fetchReviewHistory,
+            completedStudents,
             nextInQueue,
             callNextStudent,
             getQueueRank,
@@ -738,6 +784,9 @@ window.app = createApp({
             completedToday,
             flaggedCount,
             totalInQueue,
+            reviewHistory,
+            fetchReviewHistory,
+            completedStudents,
             setView,
             openReview,
             markCompleted,

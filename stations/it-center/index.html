@@ -246,8 +246,17 @@
                                             <th>Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr v-for="student in studentsList.slice(0, 5)" :key="student.referenceNumber">
+                                    <tbody v-if="isLoadingQueue">
+                                        <tr v-for="i in 3" :key="'it-dash-skel-' + i" class="table-skeleton-row">
+                                            <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-pill" style="width: 80px;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-btn" style="width: 70px;"></div></td>
+                                        </tr>
+                                    </tbody>
+                                    <tbody v-else>
+                                        <tr v-for="student in studentsList.slice(0, 5)" :key="student.referenceNumber" class="table-row-enter">
                                             <td><code>{{ student.referenceNumber }}</code></td>
                                             <td><strong>{{ student.name }}</strong></td>
                                             <td><span class="badge bg-secondary-subtle text-secondary">{{ student.program }}</span></td>
@@ -370,8 +379,18 @@
                                         <th style="width:120px;">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <tr v-for="student in filteredStudents" :key="student.referenceNumber">
+                                <tbody v-if="isLoadingQueue">
+                                    <tr v-for="i in 5" :key="'it-queue-skel-' + i" class="table-skeleton-row">
+                                        <td><div class="skeleton-shimmer skeleton-ticket"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 85px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 150px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 75px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 90px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-btn" style="width: 100px;"></div></td>
+                                    </tr>
+                                </tbody>
+                                <tbody v-else>
+                                    <tr v-for="student in filteredStudents" :key="student.referenceNumber" class="table-row-enter">
                                         <!-- Queue Ticket -->
                                         <td>
                                             <span class="queue-ticket-badge" :class="getQueueRank(student) === 1 ? 'ticket-next' : 'ticket-default'">
@@ -464,8 +483,19 @@
                                         <th>Activated On</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <tr v-for="acc in filteredAccounts" :key="acc.id">
+                                <tbody v-if="isLoadingAccounts">
+                                    <tr v-for="i in 5" :key="'it-acc-skel-' + i" class="table-skeleton-row">
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 90px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 150px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 160px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 60px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 65px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
+                                    </tr>
+                                </tbody>
+                                <tbody v-else>
+                                    <tr v-for="acc in filteredAccounts" :key="acc.id" class="table-row-enter">
                                         <td><code style="color:var(--primary-green); font-weight:700; font-size:0.82rem;">{{ acc.id }}</code></td>
                                         <td style="font-weight:600;">{{ acc.name }}</td>
                                         <td>

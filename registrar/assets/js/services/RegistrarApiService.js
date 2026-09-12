@@ -9,6 +9,8 @@
     }
 
     const RegistrarApiService = {
+        _lastDataEtag: null,
+
         generateRequestId() {
             return 'reg_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
         },
@@ -43,6 +45,17 @@
                     return createResponse(false, null, 'Authentication required. Please sign in.', { code: 401, requestId: reqId });
                 }
 
+                if (response.status === 304) {
+                    return { success: true, notModified: true };
+                }
+
+                if (response.ok) {
+                    const etag = response.headers.get('ETag');
+                    if (etag && endpoint.includes('fetch_all_data')) {
+                        this._lastDataEtag = etag;
+                    }
+                }
+
                 const data = await response.json();
                 return data;
             } catch (err) {
@@ -52,7 +65,11 @@
         },
 
         async fetchAllData() {
-            return await this.request('fetch_all_data');
+            const headers = {};
+            if (this._lastDataEtag) {
+                headers['If-None-Match'] = this._lastDataEtag;
+            }
+            return await this.request('fetch_all_data', { headers });
         },
 
         // Programs CRUD

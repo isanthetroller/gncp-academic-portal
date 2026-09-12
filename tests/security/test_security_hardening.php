@@ -307,6 +307,57 @@ assertSecurity(
     "Cashier officer prohibited from setting status to VERIFIED (403 Forbidden)"
 );
 
+// 8.4: Cashier attempting to update Medical examination data should be rejected (403)
+$cashierIllegalMedical = $stationCtrl->updateStudent([
+    'referenceNumber' => $seedRef,
+    'updateData' => ['medical' => ['status' => 'FIT', 'notes' => 'Hacked medical record']]
+]);
+assertSecurity(
+    $cashierIllegalMedical['success'] === false && ($cashierIllegalMedical['code'] ?? 0) === 403,
+    "Cashier officer prohibited from modifying Medical clinic data (403 Forbidden)"
+);
+
+// 8.5: Cashier attempting to update Registrar requirements should be rejected (403)
+$cashierIllegalReqs = $stationCtrl->updateStudent([
+    'referenceNumber' => $seedRef,
+    'updateData' => ['requirements' => ['form138' => 'VERIFIED']]
+]);
+assertSecurity(
+    $cashierIllegalReqs['success'] === false && ($cashierIllegalReqs['code'] ?? 0) === 403,
+    "Cashier officer prohibited from verifying Registrar requirements (403 Forbidden)"
+);
+
+// 8.6: Medical attempting to process Cashier payment should be rejected (403)
+$_SESSION['gncp_station_user'] = [
+    'username' => 'medical_officer',
+    'role'     => 'MEDICAL',
+    'name'     => 'Dr. Medical'
+];
+$medicalIllegalPayment = $stationCtrl->updateStudent([
+    'referenceNumber' => $seedRef,
+    'updateData' => ['payment' => ['amountPaid' => 5000.00, 'status' => 'PAID']]
+]);
+assertSecurity(
+    $medicalIllegalPayment['success'] === false && ($medicalIllegalPayment['code'] ?? 0) === 403,
+    "Medical officer prohibited from processing Cashier payments (403 Forbidden)"
+);
+
+// 8.7: Portrait upload rejects non-image executable payloads
+$uploadRejected = false;
+try {
+    EnrollmentService::uploadPhoto([
+        'referenceNumber' => $seedRef,
+        'photoData' => base64_encode('<?php echo "EXPLOIT"; ?>'),
+        'fileName' => 'exploit.png'
+    ]);
+} catch (Exception $e) {
+    $uploadRejected = true;
+}
+assertSecurity(
+    $uploadRejected,
+    "Portrait upload rejects non-image script payloads"
+);
+
 // ── TEST 9: CSPRNG PIN and Password Randomness ──
 echo "\n9. CSPRNG Randomness Verification\n";
 require_once __DIR__ . '/../../api/models/StudentModel.php';

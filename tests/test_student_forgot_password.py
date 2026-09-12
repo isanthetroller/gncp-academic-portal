@@ -48,8 +48,8 @@ def run_test():
     assert res_a.status_code == 200, f"Expected 200, got {res_a.status_code}"
     data_a = res_a.json()
     assert data_a.get("success") is True
-    assert data_a["data"]["targetEmail"] == personal_email
-    print("  [PASS] Successfully routed OTP to personal email for Student ID lookup")
+    assert "maskedEmail" in data_a["data"] and "***" in data_a["data"]["maskedEmail"]
+    print(f"  [PASS] Successfully routed OTP and returned masked email ({data_a['data']['maskedEmail']}) for Student ID lookup")
 
     # ── TEST SCENARIO B: Request via School Email (dispatches to School Email) ──
     print("\n--- Scenario B: Request via School Institutional Email ---")
@@ -59,8 +59,8 @@ def run_test():
     assert res_b.status_code == 200, f"Expected 200, got {res_b.status_code}"
     data_b = res_b.json()
     assert data_b.get("success") is True
-    assert data_b["data"]["targetEmail"] == school_email
-    print(f"  [PASS] Successfully routed OTP to school email ({school_email})")
+    assert "maskedEmail" in data_b["data"] and "***" in data_b["data"]["maskedEmail"]
+    print(f"  [PASS] Successfully routed OTP to school email ({data_b['data']['maskedEmail']})")
 
     # ── TEST SCENARIO C: Verify OTP & Reset Password ──
     print("\n--- Scenario C: Reset Password using OTP ---")

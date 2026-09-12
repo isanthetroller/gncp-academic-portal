@@ -39,10 +39,12 @@ function getCurriculumSubjects($pdo, $programCode, $yearLevel = '1st Year', $sem
         $params['ver'] = $curriculumVersion;
     }
 
-    $sql = "SELECT s.code, s.title, s.lecture_units, s.lab_units, s.lab_fee, s.prerequisites, c.curriculum_version 
+    $sql = "SELECT s.code, s.title, s.lecture_units, s.lab_units, (s.lecture_units + s.lab_units) AS units, s.lab_fee, s.prerequisites, c.curriculum_version 
             FROM `curriculum` c
             JOIN `subjects` s ON (c.subject = s.title OR c.subject = s.code)
-            WHERE (c.program = :progName OR c.program = :progCode) AND c.year_level = :year AND c.semester = :sem" . $versionClause;
+            WHERE (c.program = :progName OR c.program = :progCode) AND c.year_level = :year AND c.semester = :sem" . $versionClause . "
+            GROUP BY s.code
+            ORDER BY s.code ASC";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -51,10 +53,12 @@ function getCurriculumSubjects($pdo, $programCode, $yearLevel = '1st Year', $sem
     if (empty($results) && !empty($curriculumVersion)) {
         // Fallback: If specific version is not found, fallback query without version filter
         unset($params['ver']);
-        $sqlFallback = "SELECT s.code, s.title, s.lecture_units, s.lab_units, s.lab_fee, s.prerequisites, c.curriculum_version 
+        $sqlFallback = "SELECT s.code, s.title, s.lecture_units, s.lab_units, (s.lecture_units + s.lab_units) AS units, s.lab_fee, s.prerequisites, c.curriculum_version 
                         FROM `curriculum` c
                         JOIN `subjects` s ON (c.subject = s.title OR c.subject = s.code)
-                        WHERE (c.program = :progName OR c.program = :progCode) AND c.year_level = :year AND c.semester = :sem";
+                        WHERE (c.program = :progName OR c.program = :progCode) AND c.year_level = :year AND c.semester = :sem
+                        GROUP BY s.code
+                        ORDER BY s.code ASC";
         $stmtFB = $pdo->prepare($sqlFallback);
         $stmtFB->execute($params);
         $results = $stmtFB->fetchAll(PDO::FETCH_ASSOC);
@@ -156,7 +160,7 @@ function promotePreEnrollmentToStudent($pdo, $record, $refNum, $roadmapJson, $it
         $studName = trim($record['first_name'] . ' ' . ($record['middle_name'] ? $record['middle_name'] . ' ' : '') . $record['last_name']);
         
         // Determine sequential student ID (or use provided ID if already assigned by IT)
-        $permId = $itData['permanentId'] ?? generateUniqueStudentId($pdo, '2026');
+        $permId = $itData['permanentId'] ?? ($itData['studentId'] ?? generateUniqueStudentId($pdo, '2026'));
         
         // Check by permanent ID
         $checkStmt = $pdo->prepare("SELECT * FROM `students` WHERE `id` = :id");

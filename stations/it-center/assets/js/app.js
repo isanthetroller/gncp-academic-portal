@@ -19,6 +19,8 @@
             const sortDesc = ref(false); // FIFO: Earliest arrivals served first (First In, First Out)
             const selectedStudent = ref(null);
             const studentsList = ref([]);
+            const isLoadingQueue = ref(true);
+            const isLoadingAccounts = ref(false);
 
             // Authentication State
             const getStoredUser = () => {
@@ -157,6 +159,7 @@
                     result.push(normalized);
                 }
                 studentsList.value = result;
+                isLoadingQueue.value = false;
                 fetchDashboardStats();
             };
 
@@ -186,7 +189,7 @@
                 if (cachedRaw) {
                     try {
                         const parsed = JSON.parse(cachedRaw);
-                        if (parsed && ['IT_CENTER', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                        if (parsed && ['IT_CENTER', 'SUPER_ADMIN', 'ADMIN'].includes(parsed.role)) {
                             currentUser.value = parsed;
                         }
                     } catch (e) {}
@@ -200,7 +203,7 @@
                     const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
                     if (res.ok) {
                         const result = await res.json();
-                        const allowedRoles = ['IT_CENTER', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'];
+                        const allowedRoles = ['IT_CENTER', 'SUPER_ADMIN', 'ADMIN'];
                         if (result.success && result.data && allowedRoles.includes(result.data.role)) {
                             currentUser.value = result.data;
                             const sessionKey = (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
@@ -237,7 +240,10 @@
 
             // Fetch live stats from backend for dashboard counters
             const fetchDashboardStats = () => {
-                fetch('../backend/api.php?action=get_enrollment_stats')
+                const url = (typeof StationDataBus !== 'undefined' && StationDataBus.getApiUrl)
+                    ? StationDataBus.getApiUrl('stations/stats')
+                    : '../../api/index.php?action=stations/stats';
+                fetch(url, { credentials: 'same-origin' })
                     .then(res => res.json())
                     .then(result => {
                         if (result.success && result.data) {
@@ -314,25 +320,11 @@
 
             // Metrics
             const totalInQueue = computed(() => {
-                let count = 0;
-                for (let i = 0; i < studentsList.value.length; i++) {
-                    const step = studentsList.value[i].roadmap ? studentsList.value[i].roadmap.find(r => r.stepId === 'it_activation' || r.stepId === 'id_email_final') : null;
-                    if (step && step.status !== 'COMPLETED') {
-                        count++;
-                    }
-                }
-                return count;
+                return studentsList.value.filter(s => getItStepStatus(s) !== 'COMPLETED').length;
             });
 
             const completedToday = computed(() => {
-                let count = 0;
-                for (let i = 0; i < studentsList.value.length; i++) {
-                    const step = studentsList.value[i].roadmap ? studentsList.value[i].roadmap.find(r => r.stepId === 'it_activation' || r.stepId === 'id_email_final') : null;
-                    if (step && step.status === 'COMPLETED') {
-                        count++;
-                    }
-                }
-                return count;
+                return studentsList.value.filter(s => getItStepStatus(s) === 'COMPLETED').length;
             });
 
             const filteredStudents = computed(() => {
@@ -340,7 +332,10 @@
                 const list = [];
                 for (let i = 0; i < studentsList.value.length; i++) {
                     const s = studentsList.value[i];
-                    const step = s.roadmap ? s.roadmap.find(r => r.stepId === 'it_activation' || r.stepId === 'id_email_final') : null;
+                    const isCompleted = getItStepStatus(s) === 'COMPLETED';
+
+                    // Active activation queue strictly excludes already activated/promoted accounts
+                    if (isCompleted) continue;
                     
                     let matchesQuery = true;
                     if (query) {
@@ -350,11 +345,7 @@
                     }
 
                     let matchesFilter = false;
-                    if (activeFilter.value === 'All') {
-                        matchesFilter = true;
-                    } else if (activeFilter.value === 'Pending' && step && step.status !== 'COMPLETED') {
-                        matchesFilter = true;
-                    } else if (activeFilter.value === 'Completed' && step && step.status === 'COMPLETED') {
+                    if (activeFilter.value === 'All' || activeFilter.value === 'Pending') {
                         matchesFilter = true;
                     }
 
@@ -391,7 +382,11 @@
             };
 
             const loadAccounts = () => {
-                fetch('../backend/api.php?action=fetch_student_accounts')
+                isLoadingAccounts.value = true;
+                const url = (typeof StationDataBus !== 'undefined' && StationDataBus.getApiUrl)
+                    ? StationDataBus.getApiUrl('stations/student_accounts')
+                    : '../../api/index.php?action=stations/student_accounts';
+                fetch(url, { credentials: 'same-origin' })
                     .then(res => res.json())
                     .then(result => {
                         if (result.success && result.data) {
@@ -400,6 +395,9 @@
                     })
                     .catch(err => {
                         console.error('Failed to load student accounts:', err);
+                    })
+                    .finally(() => {
+                        isLoadingAccounts.value = false;
                     });
             };
 
@@ -484,7 +482,10 @@
                     generatedEmail.value = `${cleanFirst}.${cleanLast}${randomSuffix}@gncp.edu.ph`;
 
                     // Load next sequential student ID from server
-                    fetch('../backend/api.php?action=get_next_student_id')
+                    const nextIdUrl = (typeof StationDataBus !== 'undefined' && StationDataBus.getApiUrl)
+                        ? StationDataBus.getApiUrl('stations/next_student_id')
+                        : '../../api/index.php?action=stations/next_student_id';
+                    fetch(nextIdUrl, { credentials: 'same-origin' })
                         .then(res => res.json())
                         .then(res => {
                             if (res.success && res.data) {
@@ -505,8 +506,12 @@
                     generatedPassword.value = cleanPasswordLast || 'delacruz';
                 }
 
-                const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('itReviewModal'));
-                modal.show();
+                // Open modal via Bootstrap 5 API
+                const modalEl = document.getElementById('itReviewModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                }
             };
 
             const finalizeEnrollment = async () => {
@@ -532,10 +537,12 @@
                         sections:           { ...selectedSections.value }
                     };
 
-                    const updatePayload = JSON.parse(JSON.stringify(student));
-                    updatePayload.enrollment = enrollmentData;
-                    updatePayload.status = 'ENROLLED';
-                    const itStepIdx = (updatePayload.roadmap && Array.isArray(updatePayload.roadmap)) ? updatePayload.roadmap.findIndex(r => r.stepId === 'it_activation' || r.stepId === 'id_email_final' || r.name === 'IT Center ID' || r.id === 7) : -1;
+                    const updatePayload = {
+                        enrollment: enrollmentData,
+                        status: 'ENROLLED',
+                        roadmap: student.roadmap ? JSON.parse(JSON.stringify(student.roadmap)) : []
+                    };
+                    const itStepIdx = (updatePayload.roadmap && Array.isArray(updatePayload.roadmap)) ? updatePayload.roadmap.findIndex(r => r && (r.stepId === 'it_activation' || r.stepId === 'id_email_final' || r.name === 'IT Center ID' || r.id === 7 || r.title === 'Student Portal Account Activation')) : -1;
                     if (itStepIdx !== -1) {
                         updatePayload.roadmap[itStepIdx].status = 'COMPLETED';
                         updatePayload.roadmap[itStepIdx].updatedAt = new Date().toISOString();
@@ -543,24 +550,25 @@
 
                     const apiUrl = (typeof StationDataBus !== 'undefined' && StationDataBus.getApiUrl)
                         ? StationDataBus.getApiUrl('stations/update')
-                        : (window.location.pathname.startsWith('/systemtest') ? '/systemtest/api/index.php?action=stations/update' : '/api/index.php?action=stations/update');
+                        : ((window.location.pathname.match(/^\/([^\/]+)/) ? '/' + window.location.pathname.match(/^\/([^\/]+)/)[1] : '') + '/api/index.php?action=stations/update');
 
                     const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
                         body: JSON.stringify({
                             referenceNumber: student.referenceNumber,
                             updateData: updatePayload
                         })
                     });
 
-                    if (!response.ok) {
-                        throw new Error('Server rejected finalization request.');
-                    }
+                    const result = await response.json().catch(() => null);
 
-                    const result = await response.json();
-                    if (!result.success) {
-                        throw new Error(result.error || result.message || 'Server transaction failed.');
+                    if (!response.ok || !result || !result.success) {
+                        const errMsg = (result && (result.message || result.error)) 
+                            ? (result.message || result.error) 
+                            : `Server rejected finalization request (HTTP ${response.status}).`;
+                        throw new Error(errMsg);
                     }
 
                     const promoCreds = result.data || {};
@@ -825,6 +833,8 @@
                 getSortIcon,
                 studentsList,
                 filteredStudents,
+                isLoadingQueue,
+                isLoadingAccounts,
                 nextInQueue,
                 callNextForId,
                 getQueueRank,

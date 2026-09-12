@@ -1,4 +1,8 @@
 <?php
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    die('CLI execution only.');
+}
 require_once __DIR__ . '/../shared/backend/config/database.php';
 require_once __DIR__ . '/../stations/backend/services/QueueService.php';
 $pdo = Database::getInstance();

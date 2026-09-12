@@ -67,5 +67,7 @@ try {
     ], 'Official Receipt successfully generated.');
 
 } catch (Exception $e) {
-    sendResponse(false, null, 'Database error: ' . $e->getMessage(), 500);
+    require_once __DIR__ . '/../../shared/backend/utils/logger.php';
+    logAppError('Generate OR Error: ' . $e->getMessage(), ['refNo' => $refNo ?? '']);
+    sendResponse(false, null, 'An unexpected issue occurred while generating the official receipt.', 500);
 }

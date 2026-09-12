@@ -17,7 +17,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
-header("Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; font-src 'self' https: data:; img-src 'self' data: blob: https:;");
+header("Content-Security-Policy: upgrade-insecure-requests; default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; font-src 'self' https: data:; img-src 'self' data: blob: https:;");
 header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -167,6 +167,16 @@ try {
             requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN']);
             return RegistrarService::updateApplicationStatus($pdo, $p);
         },
+        'registrar/update_application_status' => function($p) use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN']);
+            return RegistrarService::updateApplicationStatus($pdo, $p);
+        },
+        'update_application_status' => function($p) use ($pdo) {
+            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
+            requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN']);
+            return RegistrarService::updateApplicationStatus($pdo, $p);
+        },
         'registrar/update_step'   => function($p) use ($pdo) {
             require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
             requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN']);
@@ -189,6 +199,8 @@ try {
         'admin/save_section'      => fn($p) => (new AdminController($pdo))->saveSection($p),
         'admin/save_term'         => fn($p) => (new AdminController($pdo))->saveTerm($p),
         'admin/save_user'         => fn($p) => (new AdminController($pdo))->saveUser($p),
+        'admin/reset_operator_password' => fn($p) => (new AdminController($pdo))->resetOperatorPassword($p),
+        'reset_operator_password' => fn($p) => (new AdminController($pdo))->resetOperatorPassword($p),
         'admin/cleanup_test_users'=> fn($p) => (new AdminController($pdo))->cleanupTestUsers($p),
 
         'announcements/list'              => fn($p) => (new AdminController($pdo))->getAnnouncements($_GET),
@@ -361,6 +373,10 @@ try {
 
         $ctrl = new StationController($pdo);
         $response = $ctrl->getQueue();
+    } elseif ($action === 'stations/history' || $action === 'fetch_station_history') {
+        $ctrl = new StationController($pdo);
+        $roleParam = $_GET['station'] ?? ($_GET['role'] ?? null);
+        $response = $ctrl->getHistory($roleParam);
     } elseif (isset($routes[$action])) {
         $response = $routes[$action]($payload);
     }

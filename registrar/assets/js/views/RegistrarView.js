@@ -88,7 +88,7 @@
        StudentsView
        ───────────────────────────────────────────────────────────────── */
     const StudentsView = {
-        props: ['students', 'searchText'],
+        props: ['students', 'searchText', 'isLoading'],
         emits: ['open-student-modal'],
         data() {
             return {
@@ -113,79 +113,47 @@
             }
         },
         computed: {
-            availablePrograms() {
-                const set = new Set();
-                (this.students || []).forEach(s => {
-                    if (s.program) set.add(s.program.trim());
-                });
-                ['BSIT', 'BSCS', 'BSN', 'BSBA', 'BSCpE'].forEach(p => set.add(p));
-                return ['ALL', ...Array.from(set).sort()];
-            },
             filteredStudents() {
-                // 1. Text Search Filter
-                const query = this.searchText ? this.searchText.trim().toLowerCase() : '';
                 let list = this.students || [];
-
-                if (query) {
+                if (this.searchText) {
+                    const q = this.searchText.toLowerCase();
                     list = list.filter(s =>
-                        (s.id && s.id.toLowerCase().includes(query)) ||
-                        (s.name && s.name.toLowerCase().includes(query)) ||
-                        (s.program && s.program.toLowerCase().includes(query))
+                        (s.id && s.id.toLowerCase().includes(q)) ||
+                        (s.name && s.name.toLowerCase().includes(q)) ||
+                        (s.program && s.program.toLowerCase().includes(q))
                     );
                 }
-
-                // 2. Year Level Filter
-                if (this.filterYear !== 'ALL') {
-                    list = list.filter(s => s.year_level === this.filterYear);
-                }
-
-                // 3. Program Filter
                 if (this.filterProgram !== 'ALL') {
                     list = list.filter(s => s.program === this.filterProgram);
                 }
-
-                // 4. Sort logic
+                if (this.filterYear !== 'ALL') {
+                    list = list.filter(s => (s.year_level || s.yearLevel || '1st Year') === this.filterYear);
+                }
                 return [...list].sort((a, b) => {
-                    let valA = a[this.sortBy];
-                    let valB = b[this.sortBy];
-
-                    // Year level fallback matching UI display
-                    if (this.sortBy === 'year_level') {
-                        valA = valA || '1st Year';
-                        valB = valB || '1st Year';
-                    } else {
-                        valA = valA || '';
-                        valB = valB || '';
-                    }
-
-                    if (typeof valA === 'string') valA = valA.toLowerCase();
-                    if (typeof valB === 'string') valB = valB.toLowerCase();
-
-                    if (valA < valB) return this.sortDesc ? 1 : -1;
-                    if (valA > valB) return this.sortDesc ? -1 : 1;
+                    let vA = a[this.sortBy] || '';
+                    let vB = b[this.sortBy] || '';
+                    if (typeof vA === 'string') vA = vA.toLowerCase();
+                    if (typeof vB === 'string') vB = vB.toLowerCase();
+                    if (vA < vB) return this.sortDesc ? 1 : -1;
+                    if (vA > vB) return this.sortDesc ? -1 : 1;
                     return 0;
                 });
+            },
+            uniquePrograms() {
+                const set = new Set((this.students || []).map(s => s.program).filter(Boolean));
+                return ['ALL', ...Array.from(set)];
             }
         },
         template: `
             <div class="view-section">
-                <!-- Premium Filters Toolbar -->
-                <div class="card p-3 border border-light-subtle rounded-3 bg-white mb-3 shadow-sm">
-                    <div class="row align-items-center g-3">
-                        <div class="col-md-6 d-flex flex-wrap align-items-center gap-2">
-                            <span class="text-muted small fw-bold text-uppercase me-2"><i class="fa-solid fa-filter text-success me-1"></i>Year Level:</span>
-                            <button v-for="y in ['ALL', '1st Year', '2nd Year', '3rd Year', '4th Year']" 
-                                    :key="y" 
-                                    class="btn-pill btn-pill-sm py-1"
-                                    :class="filterYear === y ? 'btn-pill-green' : 'btn-pill-outline'"
-                                    @click="filterYear = y">
-                                {{ y === 'ALL' ? 'All Years' : y }}
-                            </button>
-                        </div>
-                        <div class="col-md-6 d-flex flex-wrap align-items-center gap-2 justify-content-md-end">
-                            <span class="text-muted small fw-bold text-uppercase me-2"><i class="fa-solid fa-graduation-cap text-success me-1"></i>Program:</span>
-                            <button v-for="p in availablePrograms" 
-                                    :key="p" 
+                <!-- Program Filter Bar -->
+                <div class="card border border-light-subtle rounded-3 shadow-sm mb-3 p-3" style="background:#fafafa;">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
+                            <i class="fa-solid fa-graduation-cap text-success me-1"></i>Filter Program:
+                        </span>
+                        <div class="d-flex flex-wrap gap-1">
+                            <button v-for="p in uniquePrograms" :key="p"
                                     class="btn-pill btn-pill-sm py-1"
                                     :class="filterProgram === p ? 'btn-pill-green' : 'btn-pill-outline'"
                                     @click="filterProgram = p">
@@ -226,8 +194,19 @@
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr v-for="student in filteredStudents" :key="student.id">
+                            <tbody v-if="isLoading">
+                                <tr v-for="i in 5" :key="'reg-stud-skel-' + i" class="table-skeleton-row">
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 90px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-btn" style="width: 90px;"></div></td>
+                                </tr>
+                            </tbody>
+                            <tbody v-else>
+                                <tr v-for="student in filteredStudents" :key="student.id" class="table-row-enter">
                                     <td><strong class="font-monospace">{{ student.id }}</strong></td>
                                     <td><strong>{{ student.name }}</strong></td>
                                     <td><span class="badge bg-light text-dark font-monospace border">{{ student.program }}</span></td>
@@ -369,7 +348,7 @@
        PendingApplicationsView
        ───────────────────────────────────────────────────────────────── */
     const PendingApplicationsView = {
-        props: ['pendingApplications', 'searchText', 'sections', 'programs'],
+        props: ['pendingApplications', 'searchText', 'sections', 'programs', 'isLoading'],
         emits: ['open-application-modal'],
 
         data() {
@@ -468,7 +447,10 @@
 
         computed: {
             activeApplications() {
-                return (this.pendingApplications || []).filter(a => a.status !== 'ENROLLED');
+                return (this.pendingApplications || []).filter(a => {
+                    const s = String(a.status || '').toUpperCase();
+                    return ['PRE_REGISTERED', 'PENDING', 'RETURNED', 'NEEDS_CORRECTION'].includes(s);
+                });
             },
             uniquePrograms() {
                 return [...new Set(this.activeApplications.map(a => a.program).filter(Boolean))].sort();
@@ -479,15 +461,19 @@
             countByStatus() {
                 const map = {};
                 this.activeApplications.forEach(a => {
-                    const s = a.status || 'UNKNOWN';
+                    const s = String(a.status || 'UNKNOWN').toUpperCase();
                     map[s] = (map[s] || 0) + 1;
                 });
                 return map;
             },
-            pendingCount() { return this.countByStatus['PRE_REGISTERED'] || 0; },
-            approvedCount() { return this.countByStatus['APPROVED'] || 0; },
-            rejectedCount() { return this.countByStatus['REJECTED'] || 0; },
-            inProgressCount() { return (this.countByStatus['IN_PROGRESS'] || 0) + (this.countByStatus['REGISTRAR_APPROVED'] || 0); },
+            pendingCount() { return (this.countByStatus['PRE_REGISTERED'] || 0) + (this.countByStatus['PENDING'] || 0); },
+            returnedCount() { return (this.countByStatus['RETURNED'] || 0) + (this.countByStatus['NEEDS_CORRECTION'] || 0); },
+            historyCount() {
+                return (this.pendingApplications || []).filter(a => {
+                    const s = String(a.status || '').toUpperCase();
+                    return ['VERIFIED', 'APPROVED', 'REGISTRAR_APPROVED', 'REJECTED'].includes(s);
+                }).length;
+            },
             activeFilterCount() {
                 let n = 0;
                 if (this.filterStatus !== 'ALL') n++;
@@ -555,24 +541,24 @@
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #10b981!important;">
-                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Verified / Cleared</div>
-                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#059669;line-height:1.1;">{{ inProgressCount + approvedCount }}</div>
-                            <div style="font-size:0.7rem;color:#9ca3af;">passed registrar</div>
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #3b82f6!important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Returned for Correction</div>
+                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#2563eb;line-height:1.1;">{{ returnedCount }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">needs correction</div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #3b82f6!important;">
-                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Total in Queue</div>
-                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#2563eb;line-height:1.1;">{{ activeApplications.length }}</div>
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #006A4E!important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Total in Active Queue</div>
+                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#006A4E;line-height:1.1;">{{ activeApplications.length }}</div>
                             <div style="font-size:0.7rem;color:#9ca3af;">active applicants</div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #ef4444!important;">
-                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Rejected</div>
-                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#dc2626;line-height:1.1;">{{ rejectedCount }}</div>
-                            <div style="font-size:0.7rem;color:#9ca3af;">disapproved</div>
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #10b981!important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Reviewed &amp; Archived</div>
+                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#059669;line-height:1.1;">{{ historyCount }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">in review history</div>
                         </div>
                     </div>
                 </div>
@@ -581,12 +567,12 @@
                 <div class="card border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <div class="d-flex flex-wrap align-items-center gap-2">
-                            <button v-for="st in ['ALL', 'PRE_REGISTERED', 'VERIFIED', 'APPROVED', 'REJECTED']"
+                            <button v-for="st in ['ALL', 'PRE_REGISTERED', 'RETURNED']"
                                     :key="st"
                                     class="btn-pill btn-pill-sm py-1 font-monospace"
                                     :class="filterStatus === st ? 'btn-pill-green' : 'btn-pill-outline'"
                                     @click="filterStatus = st">
-                                {{ st === 'ALL' ? 'All Status' : (st === 'PRE_REGISTERED' ? 'Pending' : st) }}
+                                {{ st === 'ALL' ? 'All Active Queue' : (st === 'PRE_REGISTERED' ? 'Pending Review' : 'Returned for Correction') }}
                             </button>
                         </div>
                         <div class="d-flex align-items-center gap-2">
@@ -653,8 +639,20 @@
                                     <th style="width:120px;">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr v-for="app in filteredApplications" :key="app.referenceNumber">
+                            <tbody v-if="isLoading">
+                                <tr v-for="i in 5" :key="'reg-queue-skel-' + i" class="table-skeleton-row">
+                                    <td><div class="skeleton-shimmer skeleton-ticket"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 90px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-btn" style="width: 75px;"></div></td>
+                                </tr>
+                            </tbody>
+                            <tbody v-else>
+                                <tr v-for="app in filteredApplications" :key="app.referenceNumber" class="table-row-enter">
                                     <!-- Queue Ticket -->
                                     <td>
                                         <span class="queue-ticket-badge" :class="getQueueRank(app) === 1 ? 'ticket-next' : 'ticket-default'">
@@ -694,12 +692,19 @@
                                     </td>
                                     <!-- Status + section badge stacked -->
                                     <td>
-                                        <span class="status-badge d-block mb-1" :class="statusClass(app.status)">{{ app.status }}</span>
+                                        <span v-if="['RETURNED', 'NEEDS_CORRECTION'].includes(String(app.status || '').toUpperCase())"
+                                              class="badge bg-warning text-dark border border-warning d-block mb-1 font-monospace" style="font-size:0.72rem;">
+                                            <i class="fa-solid fa-rotate-left me-1"></i>Returned for Correction
+                                        </span>
+                                        <span v-else class="status-badge d-block mb-1" :class="statusClass(app.status)">{{ app.status }}</span>
                                         <span v-if="app.sectionCode"
                                               class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 font-monospace"
                                               style="font-size:0.68rem;">
                                             <i class="fa-solid fa-layer-group me-1"></i>{{ app.sectionCode }}
                                         </span>
+                                        <small v-if="app.requirementsData && (app.requirementsData.returnReason || app.requirementsData.notes)" class="text-danger d-block mt-1" style="font-size:0.7rem;line-height:1.2;">
+                                            <i class="fa-solid fa-circle-exclamation me-1"></i>{{ app.requirementsData.returnReason || app.requirementsData.notes }}
+                                        </small>
                                     </td>
                                     <!-- Actions -->
                                     <td>
@@ -719,6 +724,237 @@
                                                 <button class="btn-pill btn-pill-outline btn-pill-sm" @click="clearFilters">Clear filters</button>
                                             </p>
                                             <p v-else>No pending applications awaiting review.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `
+    };
+
+    /* ─────────────────────────────────────────────────────────────────
+       ReviewHistoryView (Registrar Review History)
+       ───────────────────────────────────────────────────────────────── */
+    const ReviewHistoryView = {
+        props: ['reviewHistory', 'searchText', 'isLoading'],
+        emits: ['open-application-modal', 'refresh-history'],
+        data() {
+            return {
+                filterAction: 'ALL',
+                sortBy: 'completedAt',
+                sortDesc: true
+            };
+        },
+        computed: {
+            filteredHistory() {
+                let list = this.reviewHistory || [];
+                const query = this.searchText ? this.searchText.trim().toLowerCase() : '';
+                if (query) {
+                    list = list.filter(h =>
+                        (h.referenceNumber && h.referenceNumber.toLowerCase().includes(query)) ||
+                        (h.studentName && h.studentName.toLowerCase().includes(query)) ||
+                        (h.program && h.program.toLowerCase().includes(query)) ||
+                        (h.operatorUsername && h.operatorUsername.toLowerCase().includes(query)) ||
+                        (h.actionPerformed && h.actionPerformed.toLowerCase().includes(query)) ||
+                        (h.sectionCode && h.sectionCode.toLowerCase().includes(query))
+                    );
+                }
+                if (this.filterAction !== 'ALL') {
+                    if (this.filterAction === 'VERIFIED') {
+                        list = list.filter(h => ['VERIFIED', 'APPROVED', 'REQUIREMENTS_VERIFIED'].includes(String(h.actionPerformed || h.currentStatus).toUpperCase()));
+                    } else if (this.filterAction === 'RETURNED') {
+                        list = list.filter(h => ['RETURNED', 'RETURNED_FOR_CORRECTION', 'NEEDS_CORRECTION'].includes(String(h.actionPerformed || h.currentStatus).toUpperCase()));
+                    } else if (this.filterAction === 'REJECTED') {
+                        list = list.filter(h => ['REJECTED', 'APPLICATION_REJECTED'].includes(String(h.actionPerformed || h.currentStatus).toUpperCase()));
+                    }
+                }
+                return [...list].sort((a, b) => {
+                    const tA = new Date(a.completedAt || 0).getTime();
+                    const tB = new Date(b.completedAt || 0).getTime();
+                    return this.sortDesc ? tB - tA : tA - tB;
+                });
+            },
+            verifiedCount() {
+                return (this.reviewHistory || []).filter(h => ['VERIFIED', 'APPROVED', 'REQUIREMENTS_VERIFIED'].includes(String(h.actionPerformed || h.currentStatus).toUpperCase())).length;
+            },
+            returnedCount() {
+                return (this.reviewHistory || []).filter(h => ['RETURNED', 'RETURNED_FOR_CORRECTION', 'NEEDS_CORRECTION'].includes(String(h.actionPerformed || h.currentStatus).toUpperCase())).length;
+            },
+            rejectedCount() {
+                return (this.reviewHistory || []).filter(h => ['REJECTED', 'APPLICATION_REJECTED'].includes(String(h.actionPerformed || h.currentStatus).toUpperCase())).length;
+            }
+        },
+        methods: {
+            fmtDate(d) {
+                if (!d) return '—';
+                return new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+            },
+            fmtTime(d) {
+                if (!d) return '';
+                return new Date(d).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true });
+            },
+            actionBadgeClass(action, status) {
+                const s = String(action || status || '').toUpperCase();
+                if (['VERIFIED', 'APPROVED', 'REQUIREMENTS_VERIFIED'].includes(s)) return 'bg-success text-white';
+                if (['RETURNED', 'RETURNED_FOR_CORRECTION', 'NEEDS_CORRECTION'].includes(s)) return 'bg-warning text-dark';
+                if (['REJECTED', 'APPLICATION_REJECTED'].includes(s)) return 'bg-danger text-white';
+                return 'bg-secondary text-white';
+            },
+            actionLabel(action, status) {
+                const s = String(action || status || '').toUpperCase();
+                if (['VERIFIED', 'APPROVED', 'REQUIREMENTS_VERIFIED'].includes(s)) return 'Verified & Approved';
+                if (['RETURNED', 'RETURNED_FOR_CORRECTION', 'NEEDS_CORRECTION'].includes(s)) return 'Returned for Correction';
+                if (['REJECTED', 'APPLICATION_REJECTED'].includes(s)) return 'Rejected';
+                return action || status || 'Completed';
+            }
+        },
+        template: `
+            <div class="view-section">
+                <!-- ── Stat Cards ─────────────────────────────────────────── -->
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #10b981!important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Verified / Approved</div>
+                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#059669;line-height:1.1;">{{ verifiedCount }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">cleared for advising</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #f59e0b!important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Returned for Correction</div>
+                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#d97706;line-height:1.1;">{{ returnedCount }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">returned to applicants</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #ef4444!important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Disapproved</div>
+                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#dc2626;line-height:1.1;">{{ rejectedCount }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">rejected applications</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left:4px solid #3b82f6!important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Total Processed</div>
+                            <div style="font-size:2rem;font-family:'Outfit',sans-serif;font-weight:900;color:#2563eb;line-height:1.1;">{{ (reviewHistory || []).length }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">historical records</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── History Filter Bar ─────────────────────────────────── -->
+                <div class="card border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <button v-for="act in ['ALL', 'VERIFIED', 'RETURNED', 'REJECTED']"
+                                    :key="act"
+                                    class="btn-pill btn-pill-sm py-1 font-monospace"
+                                    :class="filterAction === act ? 'btn-pill-green' : 'btn-pill-outline'"
+                                    @click="filterAction = act">
+                                {{ act === 'ALL' ? 'All Reviews' : (act === 'VERIFIED' ? 'Verified / Approved' : (act === 'RETURNED' ? 'Returned' : 'Rejected')) }}
+                            </button>
+                        </div>
+                        <button class="btn-pill btn-pill-outline btn-pill-sm py-1" @click="$emit('refresh-history')">
+                            <i class="fa-solid fa-rotate me-1"></i>Refresh History
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── History Table Panel ────────────────────────────────── -->
+                <div class="panel">
+                    <div class="panel-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3>Registrar Review History</h3>
+                            <p>Complete audit log of evaluated and verified applicant submissions</p>
+                        </div>
+                        <span class="badge bg-success bg-opacity-10 text-success fw-bold font-monospace px-3 py-2 rounded-pill">
+                            {{ filteredHistory.length }} Records Found
+                        </span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Reference No.</th>
+                                    <th>Applicant Name</th>
+                                    <th>Course &amp; Level</th>
+                                    <th>Assigned Section</th>
+                                    <th>Action / Result</th>
+                                    <th>Reviewed By</th>
+                                    <th>Completed Date &amp; Time</th>
+                                    <th>Notes / Remarks</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody v-if="isLoading">
+                                <tr v-for="i in 5" :key="'reg-hist-skel-' + i" class="table-skeleton-row">
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 130px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 90px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 100px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-btn" style="width: 75px;"></div></td>
+                                </tr>
+                            </tbody>
+                            <tbody v-else>
+                                <tr v-for="h in filteredHistory" :key="h.auditId || h.referenceNumber" class="table-row-enter">
+                                    <td>
+                                        <strong class="font-monospace text-success" style="font-size:0.84rem;">{{ h.referenceNumber }}</strong>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                                 style="width:28px;height:28px;background:rgba(22,163,74,0.1);font-size:0.72rem;font-weight:800;color:#16a34a;font-family:'Outfit',sans-serif;">
+                                                {{ (h.studentName || '?').charAt(0).toUpperCase() }}
+                                            </div>
+                                            <span class="fw-semibold" style="font-size:0.88rem;">{{ h.studentName }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark font-monospace border" style="font-size:0.74rem;">{{ h.program }}</span>
+                                        <div class="small text-muted">{{ h.yearLevel || '1st Year' }}</div>
+                                    </td>
+                                    <td>
+                                        <span v-if="h.sectionCode" class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 font-monospace" style="font-size:0.72rem;">
+                                            <i class="fa-solid fa-layer-group me-1"></i>{{ h.sectionCode }}
+                                        </span>
+                                        <span v-else class="text-muted small">—</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge" :class="actionBadgeClass(h.actionPerformed, h.currentStatus)" style="font-size:0.74rem;">
+                                            {{ actionLabel(h.actionPerformed, h.currentStatus) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div style="font-size:0.82rem;font-weight:600;"><i class="fa-solid fa-user-check me-1 text-muted"></i>{{ h.operatorUsername || 'Staff' }}</div>
+                                    </td>
+                                    <td>
+                                        <div style="font-size:0.82rem;font-weight:500;">{{ fmtDate(h.completedAt) }}</div>
+                                        <div style="font-size:0.7rem;color:#9ca3af;">{{ fmtTime(h.completedAt) }}</div>
+                                    </td>
+                                    <td>
+                                        <div style="font-size:0.78rem;max-width:200px;" class="text-truncate" :title="h.notes || '—'">{{ h.notes || '—' }}</div>
+                                    </td>
+                                    <td>
+                                        <button class="btn-pill btn-pill-outline btn-pill-sm py-1"
+                                                @click="$emit('open-application-modal', { referenceNumber: h.referenceNumber, studentId: h.studentId, applicantName: h.studentName, program: h.program, sectionCode: h.sectionCode, status: h.currentStatus })">
+                                            <i class="fa-solid fa-eye me-1"></i>View Details
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <tr v-if="filteredHistory.length === 0">
+                                    <td colspan="9">
+                                        <div class="empty-state">
+                                            <i class="fa-solid fa-clock-rotate-left"></i>
+                                            <p>No reviewed application history found matching the criteria.</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -1610,6 +1846,7 @@
         TopBar,
         StudentsView,
         PendingApplicationsView,
+        ReviewHistoryView,
         EnrollmentOverviewView,
         ReportsView,
         ProgramsView,

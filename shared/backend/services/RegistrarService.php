@@ -11,7 +11,7 @@ class RegistrarService {
     public static function updateApplicationStatus(PDO $pdo, array $inputData) {
         $refNum = $inputData['referenceNumber'] ?? null;
         $status = $inputData['status'] ?? null;
-        $notes  = $inputData['registrarNotes'] ?? '';
+        $notes  = $inputData['registrarNotes'] ?? ($inputData['returnReason'] ?? ($inputData['notes'] ?? ''));
         $reqData = $inputData['requirementsData'] ?? null;
         $sectionCode = $inputData['sectionCode'] ?? null;
 
@@ -81,7 +81,13 @@ class RegistrarService {
 
         $roadmap = json_decode((string)($record['roadmap'] ?? ''), true) ?: [];
 
+        $operator = $_SESSION['gncp_station_user']['name'] ?? $_SESSION['gncp_admin_user']['name'] ?? ($_SESSION['gncp_station_user']['username'] ?? ($_SESSION['gncp_admin_user']['username'] ?? 'Registrar Staff'));
+        $operatorUsername = $_SESSION['gncp_station_user']['username'] ?? $_SESSION['gncp_admin_user']['username'] ?? 'registrar_officer';
+
         $isApproved = in_array(strtoupper($status), ['APPROVED', 'VERIFIED']);
+        $isReturned = in_array(strtoupper($status), ['RETURNED', 'NEEDS_CORRECTION']);
+        $isRejected = in_array(strtoupper($status), ['REJECTED', 'DISAPPROVED']);
+
         if ($isApproved) {
             $status = 'VERIFIED';
             foreach ($roadmap as &$step) {
@@ -92,15 +98,105 @@ class RegistrarService {
                         $step['updatedAt'] = date('c');
                     }
                 }
-                if ($sid === 'registrar_verification') {
+                if ($sid === 'registrar_verification' || $sid === 'registrar_review') {
                     $step['status'] = 'COMPLETED';
                     $step['updatedAt'] = date('c');
+                    $step['operator'] = $operator;
                 }
-                if (($sid === 'advising_assessment' || $sid === 'academic_advising') && in_array(strtoupper($step['status'] ?? ''), ['PENDING', 'LOCKED'])) {
+                if (($sid === 'advising_assessment' || $sid === 'academic_advising') && in_array(strtoupper($step['status'] ?? ''), ['PENDING', 'LOCKED', 'RETURNED'])) {
                     $step['status'] = 'IN_PROGRESS';
                     $step['updatedAt'] = date('c');
                 }
             }
+            unset($step);
+        } elseif ($isReturned) {
+            $status = 'RETURNED';
+            foreach ($roadmap as &$step) {
+                $sid = $step['stepId'] ?? '';
+                if ($sid === 'registrar_verification' || $sid === 'registrar_review') {
+                    $step['status'] = 'RETURNED';
+                    $step['updatedAt'] = date('c');
+                    $step['notes'] = $notes;
+                    $step['operator'] = $operator;
+                }
+            }
+            unset($step);
+        } elseif ($isRejected) {
+            $status = 'REJECTED';
+            foreach ($roadmap as &$step) {
+                $sid = $step['stepId'] ?? '';
+                if ($sid === 'registrar_verification' || $sid === 'registrar_review') {
+                    $step['status'] = 'FLAGGED';
+                    $step['updatedAt'] = date('c');
+                    $step['notes'] = $notes;
+                    $step['operator'] = $operator;
+                }
+            }
+            unset($step);
+        }
+
+        // Requirements payload handling
+        // ── Format-aware merge to prevent Format A (registrar object with docs:{}) ──
+        // from clobbering Format B (student-portal array with softCopyUrl data).
+        // Strategy: if incoming reqData is Format A and stored data contains Format B
+        // file entries, preserve the softCopyUrl, fileName, etc. per-doc by injecting
+        // them into the Format A docs entries before saving.
+        $currentReqData = json_decode((string)($record['requirements_data'] ?? ''), true) ?: [];
+
+        if ($reqData && is_array($reqData)) {
+            if (!empty($reqData['docs']) && is_array($reqData['docs'])) {
+                // Incoming is Format A. Preserve any softcopy file data from prior Format B entries.
+                $priorFileMap = [];
+                if (isset($currentReqData[0])) {
+                    // Current stored is Format B — build file map by key
+                    foreach ($currentReqData as $priorItem) {
+                        if (!empty($priorItem['key']) && !empty($priorItem['softCopyUrl'])) {
+                            $priorFileMap[$priorItem['key']] = [
+                                'softCopyUrl' => $priorItem['softCopyUrl'],
+                                'fileName'    => $priorItem['fileName'] ?? null,
+                                'fileType'    => $priorItem['fileType'] ?? null,
+                                'fileSize'    => $priorItem['fileSize'] ?? null,
+                                'submittedAt' => $priorItem['submittedAt'] ?? null,
+                            ];
+                        }
+                    }
+                } elseif (!empty($currentReqData['docs']) && is_array($currentReqData['docs'])) {
+                    // Current stored is Format A — check each doc for embedded file data
+                    foreach ($currentReqData['docs'] as $priorKey => $priorEntry) {
+                        if (is_array($priorEntry) && !empty($priorEntry['softCopyUrl'])) {
+                            $priorFileMap[$priorKey] = [
+                                'softCopyUrl' => $priorEntry['softCopyUrl'],
+                                'fileName'    => $priorEntry['fileName'] ?? null,
+                                'fileType'    => $priorEntry['fileType'] ?? null,
+                                'fileSize'    => $priorEntry['fileSize'] ?? null,
+                                'submittedAt' => $priorEntry['submittedAt'] ?? null,
+                            ];
+                        }
+                    }
+                }
+
+                // Merge prior file data into incoming Format A docs (non-destructive)
+                foreach ($reqData['docs'] as $dKey => &$dEntry) {
+                    if (!is_array($dEntry)) $dEntry = ['status' => (string)$dEntry];
+                    if (!empty($priorFileMap[$dKey])) {
+                        $dEntry = array_merge($priorFileMap[$dKey], $dEntry);
+                    }
+                }
+                unset($dEntry);
+            }
+            $currentReqData = array_merge($currentReqData, $reqData);
+        }
+        $currentReqData['status'] = $status;
+        if ($isApproved) {
+            $currentReqData['verifiedBy'] = $operator;
+            $currentReqData['dateVerified'] = date('c');
+        } elseif ($isReturned) {
+            $currentReqData['returnReason'] = $notes;
+            $currentReqData['returnedBy'] = $operator;
+            $currentReqData['dateReturned'] = date('c');
+        }
+        if (!empty($notes)) {
+            $currentReqData['notes'] = $notes;
         }
 
         $roadmapJson = json_encode($roadmap);
@@ -112,17 +208,35 @@ class RegistrarService {
             'status'  => $status,
             'roadmap' => $roadmapJson,
             'notes'   => $notes,
-            'req_data'=> $reqData ? json_encode($reqData) : $record['requirements_data'],
+            'req_data'=> json_encode($currentReqData),
             'sect_code'=> $sectionCode !== null ? $sectionCode : $record['section_code'],
             'ref'     => $refNum
         ]);
+
+        // Audit Trail: Record mutation in audit_logs
+        try {
+            $actionName = $isApproved ? 'REQUIREMENTS_VERIFIED' : ($isReturned ? 'RETURNED_FOR_CORRECTION' : ($isRejected ? 'APPLICATION_REJECTED' : 'STATUS_UPDATE'));
+            $auditStmt = $pdo->prepare("
+                INSERT INTO `audit_logs` (`reference_number`, `operator_username`, `station_role`, `action_performed`, `previous_state`, `new_state`)
+                VALUES (:ref, :operator, 'REGISTRAR', :action, :prev, :new)
+            ");
+            $auditStmt->execute([
+                'ref'      => $refNum,
+                'operator' => $operatorUsername,
+                'action'   => $actionName,
+                'prev'     => json_encode(['status' => $record['status'] ?? 'PRE_REGISTERED']),
+                'new'      => json_encode(['status' => $status, 'notes' => $notes, 'operator' => $operator, 'timestamp' => date('c')])
+            ]);
+        } catch (Exception $e) {
+            // Non-blocking error
+        }
 
         $stmt = $pdo->prepare("SELECT * FROM `pre_enrollments` WHERE `temp_student_id` = :ref");
         $stmt->execute(['ref' => $refNum]);
         $updatedRow = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $fullName = trim($updatedRow['first_name'] . ' ' . ($updatedRow['middle_name'] ? $updatedRow['middle_name'] . ' ' : '') . $updatedRow['last_name']);
-        $isReviewedToday = in_array($updatedRow['status'], ['Approved', 'Rejected']);
+        $isReviewedToday = in_array($updatedRow['status'], ['Approved', 'Rejected', 'VERIFIED', 'RETURNED']);
         if (!function_exists('getRequirementsForType')) {
             require_once __DIR__ . '/../utils/student.php';
         }
@@ -130,13 +244,7 @@ class RegistrarService {
             ? getRequirementsForType($updatedRow['student_type'] ?? 'FRESHMAN', $updatedRow['shs_track'] ?? '')
             : ['Form 138 / Report Card', 'Certificate of Good Moral Character', 'PSA Birth Certificate', '2x2 Pictures'];
 
-        $updatedReqData = json_decode((string)($updatedRow['requirements_data'] ?? ''), true) ?: [
-            'status' => 'PENDING',
-            'docs' => ['psa' => 'not-submitted', 'reportCard' => 'not-submitted', 'goodMoral' => 'not-submitted'],
-            'notes' => '',
-            'verifiedBy' => '',
-            'dateVerified' => ''
-        ];
+        $updatedReqData = json_decode((string)($updatedRow['requirements_data'] ?? ''), true) ?: $currentReqData;
 
         return [
             'success' => true,

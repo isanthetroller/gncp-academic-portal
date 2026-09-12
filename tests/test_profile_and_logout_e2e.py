@@ -42,8 +42,8 @@ def run_tests():
     assert update_data.get("success") is True, f"Update profile flag false: {update_data}"
     print("  [PASS] 3. Update Profile Personal Details Successful")
     
-    # 4. Upload Avatar
-    dummy_b64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    # 4. Upload Avatar (Valid minimal JPEG base64 payload)
+    dummy_b64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="
     avatar_res = session.post(f"{BASE_URL}/api/index.php?action=auth/upload_avatar", json={
         "username": "admin",
         "photoData": dummy_b64

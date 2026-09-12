@@ -18,6 +18,8 @@ window.app = createApp({
         const sortDesc = ref(false); // FIFO: Earliest cashier arrivals served first (First In, First Out)
         const selectedStudent = ref(null);
         const students = ref([]);
+        const isLoadingQueue = ref(true);
+        const isLoadingHistory = ref(false);
         const receiptData = ref(null);
 
         // Authentication State
@@ -98,10 +100,10 @@ window.app = createApp({
                 }
                 if (!payment || typeof payment !== 'object') payment = {};
 
-                let balanceVal = payment.totalFee || 0;
-                if (payment.balance != null) {
-                    balanceVal = payment.balance;
-                }
+                const snapshot = payment.assessmentSnapshot || {};
+                const snapshotTotal = parseFloat(snapshot.cashTotal || snapshot.installmentTotal || snapshot.total || 0) || 0;
+                let totalFeeVal = payment.totalFee || snapshotTotal || 0;
+                let balanceVal = (payment.balance != null) ? payment.balance : totalFeeVal;
 
                 // Use StationPipeline.normalizeStudent() as the unified base
                 const s = (typeof StationPipeline !== 'undefined')
@@ -134,8 +136,13 @@ window.app = createApp({
                 s.enrolledAt   = student.enrolledAt || null;
                 s.cashierName  = student.cashierName || null;
                 s.status       = payment.status || 'PENDING';
+                s.prospectusSubjects = student.prospectusSubjects || [];
+                s.activeSemester     = student.activeSemester || '1st Semester';
+                s.academicYear       = student.academicYear || '2026-2027';
+                s.curriculumVersion  = student.curriculumVersion || '2022 Curriculum';
+                s.assessmentSnapshot = snapshot;
                 s.payment      = {
-                    totalFee:       payment.totalFee     || 0,
+                    totalFee:       totalFeeVal,
                     amountPaid:     payment.amountPaid   || 0,
                     balance:        balanceVal,
                     paymentType:    String(payment.paymentType || 'Cash').toUpperCase() === 'GCASH' ? 'GCash' : 'Cash',
@@ -146,6 +153,8 @@ window.app = createApp({
                 result.push(s);
             }
             students.value = result;
+            isLoadingQueue.value = false;
+            fetchReviewHistory();
         };
 
         const fetchCurrentProfile = () => {
@@ -174,7 +183,7 @@ window.app = createApp({
             if (cachedRaw) {
                 try {
                     const parsed = JSON.parse(cachedRaw);
-                    if (parsed && ['CASHIER', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                    if (parsed && ['CASHIER', 'SUPER_ADMIN', 'ADMIN'].includes(parsed.role)) {
                         currentUser.value = parsed;
                     }
                 } catch (e) {}
@@ -187,7 +196,7 @@ window.app = createApp({
                 const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
                 if (res.ok) {
                     const result = await res.json();
-                    const allowedRoles = ['CASHIER', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'];
+                    const allowedRoles = ['CASHIER', 'SUPER_ADMIN', 'ADMIN'];
                     if (result.success && result.data && allowedRoles.includes(result.data.role)) {
                         currentUser.value = result.data;
                         const sessionKey = (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
@@ -293,11 +302,39 @@ window.app = createApp({
             window.location.replace('../../?clear=true&logout=true');
         };
 
+        const reviewHistory = ref([]);
+        const fetchReviewHistory = async () => {
+            isLoadingHistory.value = true;
+            try {
+                const basePath = window.location.pathname.startsWith('/systemtest') ? '/systemtest' : '';
+                const res = await fetch(`${basePath}/api/index.php?action=stations/history&station=CASHIER`, {
+                    credentials: 'same-origin'
+                });
+                const json = await res.json();
+                if (json && json.success && Array.isArray(json.data)) {
+                    reviewHistory.value = json.data;
+                }
+            } catch (e) {
+                console.warn('[Cashier] History fetch error:', e);
+            } finally {
+                isLoadingHistory.value = false;
+            }
+        };
+
+        const completedStudents = computed(() => {
+            const histList = reviewHistory.value || [];
+            if (histList.length > 0) return histList;
+            return students.value.filter(s => s.status === 'PAID' || s.status === 'COMPLETED' || Boolean(s.orNumber));
+        });
+
         const filteredStudents = computed(() => {
             const query = searchQuery.value.toLowerCase().trim();
             const result = [];
             for (let i = 0; i < students.value.length; i++) {
                 const student = students.value[i];
+
+                // Active queue strictly excludes paid / completed records
+                if (student.status === 'PAID' || student.status === 'COMPLETED' || Boolean(student.orNumber)) continue;
 
                 let matchesQuery = true;
                 if (query) {
@@ -310,11 +347,7 @@ window.app = createApp({
                 }
 
                 let matchesFilter = false;
-                if (activeFilter.value === 'All') {
-                    matchesFilter = true;
-                } else if (activeFilter.value === 'PENDING' && student.status === 'PENDING') {
-                    matchesFilter = true;
-                } else if (activeFilter.value === 'PAID' && student.status === 'PAID') {
+                if (activeFilter.value === 'All' || activeFilter.value === 'PENDING') {
                     matchesFilter = true;
                 } else if (activeFilter.value === 'PARTIAL' && student.status === 'PARTIAL') {
                     matchesFilter = true;
@@ -667,7 +700,7 @@ window.app = createApp({
                 payAmountInput.value = currentBal; // Default to full outstanding balance
             }
 
-            cashTendered.value = 0;
+            cashTendered.value = payAmountInput.value;
             otcReferenceNumber.value = '';
             paymongoSession.value = null;
             if (student.payment.paymentType === 'PayMongo') {
@@ -687,6 +720,73 @@ window.app = createApp({
             if (index === 4) return 'fa-solid fa-award';
             if (index === 5) return 'fa-solid fa-credit-card';
             return 'fa-solid fa-id-card';
+        };
+
+        const getAdvisedSubjects = (student) => {
+            if (!student) return [];
+            const raw = (student.helpdesk && Array.isArray(student.helpdesk.advisedSubjects) && student.helpdesk.advisedSubjects.length > 0)
+                ? student.helpdesk.advisedSubjects
+                : (Array.isArray(student.prospectusSubjects) ? student.prospectusSubjects : []);
+
+            const clean = [];
+            const seen = new Set();
+            raw.forEach(sub => {
+                const code = String(sub.code || sub.subject || '').trim();
+                const title = String(sub.title || sub.name || sub.subject || code).trim();
+                const key = (code || title).toUpperCase();
+                if (key && !seen.has(key)) {
+                    seen.add(key);
+                    const lec = parseInt(sub.lecture_units ?? sub.lectureUnits ?? sub.units ?? 0) || 0;
+                    const lab = parseInt(sub.lab_units ?? sub.labUnits ?? 0) || 0;
+                    const labFee = parseFloat(sub.lab_fee ?? sub.labFee ?? 0) || 0;
+                    const units = lec + lab;
+                    const tuitionRate = parseFloat(student.assessmentSnapshot?.tuitionRate || 650);
+                    const tuition = units * tuitionRate;
+                    clean.push({
+                        code: code || '---',
+                        title: title,
+                        lecture_units: lec,
+                        lab_units: lab,
+                        units: units,
+                        lab_fee: labFee,
+                        tuitionFee: tuition,
+                        totalSubjectFee: tuition + labFee
+                    });
+                }
+            });
+            return clean;
+        };
+
+        const getAssessmentBreakdown = (student) => {
+            if (!student) return { totalUnits: 0, tuitionRate: 650, tuitionFee: 0, totalLabFee: 0, miscFee: 2300, discount: 0, cashTotal: 0 };
+            const snap = student.assessmentSnapshot || student.payment?.assessmentSnapshot || {};
+            const subs = getAdvisedSubjects(student);
+
+            let calcUnits = 0;
+            let calcLabFee = 0;
+            subs.forEach(s => {
+                calcUnits += s.units;
+                calcLabFee += s.lab_fee;
+            });
+
+            const tuitionRate = parseFloat(snap.tuitionRate || 650);
+            const totalUnits = (snap.totalUnits != null && parseFloat(snap.totalUnits) > 0) ? parseFloat(snap.totalUnits) : calcUnits;
+            const tuitionFee = snap.tuitionFee != null ? parseFloat(snap.tuitionFee) : (totalUnits * tuitionRate);
+            const totalLabFee = snap.totalLabFee != null ? parseFloat(snap.totalLabFee) : calcLabFee;
+            const miscFee = snap.miscFee != null ? parseFloat(snap.miscFee) : 2300;
+            const discount = parseFloat(snap.discount || 0);
+            const calcCashTotal = tuitionFee + totalLabFee + miscFee - discount;
+            const cashTotal = student.payment?.totalFee || (snap.cashTotal != null ? parseFloat(snap.cashTotal) : calcCashTotal);
+
+            return {
+                totalUnits,
+                tuitionRate,
+                tuitionFee,
+                totalLabFee,
+                miscFee,
+                discount,
+                cashTotal
+            };
         };
 
         const persistPayment = (student) => {
@@ -845,9 +945,13 @@ window.app = createApp({
 
                 // 3. Directly POST to backend PHP/MySQL to guarantee instant database persistence
                 try {
-                    await fetch('../backend/api.php?action=update_student', {
+                    const updateUrl = (typeof StationDataBus !== 'undefined' && StationDataBus.getApiUrl)
+                        ? StationDataBus.getApiUrl('stations/update')
+                        : '../../api/index.php?action=stations/update';
+                    await fetch(updateUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
                         body: JSON.stringify({
                             referenceNumber: student.referenceNumber,
                             updateData: {
@@ -1127,11 +1231,6 @@ window.app = createApp({
             checkSession();
             updateTime();
             clockTimer = setInterval(updateTime, 1000);
-            queueSyncTimer = setInterval(() => {
-                if (currentUser.value) {
-                    loadQueue();
-                }
-            }, 2500);
 
             document.addEventListener('hide.bs.modal', () => {
                 if (document.activeElement && typeof document.activeElement.blur === 'function') {
@@ -1335,6 +1434,9 @@ window.app = createApp({
             selectedStudent,
             students,
             filteredStudents,
+            reviewHistory,
+            fetchReviewHistory,
+            completedStudents,
             nextInQueue,
             serveNextPayee,
             getQueueRank,
@@ -1345,9 +1447,15 @@ window.app = createApp({
             paymentPercent,
             recentTransactions,
             billingDetails,
+            isLoadingQueue,
+            isLoadingHistory,
             setView,
             openProcess,
             getStepIcon,
+            getAdvisedSubjects,
+            getAssessmentBreakdown,
+            completedStudents,
+            fetchReviewHistory,
             confirmFullPayment,
             recordDownPayment,
             rejectPayment,

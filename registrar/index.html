@@ -300,7 +300,7 @@
 
                     <!-- 7. Students View -->
                     <students-view v-if="currentView === 'students'" :students="students" :search-text="searchText"
-                        @open-student-modal="openStudentModal">
+                        :is-loading="isLoadingData" @open-student-modal="openStudentModal">
                     </students-view>
 
                     <!-- 1. Programs View -->
@@ -339,8 +339,16 @@
                     <!-- Pending Applications View -->
                     <pending-applications-view v-else-if="currentView === 'pending-applications'"
                         :pending-applications="pendingApplications" :sections="sections" :programs="programs"
-                        :search-text="searchText" @open-application-modal="openApplicationModal">
+                        :search-text="searchText" :is-loading="isLoadingData" @open-application-modal="openApplicationModal">
                     </pending-applications-view>
+
+                    <!-- Review History View -->
+                    <review-history-view v-else-if="currentView === 'review-history'"
+                        :review-history="reviewHistory" :search-text="searchText"
+                        :is-loading="isLoadingHistory"
+                        @open-application-modal="openApplicationModal"
+                        @refresh-history="fetchReviewHistory">
+                    </review-history-view>
 
                     <!-- 8. Enrollment Overview View -->
                     <enrollment-overview-view v-else-if="currentView === 'enrollment-overview'"
@@ -732,7 +740,7 @@
                     <div class="student-profile-header d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-3">
                             <div class="student-profile-avatar-wrap">
-                                <img v-if="selectedStudent.photo" :src="'../stations/uploads/' + selectedStudent.photo" class="rounded-circle" alt="Student Photo">
+                                <img v-if="selectedStudent.photo" :src="formattedStudentPhoto(selectedStudent.photo)" class="rounded-circle" alt="Student Photo" @error="$event.target.style.display='none'">
                                 <i v-else class="fa-solid fa-user-graduate fs-3 text-white"></i>
                             </div>
                             <div>
@@ -1059,17 +1067,17 @@
                         <button type="button" class="btn-close btn-close-white" @click="activePreviewDoc = null"></button>
                     </div>
                     <div class="modal-body p-3 text-center bg-light" style="min-height: 380px; max-height: 75vh; overflow-y: auto;">
-                        <template v-if="isImageFile(activePreviewDoc.filePath || activePreviewDoc.fileName)">
-                            <img :src="'../' + activePreviewDoc.filePath" class="img-fluid rounded border shadow-sm max-mw-100" style="max-height: 65vh; object-fit: contain;">
+                        <template v-if="isImageFile(activePreviewDoc.filePath || activePreviewDoc.fileName || activePreviewDoc.softCopyUrl)">
+                            <img :src="getDocFileUrl(activePreviewDoc)" class="img-fluid rounded border shadow-sm max-mw-100" style="max-height: 65vh; object-fit: contain;">
                         </template>
-                        <template v-else-if="isPdfFile(activePreviewDoc.filePath || activePreviewDoc.fileName)">
-                            <iframe :src="'../' + activePreviewDoc.filePath" style="width: 100%; height: 60vh; border: none;" class="rounded border"></iframe>
+                        <template v-else-if="isPdfFile(activePreviewDoc.filePath || activePreviewDoc.fileName || activePreviewDoc.softCopyUrl)">
+                            <iframe :src="getDocFileUrl(activePreviewDoc)" style="width: 100%; height: 60vh; border: none;" class="rounded border"></iframe>
                         </template>
                         <template v-else>
                             <div class="py-5">
                                 <i class="fas fa-file-arrow-down fs-1 text-muted mb-3 d-block"></i>
                                 <p class="mb-3 text-dark fw-bold">File preview not directly embeddable.</p>
-                                <a :href="'../' + activePreviewDoc.filePath" target="_blank" download class="btn btn-primary btn-sm rounded-pill px-4">
+                                <a :href="getDocFileUrl(activePreviewDoc)" target="_blank" download class="btn btn-primary btn-sm rounded-pill px-4">
                                     <i class="fas fa-download me-1.5"></i>Download File ({{ activePreviewDoc.fileName }})
                                 </a>
                             </div>
@@ -1078,7 +1086,7 @@
                     <div class="modal-footer bg-white py-2 px-4 d-flex justify-content-between align-items-center rounded-bottom-4">
                         <span class="text-muted small">Uploaded: {{ activePreviewDoc.uploadedAt || 'N/A' }}</span>
                         <div>
-                            <a :href="'../' + activePreviewDoc.filePath" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill me-2">
+                            <a :href="getDocFileUrl(activePreviewDoc)" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill me-2">
                                 <i class="fas fa-external-link-alt me-1"></i>Open in New Tab
                             </a>
                             <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" @click="activePreviewDoc = null">Close</button>
@@ -1112,7 +1120,7 @@
                     </div>
                     <h3 class="fw-bold text-dark mb-2" style="font-family: 'Outfit', sans-serif;">Session Expired or Unauthorized</h3>
                     <p class="text-muted small mb-4">You must be logged in with a valid Registrar or Administrator account to access this workstation.</p>
-                    <a href="../index.html?clear=true" class="btn fw-bold text-white shadow-sm w-100" style="background: var(--primary-green, #006A4E); border-radius: 10px; padding: 12px;">
+                    <a href="../?clear=true" class="btn fw-bold text-white shadow-sm w-100" style="background: var(--primary-green, #006A4E); border-radius: 10px; padding: 12px;">
                         <i class="fa-solid fa-right-to-bracket me-2"></i> Return to Employee Gateway
                     </a>
                 </div>

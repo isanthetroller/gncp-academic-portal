@@ -9,15 +9,43 @@ DirectoryIndex index.php index.html
 # ------------------------------------------------------------------------------
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    # RewriteBase is omitted so rules adapt dynamically to both localhost (/systemtest/) and root hosting (/)
 
-    # Reroute direct requests for protected station HTML pages to their server-side auth PHP wrappers
-    RewriteRule ^admin/(index\.html)?$ admin/index.php [L,QSA]
-    RewriteRule ^registrar/(index\.html)?$ registrar/index.php [L,QSA]
-    RewriteRule ^stations/([^/]+)/(index\.html)?$ stations/$1/index.php [L,QSA]
-    RewriteRule ^monitoring/(index\.html)?$ monitoring/index.php [L,QSA]
+    # 1.0 Force HTTPS Canonical 301 Redirect for all live/production requests
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:\d+)?$ [NC]
+    RewriteCond %{HTTPS} off [OR]
+    RewriteCond %{HTTP:X-Forwarded-Proto} =http [OR]
+    RewriteCond %{HTTP:CF-Visitor} '"scheme":"http"'
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301,NE]
 
-    # Internally resolve extensionless URL to .html if file exists
+    # 1.1 External Canonical 301 Redirect: Strip index.html & .html from direct browser requests
+    RewriteCond %{THE_REQUEST} \s/+([^\s?]+?)/index\.html[\s?] [NC]
+    RewriteRule ^ /%1/ [R=301,L,NE]
+
+    RewriteCond %{THE_REQUEST} \s/+([^\s?]*?)index\.html[\s?] [NC]
+    RewriteRule ^ /%1 [R=301,L,NE]
+
+    RewriteCond %{THE_REQUEST} \s/+([^\s?]+?)\.html[\s?] [NC]
+    RewriteRule ^ /%1 [R=301,L,NE]
+
+    # 1.2 Block direct HTTP access to internal test suites, database dumps, logs, config, and dev tools
+    RewriteRule ^(tests|scratch|database|shared/backend/config|shared/backend/logs|\.agents)(/.*)?$ - [F,L,NC]
+
+    # 1.3 Clean Public URLs (internal rewrites to target files)
+    RewriteRule ^login/?$ index.html [L,QSA]
+    RewriteRule ^school-website/?$ school-website/index.html [L,QSA]
+    RewriteRule ^enrollment-system/?$ enrollment-system/index.html [L,QSA]
+    RewriteRule ^enrollment-system/tracker/?$ enrollment-system/tracker.html [L,QSA]
+    RewriteRule ^student-portal/login/?$ student-portal/login.html [L,QSA]
+    RewriteRule ^student-portal/forgot-password/?$ student-portal/forgot-password.html [L,QSA]
+
+    # 1.4 Reroute direct requests for protected station and student portal pages to their server-side auth PHP wrappers
+    RewriteRule ^admin/?(index(\.html|\.php)?)?$ admin/index.php [L,QSA]
+    RewriteRule ^registrar/?(index(\.html|\.php)?)?$ registrar/index.php [L,QSA]
+    RewriteRule ^student-portal/?(index(\.html|\.php)?)?$ student-portal/index.php [L,QSA]
+    RewriteRule ^stations/([^/]+)/?(index(\.html|\.php)?)?$ stations/$1/index.php [L,QSA]
+    RewriteRule ^monitoring/?(index(\.html|\.php)?)?$ monitoring/index.php [L,QSA]
+
+    # 1.5 Internally resolve any remaining extensionless URL to .html if corresponding file exists
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME}.html -f
@@ -84,11 +112,11 @@ Options -Indexes
     </FilesMatch>
 
     <FilesMatch "\.(css|js)$">
-        Header set Cache-Control "max-age=604800, public, must-revalidate"
+        Header set Cache-Control "max-age=604800, public"
     </FilesMatch>
 
     # Protect sensitive files from direct download
-    <FilesMatch "(\.(sql|log|git|env|md|jsonl|ini|conf|bak|sh|bat)|composer\.(json|lock)|package\.(json|lock)|database\.php|mail\.php)$">
+    <FilesMatch "(\.(sql|log|git|env|md|jsonl|ini|conf|bak|sh|bat|credentials)|composer\.(json|lock)|package\.(json|lock)|database\.php|mail\.php|db_config\.php|mail\.local\.php|.*\.local\.php)$">
         <IfModule mod_authz_core.c>
             Require all denied
         </IfModule>
@@ -115,6 +143,8 @@ Options -Indexes
     Header set X-XSS-Protection "1; mode=block"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
     Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    Header set Content-Security-Policy "upgrade-insecure-requests; default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; font-src 'self' https: data:; img-src 'self' data: blob: https:;"
+    Header set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" "expr=%{HTTPS} == 'on' || %{HTTP:X-Forwarded-Proto} == 'https'"
 </IfModule>
 
 # ------------------------------------------------------------------------------

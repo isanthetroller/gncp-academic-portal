@@ -117,7 +117,7 @@ try {
         'createdAt'     => $record['created_at'],
         'permanentId'   => $record['permanent_id'] ?? null,
         'institutionalEmail' => $record['institutional_email'] ?? null,
-        'portalLoginUrl'     => '../student-portal/index.html',
+        'portalLoginUrl'     => '../student-portal/login',
         'form'          => [
             'firstName'             => $record['first_name'],
             'middleName'            => $record['middle_name'],

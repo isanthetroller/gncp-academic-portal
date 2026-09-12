@@ -7,6 +7,11 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+shared/backend/config/mail.local.php
+shared/backend/config/db_config.php
+shared/backend/config/*.local.php
+tools/.ftp_credentials
+*.credentials
 
 # Logs
 npm-debug.log*

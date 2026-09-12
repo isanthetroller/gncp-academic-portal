@@ -4,6 +4,10 @@
  * Tests registration health declarations, queue extraction, medical review submission,
  * roadmap transitions, ACID persistence, and Cashier step unlocking.
  */
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    die('CLI execution only.');
+}
 
 require_once __DIR__ . '/../shared/backend/config/database.php';
 require_once __DIR__ . '/../stations/backend/services/QueueService.php';

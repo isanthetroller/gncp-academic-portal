@@ -127,8 +127,9 @@ window.StudentApiService = {
     /**
      * Fetch document requirements and undertaking compliance status
      */
-    async fetchDocuments(studentId) {
-        return this.request(`get_student_documents&studentId=${encodeURIComponent(studentId)}`, {
+    async fetchDocuments(studentId, pin = '') {
+        const pinParam = pin ? `&pin=${encodeURIComponent(pin)}` : '';
+        return this.request(`get_student_documents&studentId=${encodeURIComponent(studentId)}${pinParam}`, {
             method: 'GET'
         });
     },

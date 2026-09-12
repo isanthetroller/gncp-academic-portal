@@ -62,32 +62,48 @@ try {
         sendResponse(true, null, 'User deleted successfully.');
 
     } elseif ($action === 'reset_operator_password') {
-        $payload     = json_decode(file_get_contents('php://input'), true);
-        $userId      = $payload['userId'] ?? null;
-        $newPassword = trim($payload['newPassword'] ?? '');
+        $payload       = json_decode(file_get_contents('php://input'), true);
+        $userId        = $payload['userId'] ?? null;
+        $newPassword   = trim($payload['newPassword'] ?? '');
+        $overrideEmail = trim($payload['email'] ?? '');
         if (!$userId) sendResponse(false, null, 'User ID is required.', 400);
 
         $check = $pdo->prepare("SELECT `username`, `name`, `email`, `role` FROM `station_users` WHERE `id` = :id");
         $check->execute(['id' => (int)$userId]);
         $targetUser = $check->fetch();
-        if (!$targetUser) sendResponse(false, null, 'User account not found.', 444);
+        if (!$targetUser) sendResponse(false, null, 'User account not found.', 404);
+
+        if (!empty($overrideEmail) && !filter_var($overrideEmail, FILTER_VALIDATE_EMAIL)) {
+            sendResponse(false, null, 'Invalid email address format provided.', 400);
+        }
 
         if (empty($newPassword)) {
             $newPassword = 'Gncp#' . rand(1000, 9999) . '!';
         }
 
-        $stmt = $pdo->prepare("UPDATE `station_users` SET `password` = :pass, `must_change_password` = 1 WHERE `id` = :id");
-        $stmt->execute([
-            'pass' => password_hash($newPassword, PASSWORD_DEFAULT),
-            'id'   => (int)$userId
-        ]);
+        $destinationEmail = !empty($overrideEmail) ? $overrideEmail : ($targetUser['email'] ?? '');
+        
+        if (!empty($overrideEmail)) {
+            $stmt = $pdo->prepare("UPDATE `station_users` SET `password` = :pass, `must_change_password` = 1, `email` = :email WHERE `id` = :id");
+            $stmt->execute([
+                'pass'  => password_hash($newPassword, PASSWORD_DEFAULT),
+                'email' => $overrideEmail,
+                'id'    => (int)$userId
+            ]);
+        } else {
+            $stmt = $pdo->prepare("UPDATE `station_users` SET `password` = :pass, `must_change_password` = 1 WHERE `id` = :id");
+            $stmt->execute([
+                'pass' => password_hash($newPassword, PASSWORD_DEFAULT),
+                'id'   => (int)$userId
+            ]);
+        }
 
         // Dispatch updated credentials via EmailService if email exists
         require_once __DIR__ . '/../../shared/backend/services/EmailService.php';
-        $mailResult = ['success' => false, 'message' => 'No email specified.'];
-        if (!empty($targetUser['email'])) {
-            $mailResult = EmailService::sendUserCredentials(
-                $targetUser['email'],
+        $mailResult = ['success' => false, 'message' => 'No email address registered for this operator.'];
+        if (!empty($destinationEmail)) {
+            $mailResult = EmailService::sendOperatorPasswordReset(
+                $destinationEmail,
                 $targetUser['name'],
                 $targetUser['username'],
                 $newPassword,
@@ -96,12 +112,14 @@ try {
         }
 
         sendResponse(true, [
-            'userId'       => (int)$userId,
-            'username'     => $targetUser['username'],
-            'tempPassword' => $newPassword,
-            'emailSent'    => $mailResult['success'],
-            'emailMessage' => $mailResult['message'] ?? ''
+            'userId'         => (int)$userId,
+            'username'       => $targetUser['username'],
+            'tempPassword'   => $newPassword,
+            'recipientEmail' => $destinationEmail,
+            'emailSent'      => $mailResult['success'],
+            'emailMessage'   => $mailResult['message'] ?? ''
         ], 'Operator password reset successfully.');
+
 
     } elseif ($action === 'update_operator') {
         $payload = json_decode(file_get_contents('php://input'), true);
@@ -360,7 +378,7 @@ try {
     } elseif ($action === 'upload_announcement_image') {
         require_once __DIR__ . '/../../shared/backend/services/AnnouncementService.php';
         $res = AnnouncementService::uploadImage();
-        sendResponse($res['success'], ['image_url' => $res['image_url'] ?? null], $res['message'] ?? '', $res['code'] ?? 200);
+        sendResponse($res['success'], ['image_url' => $res['image_url'] ?? null, 'url' => $res['image_url'] ?? null], $res['message'] ?? '', $res['code'] ?? 200);
 
     } elseif ($action === 'fetch_milestones') {
         require_once __DIR__ . '/../../shared/backend/services/MilestoneService.php';
@@ -391,16 +409,12 @@ try {
     }
 
 } catch (Throwable $e) {
-    error_log('Admin API error: ' . $e->getMessage());
-    $logData = [
-        'timestamp' => date('Y-m-d H:i:s'),
+    require_once __DIR__ . '/../../shared/backend/utils/logger.php';
+    logAppError('Admin API Error: ' . $e->getMessage(), [
         'action' => $_GET['action'] ?? 'unknown',
-        'input' => json_decode(file_get_contents('php://input'), true),
-        'error' => $e->getMessage(),
-        'trace' => $e->getTraceAsString()
-    ];
-    @file_put_contents(__DIR__ . '/../../scratch/api_errors.log', json_encode($logData, JSON_PRETTY_PRINT) . "\n", FILE_APPEND);
-    sendResponse(false, null, 'Database or script error occurred: ' . $e->getMessage(), 500);
+        'trace'  => $e->getTraceAsString()
+    ]);
+    sendResponse(false, null, 'An unexpected issue occurred while processing your administrative request.', 500);
 }
 
 

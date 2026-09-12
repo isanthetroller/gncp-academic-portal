@@ -182,7 +182,7 @@ window.DataModel = {
             ],
             cta: {
                 text: "ENROLL NOW",
-                url: "../enrollment-system/index.html"
+                url: "../enrollment-system/"
             }
         };
     },

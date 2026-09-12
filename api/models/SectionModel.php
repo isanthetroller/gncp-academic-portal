@@ -25,11 +25,19 @@ class SectionModel {
     }
 
     public function saveSection($sec) {
-        // Fetch active period ID if academicPeriodId not explicitly provided
+        // Fetch active period ID if academicPeriodId not explicitly provided or if inactive
         $activePeriodId = $sec['academicPeriodId'] ?? $sec['academic_period_id'] ?? null;
-        if (!$activePeriodId) {
+        if ($activePeriodId) {
+            $perCheck = $this->pdo->prepare("SELECT `status` FROM `academic_periods` WHERE `id` = :id");
+            $perCheck->execute(['id' => (int)$activePeriodId]);
+            $perStatus = $perCheck->fetchColumn();
+            if (!$perStatus || strtoupper($perStatus) !== 'ACTIVE') {
+                $activeTerm = $this->getActiveTerm();
+                $activePeriodId = $activeTerm['id'] ?? null;
+            }
+        } else {
             $activeTerm = $this->getActiveTerm();
-            $activePeriodId = $activeTerm['id'] ?? 1;
+            $activePeriodId = $activeTerm['id'] ?? null;
         }
 
         $targetId = !empty($sec['id']) ? (int)$sec['id'] : null;

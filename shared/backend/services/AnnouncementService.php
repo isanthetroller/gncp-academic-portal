@@ -74,21 +74,27 @@ class AnnouncementService {
     public static function sanitizeHtmlContent(string $raw): string {
         if (empty($raw)) return '';
 
-        // Remove script tags and contents
-        $clean = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $raw);
-        // Remove iframe, object, embed, form, style, svg tags
-        $clean = preg_replace('/<(iframe|object|embed|form|input|button|style|link|meta|svg|math)\b[^>]*>(.*?)<\/\1>/is', '', $clean);
-        $clean = preg_replace('/<(iframe|object|embed|form|input|button|style|link|meta|svg|math)\b[^>]*\/?>/is', '', $clean);
+        // Strip null bytes and non-printable control characters
+        $clean = str_replace(chr(0), '', (string)$raw);
+        $clean = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $clean);
+
+        // Recursive elimination of script and dangerous embedded tags (handles nested tricks like <scr<script>ipt>)
+        do {
+            $prev = $clean;
+            $clean = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $clean);
+            $clean = preg_replace('/<(iframe|object|embed|form|input|button|style|link|meta|svg|math|applet)\b[^>]*>(.*?)<\/\1>/is', '', $clean);
+            $clean = preg_replace('/<(iframe|object|embed|form|input|button|style|link|meta|svg|math|applet)\b[^>]*\/?>/is', '', $clean);
+        } while ($clean !== $prev);
 
         // Strip all dangerous tags except safe whitelisted formatting tags
         $allowedTags = '<p><br><strong><b><em><i><u><ul><ol><li><a><span><h1><h2><h3><h4><h5><h6><blockquote>';
         $clean = strip_tags($clean, $allowedTags);
 
-        // Strip all inline javascript: / data: / vbscript: URI schemes
-        $clean = preg_replace('/href\s*=\s*["\']\s*(javascript|data|vbscript):[^"\']*["\']/i', 'href="#"', $clean);
+        // Strip all inline javascript: / data: / vbscript: URI schemes in any attribute
+        $clean = preg_replace('/\b(href|src|action|data)\s*=\s*["\']\s*(javascript|data|vbscript):[^"\']*["\']/i', '$1="#"', $clean);
 
-        // Strip any on* event handler attributes (onerror, onclick, onload, etc.)
-        $clean = preg_replace('/\s*on[a-zA-Z]+\s*=\s*(["\'][^"\']*["\']|[^\s>]+)/i', '', $clean);
+        // Strip any on* event handler attributes with any whitespace, quotes, or characters (onerror, onclick, onload, etc.)
+        $clean = preg_replace('/\s*on[a-zA-Z0-9_-]+\s*=\s*(["\'][^"\']*["\']|[^\s>]+)/i', '', $clean);
 
         return trim($clean);
     }
@@ -121,12 +127,12 @@ class AnnouncementService {
             return ['success' => false, 'message' => 'Announcement content body or attached banner image is required.', 'code' => 400];
         }
 
-        $allowedCategories = ['GENERAL', 'ACADEMIC', 'FINANCIAL', 'EVENT', 'URGENT', 'FACILITIES'];
+        $allowedCategories = ['GENERAL', 'ACADEMIC', 'ENROLLMENT', 'MEDICAL', 'FINANCIAL', 'EVENT', 'URGENT', 'FACILITIES'];
         if (!in_array($category, $allowedCategories, true)) {
             $category = 'GENERAL';
         }
 
-        $allowedAudiences = ['ALL', 'STUDENTS', 'OPERATORS', 'FRESHMEN'];
+        $allowedAudiences = ['ALL', 'STUDENTS', 'FACULTY', 'STAFF', 'OPERATORS', 'FRESHMEN'];
         if (!in_array($targetAudience, $allowedAudiences, true)) {
             $targetAudience = 'ALL';
         }

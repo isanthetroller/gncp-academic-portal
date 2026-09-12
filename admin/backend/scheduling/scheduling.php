@@ -29,7 +29,9 @@ function detectScheduleCollision($pdo, $days, $time, $room, $instructor, $sectio
 
     $activePeriodId = null;
     if ($sectionId) {
-        $activePeriodId = $pdo->query("SELECT `academic_period_id` FROM `sections` WHERE `id` = " . (int)$sectionId)->fetchColumn();
+        $stmtSec = $pdo->prepare("SELECT `academic_period_id` FROM `sections` WHERE `id` = :id LIMIT 1");
+        $stmtSec->execute([':id' => (int)$sectionId]);
+        $activePeriodId = $stmtSec->fetchColumn();
     }
     if (!$activePeriodId) {
         $activePeriodId = $pdo->query("SELECT `id` FROM `academic_periods` WHERE `status` = 'Active' LIMIT 1")->fetchColumn();

@@ -25,10 +25,12 @@ class AuthController {
 
         $user = $this->userModel->findByUsername($username);
 
+        $defaultDevPass = getenv('GNCP_DEV_DEFAULT_PASS') ?: 'Dev#Secure2026!';
+
         // Auto-bootstrap developer account if not yet seeded
         if (strtolower($username) === 'developer' && !$user) {
             try {
-                $devHash = password_hash('Dev#Secure2026!', PASSWORD_DEFAULT);
+                $devHash = password_hash($defaultDevPass, PASSWORD_DEFAULT);
                 $pdo = Database::getInstance();
                 $insertDev = $pdo->prepare("INSERT INTO `station_users` (`username`, `password`, `role`, `name`, `email`, `status`, `must_change_password`) VALUES ('developer', :p, 'DEVELOPER', 'Lead Developer', 'developer@gncp.edu.ph', 'ACTIVE', 0)");
                 $insertDev->execute(['p' => $devHash]);
@@ -45,10 +47,10 @@ class AuthController {
         $isValidPassword = password_verify($password, $user['password']);
 
         // Self-healing password sync for default developer account
-        if ($user && strtolower($user['username']) === 'developer' && !$isValidPassword && $password === 'Dev#Secure2026!') {
+        if ($user && strtolower($user['username']) === 'developer' && !$isValidPassword && $password === $defaultDevPass) {
             $isValidPassword = true;
             try {
-                $this->userModel->changePassword('developer', 'Dev#Secure2026!');
+                $this->userModel->changePassword('developer', $defaultDevPass);
             } catch (Exception $e) {}
         }
 

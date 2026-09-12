@@ -91,7 +91,8 @@
                         title: 'Treasury Operations',
                         items: [
                             { id: 'dashboard', label: 'Dashboard Overview', icon: 'fa-gauge' },
-                            { id: 'queue', label: 'Student Queue', icon: 'fa-users-line', badge: totalInQueue > 0 ? totalInQueue : null }
+                            { id: 'queue', label: 'Student Queue', icon: 'fa-users-line', badge: totalInQueue > 0 ? totalInQueue : null },
+                            { id: 'history', label: 'Payment History', icon: 'fa-clock-rotate-left' }
                         ]
                     }
                 ]"
@@ -246,7 +247,18 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="student in recentTransactions" :key="student.referenceNumber">
+                                <!-- Table Skeleton Loading Animation -->
+                                <tr v-if="isLoadingQueue" v-for="n in 4" :key="'skel-rec-tx-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 130px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 50px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 65px;"></div></td>
+                                </tr>
+                                <tr v-else v-for="student in recentTransactions" :key="student.referenceNumber" class="table-row-enter">
                                      <td><code>{{ student.referenceNumber }}</code></td>
                                      <td><strong>{{ student.studentName }}</strong></td>
                                      <td><span class="badge bg-secondary-subtle text-secondary">{{ student.program }}</span></td>
@@ -266,7 +278,7 @@
                                          <button type="button" class="btn-pill btn-pill-sm btn-pill-green" @click="openProcess(student)">Process</button>
                                      </td>
                                  </tr>
-                                <tr v-if="recentTransactions.length === 0">
+                                <tr v-if="!isLoadingQueue && recentTransactions.length === 0">
                                     <td colspan="8" class="text-center py-4 text-muted">No transactions processed today yet.</td>
                                 </tr>
                             </tbody>
@@ -397,7 +409,20 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="student in filteredStudents" :key="student.referenceNumber">
+                                <!-- Table Skeleton Loading Animation -->
+                                <tr v-if="isLoadingQueue" v-for="n in 5" :key="'skel-pay-q-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-ticket"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 90px;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 75px;"></div></td>
+                                </tr>
+                                <tr v-else v-for="student in filteredStudents" :key="student.referenceNumber" class="table-row-enter">
                                      <!-- Queue Ticket -->
                                      <td>
                                          <span class="queue-ticket-badge" :class="getQueueRank(student) === 1 ? 'ticket-next' : 'ticket-default'">
@@ -438,6 +463,91 @@
                                             </button>
                                         </div>
                                     </td>
+                                </tr>
+                                <tr v-if="!isLoadingQueue && filteredStudents.length === 0">
+                                    <td colspan="10" class="empty-state text-center py-4 text-muted">
+                                        <i class="fa-solid fa-inbox fs-3 mb-2 d-block text-secondary"></i>
+                                        <p class="mb-0 small">No students in the cashier payment queue match your filter.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Payment History View -->
+            <div v-else-if="currentView === 'history'" class="view-section">
+                <div class="card border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-1 font-monospace fw-bold" style="color:var(--dark-green, #004D38);font-size:1.1rem;">
+                                <i class="fa-solid fa-clock-rotate-left me-2"></i>Treasury Payment History
+                            </h4>
+                            <p class="text-muted small mb-0">Audited records of students with settled fees and issued receipts</p>
+                        </div>
+                        <button class="btn-pill btn-pill-outline btn-pill-sm" @click="fetchReviewHistory">
+                            <i class="fa-solid fa-rotate me-1"></i>Refresh History
+                        </button>
+                    </div>
+                </div>
+
+                <section class="panel">
+                    <div class="panel-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3>Completed Payment Records</h3>
+                            <p>Students cleared for IT Center permanent account and ID provisioning</p>
+                        </div>
+                        <span class="badge bg-success bg-opacity-10 text-success fw-bold font-monospace px-3 py-2 rounded-pill">
+                            {{ completedStudents.length }} Records
+                        </span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Ref / ID</th>
+                                    <th>Student Name</th>
+                                    <th>Program</th>
+                                    <th>OR / Ref No.</th>
+                                    <th>Cashier</th>
+                                    <th>Settlement Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Table Skeleton Loading Animation -->
+                                <tr v-if="isLoadingHistory" v-for="n in 4" :key="'skel-pay-hist-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 100px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 90px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 110px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
+                                </tr>
+                                <tr v-else v-for="item in completedStudents" :key="item.auditId || item.referenceNumber || item.id" class="table-row-enter">
+                                    <td><code>{{ item.referenceNumber || item.studentId || item.id }}</code></td>
+                                    <td><strong>{{ item.studentName || item.name }}</strong></td>
+                                    <td><span class="badge bg-secondary-subtle text-secondary font-monospace">{{ item.program }}</span></td>
+                                    <td>
+                                        <code class="fw-bold text-dark font-monospace">{{ item.orNumber || item.transactionRef || (item.payment && item.payment.transactionRef) || '—' }}</code>
+                                    </td>
+                                    <td>
+                                        <div style="font-size:0.82rem;font-weight:600;"><i class="fa-solid fa-user-check me-1 text-muted"></i>{{ item.cashierName || item.operatorUsername || 'Cashier Staff' }}</div>
+                                    </td>
+                                    <td>
+                                        <div style="font-size:0.8rem;font-weight:500;">{{ item.completedAt || item.enrolledAt ? new Date(item.completedAt || item.enrolledAt).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' }) : 'Settled' }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge" :class="getStatusBadgeClass(item.currentStatus || item.status)">
+                                            <i class="fa-solid fa-circle-check me-1"></i>{{ formatStatus(item.currentStatus || item.status) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr v-if="!isLoadingHistory && completedStudents.length === 0">
+                                    <td colspan="7" class="text-center py-4 text-muted">No completed payment records found.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -690,8 +800,85 @@
                             </div>
                         </div>
 
-                        <!-- Column 2: Enrollment Roadmap & Observations -->
+                        <!-- Column 2: Enrollment Scope, Subject Breakdown & Observations -->
                         <div class="col-md-6">
+                            <!-- Current Enrollment & Subjects Breakdown Card (Transparent Assessment) -->
+                            <div class="panel p-3 mb-3 border rounded-3 shadow-sm bg-white" style="border-color: #E2E8F0 !important;">
+                                <div class="d-flex justify-content-between align-items-center mb-2.5 pb-2 border-bottom">
+                                    <div>
+                                        <h6 class="m-0 text-dark fw-bold" style="font-size: 0.88rem; font-family: var(--font-heading);">
+                                            <i class="fa-solid fa-graduation-cap me-2 text-primary"></i>Current Enrollment Assessment
+                                        </h6>
+                                        <div class="text-muted small mt-0.5" style="font-size: 0.73rem;">
+                                            Academic Term: <strong class="text-dark">{{ selectedStudent.academicYear || '2026-2027' }}</strong> &middot; Semester: <strong class="text-primary">{{ selectedStudent.activeSemester || '1st Semester' }}</strong>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style="font-size: 0.7rem; font-weight: 700;">
+                                        {{ selectedStudent.curriculumVersion || '2022 Curriculum' }}
+                                    </span>
+                                </div>
+
+                                <!-- Subject List Table -->
+                                <div class="table-responsive mb-2.5" style="max-height: 190px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover align-middle mb-0 table-assessment-subjects" style="font-size: 0.74rem;">
+                                        <thead class="table-light sticky-top" style="font-size: 0.69rem; letter-spacing: 0.03em;">
+                                            <tr class="text-secondary text-uppercase">
+                                                <th class="ps-2">Subject</th>
+                                                <th class="text-center">Lec</th>
+                                                <th class="text-center">Lab</th>
+                                                <th class="text-center">Units</th>
+                                                <th class="text-end">Lab Fee</th>
+                                                <th class="text-end pe-2">Tuition</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="sub in getAdvisedSubjects(selectedStudent)" :key="sub.code">
+                                                <td class="ps-2">
+                                                    <div class="fw-bold text-dark">{{ sub.code }}</div>
+                                                    <div class="text-muted text-truncate" style="max-width: 130px; font-size: 0.68rem;" :title="sub.title">{{ sub.title }}</div>
+                                                </td>
+                                                <td class="text-center text-secondary">{{ sub.lecture_units }}</td>
+                                                <td class="text-center text-secondary">{{ sub.lab_units }}</td>
+                                                <td class="text-center fw-semibold text-dark">{{ sub.units }}</td>
+                                                <td class="text-end font-monospace text-secondary">
+                                                    {{ sub.lab_fee > 0 ? '₱' + formatCurrency(sub.lab_fee) : '—' }}
+                                                </td>
+                                                <td class="text-end pe-2 font-monospace fw-semibold text-dark">
+                                                    ₱{{ formatCurrency(sub.tuitionFee) }}
+                                                </td>
+                                            </tr>
+                                            <tr v-if="getAdvisedSubjects(selectedStudent).length === 0">
+                                                <td colspan="6" class="text-center py-3 text-muted small">No advised subjects loaded.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Itemized Fee Calculation Summary -->
+                                <div class="p-2.5 rounded-2" style="background: #F8FAFC; border: 1px solid #E2E8F0; font-size: 0.75rem;">
+                                    <div class="d-flex justify-content-between text-secondary mb-1">
+                                        <span>Tuition ({{ getAssessmentBreakdown(selectedStudent).totalUnits }} Units &times; ₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).tuitionRate) }}):</span>
+                                        <span class="fw-semibold text-dark font-monospace">₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).tuitionFee) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-secondary mb-1">
+                                        <span>Total Laboratory Fees:</span>
+                                        <span class="fw-semibold text-dark font-monospace">₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).totalLabFee) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-secondary mb-1">
+                                        <span>Miscellaneous Fees (Reg + Library):</span>
+                                        <span class="fw-semibold text-dark font-monospace">₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).miscFee) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-success mb-1" v-if="getAssessmentBreakdown(selectedStudent).discount > 0">
+                                        <span>Scholarship Discount:</span>
+                                        <span class="fw-bold font-monospace">- ₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).discount) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between border-top pt-1.5 mt-1 fw-bold text-dark" style="font-size: 0.82rem;">
+                                        <span class="text-uppercase" style="color: var(--dark-green);">Total Current Semester Charges:</span>
+                                        <span class="text-success fs-6 font-monospace">₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).cashTotal) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Verification Stepper -->
                             <div class="panel p-3 mb-3" style="background: rgba(0, 106, 78, 0.03); border: 1px solid rgba(0, 106, 78, 0.1); border-radius: var(--radius-md);">
                                 <h6 class="mb-3 text-dark fw-bold" style="font-family: var(--font-heading);">Campus Verification Progress</h6>

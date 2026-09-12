@@ -40,9 +40,33 @@ try {
     switch ($action) {
         
         case 'fetch_all_data':
-            try {
-                $pdo->query("UPDATE `pre_enrollments` SET `status` = 'EXPIRED' WHERE `status` = 'PRE_REGISTERED' AND `created_at` < NOW() - INTERVAL 90 DAY");
-            } catch (Exception $ex) {}
+            // 1. Throttle 90-day expiration cleanup to run at most once per 24 hours
+            $cleanupFlag = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'gncp_prereg_cleanup.lock';
+            if (!file_exists($cleanupFlag) || (time() - filemtime($cleanupFlag) > 86400)) {
+                try {
+                    $pdo->query("UPDATE `pre_enrollments` SET `status` = 'EXPIRED' WHERE `status` = 'PRE_REGISTERED' AND `created_at` < NOW() - INTERVAL 90 DAY");
+                    @touch($cleanupFlag);
+                } catch (Exception $ex) {}
+            }
+
+            // 2. Compute lightweight table checksum for ETag validation (<1ms)
+            $peChecksum = $pdo->query("SELECT COUNT(*) AS cnt, COALESCE(MAX(`id`), 0) AS max_id, COALESCE(SUM(CRC32(CONCAT(`id`, `status`, IFNULL(SUBSTRING(`requirements_data`, 1, 60), '')))), 0) AS cs FROM `pre_enrollments`")->fetch(PDO::FETCH_ASSOC);
+            $stChecksum = $pdo->query("SELECT COUNT(*) AS cnt, COALESCE(MAX(`id`), 0) AS max_id FROM `students`")->fetch(PDO::FETCH_ASSOC);
+            $subChecksum = $pdo->query("SELECT COUNT(*) AS cnt, COALESCE(MAX(`id`), 0) AS max_id FROM `subjects`")->fetch(PDO::FETCH_ASSOC);
+            $hashSeed = sprintf("pe:%d:%d:%u|st:%d:%s|sub:%d:%d",
+                $peChecksum['cnt'] ?? 0, $peChecksum['max_id'] ?? 0, $peChecksum['cs'] ?? 0,
+                $stChecksum['cnt'] ?? 0, $stChecksum['max_id'] ?? 0,
+                $subChecksum['cnt'] ?? 0, $subChecksum['max_id'] ?? 0
+            );
+            $etag = '"' . md5($hashSeed) . '"';
+            header('ETag: ' . $etag);
+            header('Cache-Control: no-cache, must-revalidate');
+
+            $ifNoneMatch = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
+            if ($ifNoneMatch && (trim($ifNoneMatch) === trim($etag) || trim($ifNoneMatch, '"') === trim($etag, '"'))) {
+                http_response_code(304);
+                exit;
+            }
 
             $catalogData = CatalogService::fetchCatalogData($pdo);
             $sectionData = SectionService::fetchSections($pdo);
@@ -77,7 +101,7 @@ try {
 
             $enrollments = $pdo->query("SELECT * FROM `enrollments` ORDER BY `id` DESC")->fetchAll(PDO::FETCH_ASSOC);
 
-            $preEnrollments = $pdo->query("SELECT * FROM `pre_enrollments` ORDER BY `created_at` ASC")->fetchAll(PDO::FETCH_ASSOC);
+            $preEnrollments = $pdo->query("SELECT * FROM `pre_enrollments` WHERE `status` IN ('PRE_REGISTERED', 'PENDING', 'RETURNED', 'NEEDS_CORRECTION') ORDER BY `created_at` ASC")->fetchAll(PDO::FETCH_ASSOC);
             if (!function_exists('getRequirementsForType')) {
                 require_once __DIR__ . '/../../shared/backend/utils/student.php';
             }

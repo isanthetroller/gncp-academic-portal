@@ -36,6 +36,20 @@ def get_florence_db():
 def main():
     print("=== STARTING INDEPENDENT REGISTRAR & SECTION ASSIGNMENT AUDIT ===")
 
+    # Reset test applicants to PRE_REGISTERED for repeatable test execution
+    try:
+        reset_sql = (
+            "UPDATE pre_enrollments SET "
+            "status = 'PRE_REGISTERED', "
+            "section_code = NULL, "
+            "requirements_data = '{\"status\":\"VERIFIED\",\"docs\":{\"psa\":\"verified\",\"reportCard\":\"verified\",\"goodMoral\":\"verified\",\"2_pieces_recent_2x2_color_pictures_white_background_with_name_tag\":\"verified\"},\"notes\":\"All requirements verified\"}' "
+            "WHERE first_name = 'Florence'; "
+            "UPDATE pre_enrollments SET status = 'PRE_REGISTERED', section_code = NULL WHERE first_name IN ('Clara', 'Alan', 'Luca');"
+        )
+        subprocess.call(["C:\\xampp\\mysql\\bin\\mysql.exe", "-u", "root", "gncp_portal", "-e", reset_sql])
+    except Exception as e:
+        print(f"Warning resetting test records: {e}")
+
     # -------------------------------------------------------------------------
     # 1. API Login as REGISTRAR
     # -------------------------------------------------------------------------
@@ -144,6 +158,9 @@ def main():
         wait.until(EC.visibility_of_element_located((By.ID, "applicationModal")))
         record("Application Review Modal Opened (Florence Nightingale)", True, "Modal #applicationModal is visible")
 
+        # Wait for dynamic section table rows to load and render
+        wait.until(EC.presence_of_element_located((By.XPATH, "//div[@id='applicationModal']//tr[contains(., 'BSN-1TEST-B')]")))
+
         modal_html = driver.find_element(By.ID, "applicationModal").get_attribute("innerHTML")
         has_bsn_1a = "BSN-1TEST-A" in modal_html
         has_bsn_1b = "BSN-1TEST-B" in modal_html
@@ -188,6 +205,7 @@ def main():
         time.sleep(2)
 
         wait.until(EC.visibility_of_element_located((By.ID, "applicationModal")))
+        wait.until(EC.presence_of_element_located((By.XPATH, "//div[@id='applicationModal']//tr[contains(., 'BSN-2TEST-A')]")))
         cb_modal_html = driver.find_element(By.ID, "applicationModal").get_attribute("innerHTML")
         has_bsn_2a = "BSN-2TEST-A" in cb_modal_html
         not_has_bsn_1a = "BSN-1TEST-A" not in cb_modal_html
@@ -208,6 +226,7 @@ def main():
         time.sleep(2)
 
         wait.until(EC.visibility_of_element_located((By.ID, "applicationModal")))
+        wait.until(EC.presence_of_element_located((By.XPATH, "//div[@id='applicationModal']//tr[contains(., 'BSCS-4TEST-A')]")))
         at_modal_html = driver.find_element(By.ID, "applicationModal").get_attribute("innerHTML")
         has_bscs_4a = "BSCS-4TEST-A" in at_modal_html
         record("Alan Turing (BSCS 4th Year) Modal Displays BSCS-4TEST-A", has_bscs_4a, "BSCS-4TEST-A present")
@@ -226,6 +245,7 @@ def main():
         time.sleep(2)
 
         wait.until(EC.visibility_of_element_located((By.ID, "applicationModal")))
+        wait.until(EC.presence_of_element_located((By.XPATH, "//div[@id='applicationModal']//tr[contains(., 'BSA-1TEST-A')]")))
         lp_modal_html = driver.find_element(By.ID, "applicationModal").get_attribute("innerHTML")
         has_bsa_1a = "BSA-1TEST-A" in lp_modal_html
         record("Luca Pacioli (BSA 1st Year) Modal Displays BSA-1TEST-A", has_bsa_1a, "BSA-1TEST-A present")

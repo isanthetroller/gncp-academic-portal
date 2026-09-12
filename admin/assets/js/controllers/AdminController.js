@@ -1,4 +1,4 @@
-const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted } = Vue;
+const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } = Vue;
 
 const API = 'backend/api.php';
 
@@ -215,6 +215,10 @@ const app = createApp({
         // Dashboard Stats State
         const dashboardStats = ref(null);
         const isLoadingStats = ref(false);
+        const isLoadingAcademicData = ref(true);
+        const isLoadingOperators = ref(false);
+        const isLoadingAnnouncements = ref(false);
+        const isLoadingMilestones = ref(false);
 
         // Multi-Dimensional Analytics Filter State
         const analyticsFilters = reactive({
@@ -1060,6 +1064,11 @@ const app = createApp({
             return { totalSubjects, totalUnits, totalLec, totalLab, totalLabFees };
         });
 
+        const activePeriods = computed(() => {
+            if (!Array.isArray(periods.value)) return [];
+            return periods.value.filter(p => p && (p.status || '').toUpperCase() === 'ACTIVE');
+        });
+
         const filteredPeriods = computed(() => {
             let res = periods.value.filter(p => {
                 const matchesSearch = !q() || (p.name+p.academicYear).toLowerCase().includes(q());
@@ -1225,7 +1234,8 @@ const app = createApp({
             if (v === 'dashboard') loadDashboard();
             if (v === 'operators') {
                 filterUserStatus.value = 'ALL';
-                get('fetch_users').then(r => { if (r && r.success) users.value = r.data || []; });
+                isLoadingOperators.value = true;
+                get('fetch_users').then(r => { if (r && r.success) users.value = r.data || []; }).finally(() => { isLoadingOperators.value = false; });
             }
         };
 
@@ -1415,17 +1425,23 @@ const app = createApp({
         });
 
         const fetchAdminAnnouncements = () => {
+            isLoadingAnnouncements.value = true;
             get('fetch_announcements').then(r => {
                 if (r.success) announcements.value = r.data || [];
-            }).catch(() => {});
+            }).catch(() => {}).finally(() => {
+                isLoadingAnnouncements.value = false;
+            });
         };
 
         const fetchAdminMilestones = () => {
+            isLoadingMilestones.value = true;
             get('fetch_milestones').then(r => {
                 if (r && r.success && Array.isArray(r.data)) {
                     milestones.value = r.data;
                 }
-            }).catch(e => console.error('Failed to fetch milestones:', e));
+            }).catch(e => console.error('Failed to fetch milestones:', e)).finally(() => {
+                isLoadingMilestones.value = false;
+            });
         };
 
         const formatDoc = (cmd, val = null) => {
@@ -1487,6 +1503,7 @@ const app = createApp({
         // ── Load all data ──
         const loadAll = () => {
             loadDashboard(true);
+            isLoadingAcademicData.value = true;
             get('fetch_academic_data').then(r => {
                 if (r.success && r.data) {
                     departments.value = window.GNCP_DEPARTMENTS || r.data.departments || [];
@@ -1502,9 +1519,27 @@ const app = createApp({
                         milestones.value = r.data.milestones;
                     }
                 }
-            }).catch(() => {});
+            }).catch(() => {}).finally(() => {
+                isLoadingAcademicData.value = false;
+            });
+            get('fetch_users').then(r => { if (r && r.success) users.value = r.data || []; });
             fetchAdminAnnouncements();
             fetchAdminMilestones();
+        };
+
+        let initialAnnouncementSnapshot = '';
+        const getAnnouncementSnapshot = () => {
+            syncEditorContent();
+            return JSON.stringify({
+                id: announcementForm.id || 0,
+                title: (announcementForm.title || '').trim(),
+                category: announcementForm.category || 'GENERAL',
+                target_audience: announcementForm.target_audience || 'ALL',
+                content: (announcementForm.content || '').trim(),
+                image_url: announcementForm.image_url || '',
+                image_fit: announcementForm.image_fit || 'contain',
+                is_pinned: !!announcementForm.is_pinned
+            });
         };
 
         const openAnnouncementModal = (ann = null) => {
@@ -1538,16 +1573,14 @@ const app = createApp({
                 if (canvas) {
                     canvas.innerHTML = announcementForm.content || '';
                 }
+                initialAnnouncementSnapshot = getAnnouncementSnapshot();
             });
         };
 
         const closeAnnouncementModal = async () => {
             syncEditorContent();
-            const textOnly = (announcementForm.content || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-            const hasDraft = (announcementForm.title && announcementForm.title.trim()) || 
-                             textOnly || 
-                             uploadImgPreview.value;
-            if (hasDraft && !isSavingAnnouncement.value) {
+            const isDirty = (getAnnouncementSnapshot() !== initialAnnouncementSnapshot) || !!uploadImgPreview.value;
+            if (isDirty && !isSavingAnnouncement.value) {
                 if (typeof Swal !== 'undefined') {
                     const res = await Swal.fire({
                         title: 'Discard Changes?',
@@ -1555,13 +1588,15 @@ const app = createApp({
                         icon: 'warning',
                         showCancelButton: true,
                         confirmButtonColor: '#d33',
-                        cancelButtonColor: '#3085d6',
-                        confirmButtonText: 'Yes, discard',
-                        cancelButtonText: 'Keep editing'
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: 'Discard & Close',
+                        cancelButtonText: 'Continue Editing'
                     });
                     if (!res.isConfirmed) return;
                 }
             }
+            uploadImgPreview.value = '';
+            announcementForm.image_url = '';
             closeModal();
         };
 
@@ -1625,9 +1660,19 @@ const app = createApp({
                     const formData = new FormData();
                     const blob = await (await fetch(uploadImgPreview.value)).blob();
                     formData.append('image', blob, 'banner.jpg');
-                    const upRes = await fetch('backend/api.php?action=upload_announcement_image', { method: 'POST', body: formData });
+                    const upRes = await fetch('backend/api.php?action=upload_announcement_image', { 
+                        method: 'POST', 
+                        body: formData,
+                        credentials: 'same-origin'
+                    });
                     const upJson = await upRes.json();
-                    if (upJson.success) imageUrl = upJson.url;
+                    if (upJson && upJson.success) {
+                        imageUrl = (upJson.data && (upJson.data.image_url || upJson.data.url)) || upJson.image_url || upJson.url || '';
+                    } else {
+                        notify(false, (upJson && (upJson.message || upJson.error)) || 'Failed to upload announcement poster image.');
+                        isSavingAnnouncement.value = false;
+                        return;
+                    }
                 }
                 const stored = sessionStorage.getItem('gncp_admin_user');
                 const admin = stored ? JSON.parse(stored) : {};
@@ -1792,7 +1837,12 @@ const app = createApp({
             if (view.value === 'subjects')   { Object.assign(form, {id:null,code:'',title:'',description:'',lectureUnits:3,labUnits:0,labFee:0,department:selectedDeptName.value || '',prerequisites:'None'}); modal.value='subject'; }
             if (view.value === 'curriculum') { Object.assign(form, {id:null,program:selectedCurrProgram.value || (programs.value.length > 0 ? programs.value[0].name : ''),curriculumVersion:selectedCurrVersion.value || '2022 Curriculum',subject:subjects.value.length > 0 ? subjects.value[0].title : '',yearLevel:'1st Year',semester:'1st Semester',elective:false}); modal.value='curriculum'; }
             if (view.value === 'periods')    { Object.assign(form, {id:null,name:'',academicYear:'',semester:'1st Semester',enrollmentStart:'',enrollmentEnd:'',status:'Active'}); modal.value='period'; }
-            if (view.value === 'sections')   { Object.assign(form, {id:null,code:'',program:'',yearLevel:'1st Year',academicPeriodId:'',curriculumVersion:'2022 Curriculum',capacity:40,adviser:''}); modal.value='section'; }
+            if (view.value === 'sections')   {
+                const activeP = periods.value.find(p => p && (p.status || '').toUpperCase() === 'ACTIVE');
+                const defaultPid = activeP ? activeP.id : '';
+                Object.assign(form, {id:null,code:'',program:programs.value.length > 0 ? programs.value[0].name : '',yearLevel:'1st Year',academicPeriodId:defaultPid,curriculumVersion:'2022 Curriculum',capacity:40,adviser:''});
+                modal.value='section';
+            }
             if (view.value === 'classOfferings') { Object.assign(form, {id:null,sectionId:'',program:'',yearLevel:'1st Year',semester:'1st Semester',subject:'',code:'',instructor:'TBD',days:'MWF',time:'09:00 AM - 10:30 AM',room:'Room 101',capacity:40}); modal.value='classOffering'; }
             if (view.value === 'fees')       { Object.assign(form, {id:null,type:'Tuition',label:'',amount:0,perUnit:false}); modal.value='fee'; }
             if (view.value === 'operators')  { Object.assign(form, {name:'',username:'',password:'',role:''}); modal.value='operator'; }
@@ -1827,10 +1877,12 @@ const app = createApp({
             modal.value = 'clone-term';
         };
         const openBulkSectionsModal = () => {
+            const activeP = periods.value.find(p => p && (p.status || '').toUpperCase() === 'ACTIVE');
+            const defaultPid = activeP ? activeP.id : '';
             bulkForm.program = programs.value.length > 0 ? programs.value[0].name : '';
             bulkForm.curriculumVersion = '2022 Curriculum';
             bulkForm.yearLevel = '1st Year';
-            bulkForm.academicPeriodId = periods.value.length > 0 ? periods.value[0].id : '';
+            bulkForm.academicPeriodId = defaultPid;
             bulkForm.capacity = 40;
             bulkForm.adviser = '';
             bulkForm.count = 3;
@@ -1858,6 +1910,11 @@ const app = createApp({
         const submitBulkSections = () => {
             if (!bulkForm.program || !bulkForm.yearLevel || !bulkForm.academicPeriodId || bulkForm.count <= 0) {
                 notify(false, 'Please fill in all required fields.');
+                return;
+            }
+            const period = periods.value.find(p => parseInt(p.id) === parseInt(bulkForm.academicPeriodId));
+            if (!period || (period.status || '').toUpperCase() !== 'ACTIVE') {
+                notify(false, 'The selected academic period is Inactive. Please select an Active period.');
                 return;
             }
             post('bulk_generate_sections', { bulk: bulkForm }).then(r => {
@@ -2075,7 +2132,22 @@ const app = createApp({
                 else Swal.fire({ title: 'Cannot Delete', html: r.error || 'Delete failed.', icon: 'error', confirmButtonColor: '#006A4E' });
             });
         };
-        const saveSection    = () => crudSave('save_section',   'section',    sections,   {});
+        const saveSection = () => {
+            if (!form.program || !form.yearLevel || !form.code) {
+                notify(false, 'Please fill in Program, Year Level, and Section Code.');
+                return;
+            }
+            if (!form.academicPeriodId) {
+                notify(false, 'Please select an Active academic period.');
+                return;
+            }
+            const period = periods.value.find(p => parseInt(p.id) === parseInt(form.academicPeriodId));
+            if (!period || (period.status || '').toUpperCase() !== 'ACTIVE') {
+                notify(false, 'The selected academic period is Inactive. Please select an Active period.');
+                return;
+            }
+            crudSave('save_section', 'section', sections, {});
+        };
         const deleteSection = async (id) => {
             const sec = sections.value.find(s => s.id === id);
             if (!sec) return;
@@ -2297,30 +2369,93 @@ const app = createApp({
 
         const resetOperatorPassword = async (u) => {
             console.log('[Trace: Operators] Initiating password reset for user:', u);
-            const { value: newPass } = await Swal.fire({
+            const { value: formValues } = await Swal.fire({
                 title: 'Reset Operator Password',
-                text: `Set a new temporary password for ${u.name} (${u.username}):`,
-                input: 'text',
-                inputPlaceholder: 'Leave blank to auto-generate',
+                html: `
+                    <div style="text-align: left; font-size: 0.92rem;">
+                        <p style="margin-bottom: 14px; color: #475569;">
+                            Reset workstation password for <strong>${u.name}</strong> (<code>${u.username}</code> &bull; ${u.role}).
+                        </p>
+                        <div style="margin-bottom: 12px;">
+                            <label style="display:block; font-weight: 700; margin-bottom: 4px; color: #1e293b; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px;">Employee Email Address</label>
+                            <input id="swal-reset-email" type="email" class="swal2-input" style="margin: 0; width: 100%; box-sizing: border-box; font-size: 0.95rem;" placeholder="employee@gncp.edu.ph" value="${u.email || ''}">
+                            <small style="color: #64748b; font-size: 0.78rem;">The temporary password will be dispatched to this email.</small>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <label style="display:block; font-weight: 700; margin-bottom: 4px; color: #1e293b; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px;">Custom Temporary Password (Optional)</label>
+                            <input id="swal-reset-pass" type="text" class="swal2-input" style="margin: 0; width: 100%; box-sizing: border-box; font-size: 0.95rem;" placeholder="Leave blank to auto-generate (e.g. Gncp#4821!)">
+                        </div>
+                    </div>
+                `,
                 showCancelButton: true,
                 confirmButtonColor: '#006A4E',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Reset Password'
+                cancelButtonColor: '#64748b',
+                confirmButtonText: '<i class="fa-solid fa-paper-plane me-1"></i> Reset & Send Email',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const email = document.getElementById('swal-reset-email').value.trim();
+                    const pass = document.getElementById('swal-reset-pass').value.trim();
+                    if (email && !email.includes('@')) {
+                        Swal.showValidationMessage('Please provide a valid email address.');
+                        return false;
+                    }
+                    return { email, pass };
+                }
             });
-            if (newPass === undefined) return;
-            post('reset_operator_password', { userId: u.id, newPassword: newPass }).then(r => {
+
+            if (!formValues) return;
+
+            // Show sending progress indicator
+            Swal.fire({
+                title: 'Resetting Password...',
+                html: 'Generating secure temporary password and dispatching notification email via Gmail SMTP.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            post('reset_operator_password', { 
+                userId: u.id, 
+                newPassword: formValues.pass,
+                email: formValues.email
+            }).then(r => {
                 if (r.success) {
                     console.log('[Trace: Operators] Password reset successful:', r);
                     fetchOperators();
+                    const emailNotice = r.data.emailSent 
+                        ? `<div style="margin-top: 14px; padding: 12px 14px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 0.88rem; text-align: left;">
+                             <i class="fa-solid fa-circle-check me-2" style="color: #059669;"></i>
+                             Temporary password delivered to <strong>${r.data.recipientEmail}</strong> via Gmail SMTP.
+                           </div>`
+                        : `<div style="margin-top: 14px; padding: 12px 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; color: #92400e; font-size: 0.88rem; text-align: left;">
+                             <i class="fa-solid fa-triangle-exclamation me-2" style="color: #d97706;"></i>
+                             ${r.data.emailMessage || 'Notice: Email delivery was not completed.'}
+                           </div>`;
+
                     Swal.fire({
-                        title: 'Password Reset Successful!',
-                        html: `Temporary password for <strong>${u.username}</strong>:<br><br><code style="font-size:1.25rem;color:#006A4E;background:#e6f4ed;padding:6px 14px;border-radius:6px;display:inline-block">${r.data.tempPassword}</code><br><br>${r.data.emailSent ? 'Credentials have been emailed to the operator.' : (r.data.emailMessage || 'No email sent.')}`,
+                        title: 'Password Reset Complete!',
+                        html: `
+                            <p style="color: #475569; margin-bottom: 12px;">Workstation account <strong>${u.username}</strong> has been updated.</p>
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 8px;">
+                                <div style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 4px;">Temporary Password</div>
+                                <code style="font-size: 1.35rem; color: #006A4E; font-weight: 800; letter-spacing: 2px; user-select: all; -webkit-user-select: all;">${r.data.tempPassword}</code>
+                            </div>
+                            <small style="color: #64748b;">The operator will be required to change their password upon their next login.</small>
+                            ${emailNotice}
+                        `,
                         icon: 'success',
                         confirmButtonColor: '#006A4E'
                     });
                 } else {
                     console.error('[Trace: Operators] Password reset failed:', r);
-                    notify(false, r.message || r.error || 'Failed to reset password.');
+                    Swal.fire({
+                        title: 'Reset Failed',
+                        text: r.message || r.error || 'Failed to reset operator password.',
+                        icon: 'error',
+                        confirmButtonColor: '#006A4E'
+                    });
                 }
             });
         };
@@ -2571,6 +2706,7 @@ const app = createApp({
             departments, programs, subjects, curriculum, periods, sections, classOfferings, fees, users, students,
             eyebrow, viewTitle, addLabel, searchPlaceholder,
             filteredDepartments, filteredPrograms, filteredSubjects, filteredCurriculum,
+            activePeriods,
             filteredPeriods, filteredSections, filteredClassOfferings, filteredFees, filteredUsers, filteredSubjectsForSection,
             filteredProgramsList, filteredStudents, filteredAccounts, uniqueCurriculumVersionsForBulk,
             showLogoutConfirm, handleLogout, confirmLogout, setView, openAddModal, closeModal,
@@ -2582,7 +2718,7 @@ const app = createApp({
             openCreateOperatorModal, closeCreateOperatorModal, submitCreateOperator,
             openEditOperatorModal, closeEditOperatorModal, submitEditOperator,
             resetOperatorPassword, updateStatus, deleteUser,
-            dashboardStats, isLoadingStats, loadDashboard, loadAll,
+            dashboardStats, isLoadingStats, isLoadingAcademicData, isLoadingOperators, isLoadingAnnouncements, isLoadingMilestones, loadDashboard, loadAll,
             // Sort & Filter
             sortKey, sortDir, sortBy,
             filterUserStatus,
@@ -2611,7 +2747,7 @@ const app = createApp({
             timeGreeting,
             // Announcements (Bulletin Board & Google Docs Editor)
             announcements, announcementForm, isSavingAnnouncement, uploadImgPreview,
-            openAnnouncementModal, handleAnnouncementImageSelect, removeAnnouncementImage,
+            openAnnouncementModal, closeAnnouncementModal, handleAnnouncementImageSelect, removeAnnouncementImage,
             saveAnnouncement, deleteAnnouncement, togglePinAnnouncement, fetchAdminAnnouncements,
             editorWordCount, editorCharCount, formatDoc, applyFormatBlock, applyTextColor,
             applyHiliteColor, insertLink, syncEditorContent, setImagePreset,

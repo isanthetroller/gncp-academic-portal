@@ -32,9 +32,24 @@ class AssessmentService {
         }
 
         // 1. Calculate Total Units and Total Lab Fees from enrolled subjects
+        // Defense-in-depth: Deduplicate schedule by subject code to guarantee each subject is counted exactly once
+        $uniqueSchedule = [];
+        $seenSubCodes = [];
+        foreach ($schedule as $sub) {
+            $code = strtoupper(trim($sub['code'] ?? $sub['subject'] ?? $sub['title'] ?? ''));
+            if ($code !== '') {
+                if (!isset($seenSubCodes[$code])) {
+                    $seenSubCodes[$code] = true;
+                    $uniqueSchedule[] = $sub;
+                }
+            } else {
+                $uniqueSchedule[] = $sub;
+            }
+        }
+
         $totalUnits = 0.00;
         $totalLabFee = 0.00;
-        foreach ($schedule as $sub) {
+        foreach ($uniqueSchedule as $sub) {
             $lec = (float)($sub['lecture_units'] ?? $sub['lectureUnits'] ?? $sub['units'] ?? 0);
             $lab = (float)($sub['lab_units'] ?? $sub['labUnits'] ?? 0);
             $totalUnits += ($lec + $lab);
@@ -76,10 +91,17 @@ class AssessmentService {
         $nstpType = strtoupper(trim($nstp));
         $hasNstp = ($nstpType !== 'NONE' && $nstpType !== 'N/A' && $nstpType !== '');
 
+        $seenFeeLabels = [];
         foreach ($allFees as $f) {
             $fType  = strtoupper(trim($f['type']));
             $fLabel = strtoupper(trim($f['label']));
             $fAmt   = (float)$f['amount'];
+
+            $feeKey = $fType . '|' . $fLabel;
+            if (isset($seenFeeLabels[$feeKey])) {
+                continue; // Skip duplicate fee entries in database
+            }
+            $seenFeeLabels[$feeKey] = true;
 
             if ($fType === 'MISCELLANEOUS' && (int)$f['per_unit'] === 0) {
                 $miscFee += $fAmt;
@@ -133,18 +155,33 @@ class AssessmentService {
      * @param array|float $paymentData Payment records array or single numeric payment amount
      * @return array Balance, total paid, remaining balance, and financial status
      */
-    public static function calculateBalance(float $cashTotal, $paymentData = []): array {
-        $cashTotal = max(0.00, round($cashTotal, 2));
+    public static function calculateBalance($totalOrAssessment, $paymentData = []): array {
+        if (is_array($totalOrAssessment)) {
+            $isInstallment = false;
+            if (is_array($paymentData)) {
+                $pMode = strtoupper(trim($paymentData['paymentMode'] ?? ($paymentData['paymentType'] ?? '')));
+                $isInstallment = in_array($pMode, ['INSTALLMENT', 'SEMI', 'QUAD']);
+            }
+            $totalFee = $isInstallment 
+                ? (float)($totalOrAssessment['installmentTotal'] ?? $totalOrAssessment['cashTotal'] ?? 0.00) 
+                : (float)($totalOrAssessment['cashTotal'] ?? 0.00);
+        } else {
+            $totalFee = (float)$totalOrAssessment;
+        }
+
+        $totalFee = max(0.00, round($totalFee, 2));
         $totalPaid = 0.00;
         $validPayments = [];
 
         if (is_numeric($paymentData)) {
             $totalPaid = max(0.00, round((float)$paymentData, 2));
         } elseif (is_array($paymentData)) {
-            // Check if paymentData has a 'payments' list or is a single payment object
+            // Check if paymentData has a 'payments' list, 'history' ledger list, or is a single payment object
             $paymentsList = isset($paymentData['payments']) && is_array($paymentData['payments']) 
                 ? $paymentData['payments'] 
-                : (isset($paymentData['amountPaid']) ? [$paymentData] : []);
+                : (isset($paymentData['history']) && is_array($paymentData['history'])
+                    ? $paymentData['history']
+                    : (isset($paymentData['amountPaid']) ? [$paymentData] : []));
 
             foreach ($paymentsList as $p) {
                 $pStatus = strtoupper(trim($p['status'] ?? 'PAID'));
@@ -156,23 +193,25 @@ class AssessmentService {
             }
         }
 
-        $balance = round($cashTotal - $totalPaid, 2);
+        $balance = round($totalFee - $totalPaid, 2);
         
         $status = 'UNPAID';
-        if ($totalPaid >= $cashTotal && $cashTotal > 0) {
+        if ($totalPaid >= $totalFee && $totalFee > 0) {
             $status = 'PAID';
             $balance = 0.00;
-        } elseif ($totalPaid > 0 && $totalPaid < $cashTotal) {
+        } elseif ($totalPaid > 0 && $totalPaid < $totalFee) {
             $status = 'PARTIALLY_PAID';
         }
 
         return [
-            'cashTotal'     => $cashTotal,
-            'totalPaid'     => $totalPaid,
-            'amountPaid'    => $totalPaid,
-            'balance'       => max(0.00, $balance),
-            'status'        => $status,
-            'validPayments' => $validPayments
+            'cashTotal'        => $totalFee,
+            'totalFee'         => $totalFee,
+            'totalPaid'        => $totalPaid,
+            'amountPaid'       => $totalPaid,
+            'balance'          => max(0.00, $balance),
+            'remainingBalance' => max(0.00, $balance),
+            'status'           => $status,
+            'validPayments'    => $validPayments
         ];
     }
 
@@ -181,31 +220,35 @@ class AssessmentService {
      * 
      * @param float $cashTotal Full cash assessment total
      * @param float $installmentTotal 8% installment surcharge assessment total
-     * @param string $paymentMode 'Full' or 'Installment'
+     * @param string $paymentMode 'Full', 'Installment', 'SEMI', 'QUAD'
      * @param array|float $paymentData Payment snapshot or amount paid
      * @return array Itemized milestone payment schedule with formatted amounts, due dates, and payment statuses
      */
     public static function calculatePaymentSchedule(float $cashTotal, float $installmentTotal, string $paymentMode = 'Full', $paymentData = []): array {
-        $mode = ucfirst(strtolower(trim($paymentMode)));
-        $isInstallment = ($mode === 'Installment');
+        $modeUpper = strtoupper(trim($paymentMode));
+        $isInstallment = in_array($modeUpper, ['INSTALLMENT', 'SEMI', 'QUAD']);
         
         $totalAssessment = $isInstallment ? $installmentTotal : $cashTotal;
         $amountPaid = 0.00;
         if (is_numeric($paymentData)) {
-            $amountPaid = (float)$paymentData;
+            $amountPaid = max(0.00, round((float)$paymentData, 2));
         } elseif (is_array($paymentData)) {
-            $amountPaid = (float)($paymentData['amountPaid'] ?? $paymentData['amount_paid'] ?? $paymentData['amount'] ?? 0.00);
-            if ($amountPaid <= 0 && !empty($paymentData['payments']) && is_array($paymentData['payments'])) {
-                foreach ($paymentData['payments'] as $p) {
+            $amountPaid = max(0.00, round((float)($paymentData['amountPaid'] ?? $paymentData['amount_paid'] ?? $paymentData['amount'] ?? 0.00), 2));
+            if ($amountPaid <= 0) {
+                $txList = !empty($paymentData['payments']) && is_array($paymentData['payments'])
+                    ? $paymentData['payments']
+                    : (!empty($paymentData['history']) && is_array($paymentData['history']) ? $paymentData['history'] : []);
+                foreach ($txList as $p) {
                     $pStatus = strtoupper(trim($p['status'] ?? 'PAID'));
                     if ($pStatus !== 'VOIDED' && $pStatus !== 'CANCELLED') {
                         $amountPaid += (float)($p['amountPaid'] ?? $p['amount'] ?? 0.00);
                     }
                 }
+                $amountPaid = max(0.00, round($amountPaid, 2));
             }
         }
 
-        if (!$isInstallment) {
+        if (!$isInstallment || ($amountPaid >= $cashTotal && $cashTotal > 0)) {
             $isPaid = ($amountPaid >= $cashTotal && $cashTotal > 0);
             return [
                 'mode'             => 'FULL',
@@ -215,7 +258,7 @@ class AssessmentService {
                 'items' => [
                     [
                         'milestone'       => 'Upon Registration',
-                        'dueDate'         => 'Upon Enrollment',
+                        'dueDate'         => $isPaid ? 'Cleared (Full Paid)' : 'Upon Enrollment',
                         'amountDue'       => $cashTotal,
                         'formattedAmount' => '₱ ' . number_format($cashTotal, 2),
                         'status'          => $isPaid ? 'PAID' : 'DUE'
@@ -253,54 +296,55 @@ class AssessmentService {
         }
 
         // Installment Breakdown
-        $downpayment = $amountPaid > 0 ? min($amountPaid, round($totalAssessment * 0.35, 2)) : max(3500.00, round($totalAssessment * 0.20, 2));
-        $remaining = max(0.00, round($totalAssessment - $downpayment, 2));
+        $scheduledDownpayment = max(3000.00, round($totalAssessment * 0.30, 2));
+        $remaining = max(0.00, round($totalAssessment - $scheduledDownpayment, 2));
         $chunk = round($remaining / 4, 2);
         $finalChunk = round($remaining - (3 * $chunk), 2);
 
-        $cum1 = $downpayment;
-        $cum2 = $downpayment + $chunk;
-        $cum3 = $downpayment + (2 * $chunk);
-        $cum4 = $downpayment + (3 * $chunk);
+        $cum1 = $scheduledDownpayment;
+        $cum2 = $scheduledDownpayment + $chunk;
+        $cum3 = $scheduledDownpayment + (2 * $chunk);
+        $cum4 = $scheduledDownpayment + (3 * $chunk);
         $cum5 = $totalAssessment;
 
         return [
             'mode'             => 'INSTALLMENT',
             'totalAssessment'  => $totalAssessment,
-            'downpayment'      => $downpayment,
+            'amountPaid'       => $amountPaid,
+            'downpayment'      => $scheduledDownpayment,
             'remainingBalance' => max(0.00, round($totalAssessment - $amountPaid, 2)),
             'items' => [
                 [
                     'milestone'       => 'Upon Registration',
-                    'dueDate'         => 'Upon Enrollment',
-                    'amountDue'       => $downpayment,
-                    'formattedAmount' => '₱ ' . number_format($downpayment, 2),
+                    'dueDate'         => ($amountPaid >= $cum1) ? 'Cleared (Paid)' : 'Upon Enrollment',
+                    'amountDue'       => $scheduledDownpayment,
+                    'formattedAmount' => '₱ ' . number_format($scheduledDownpayment, 2),
                     'status'          => ($amountPaid >= $cum1) ? 'PAID' : 'DUE'
                 ],
                 [
                     'milestone'       => 'PRELIM',
-                    'dueDate'         => 'Term Week 5',
+                    'dueDate'         => ($amountPaid >= $cum2) ? 'Cleared (Paid)' : 'Term Week 5',
                     'amountDue'       => $chunk,
                     'formattedAmount' => '₱ ' . number_format($chunk, 2),
                     'status'          => ($amountPaid >= $cum2) ? 'PAID' : 'DUE'
                 ],
                 [
                     'milestone'       => 'MIDTERM',
-                    'dueDate'         => 'Term Week 9',
+                    'dueDate'         => ($amountPaid >= $cum3) ? 'Cleared (Paid)' : 'Term Week 9',
                     'amountDue'       => $chunk,
                     'formattedAmount' => '₱ ' . number_format($chunk, 2),
                     'status'          => ($amountPaid >= $cum3) ? 'PAID' : 'DUE'
                 ],
                 [
                     'milestone'       => 'PREFINALS',
-                    'dueDate'         => 'Term Week 14',
+                    'dueDate'         => ($amountPaid >= $cum4) ? 'Cleared (Paid)' : 'Term Week 14',
                     'amountDue'       => $chunk,
                     'formattedAmount' => '₱ ' . number_format($chunk, 2),
                     'status'          => ($amountPaid >= $cum4) ? 'PAID' : 'DUE'
                 ],
                 [
                     'milestone'       => 'FINALS',
-                    'dueDate'         => 'Term Week 18',
+                    'dueDate'         => ($amountPaid >= $cum5) ? 'Cleared (Paid)' : 'Term Week 18',
                     'amountDue'       => $finalChunk,
                     'formattedAmount' => '₱ ' . number_format($finalChunk, 2),
                     'status'          => ($amountPaid >= $cum5) ? 'PAID' : 'DUE'

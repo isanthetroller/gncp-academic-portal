@@ -34,9 +34,9 @@ const App = {
 
         const enrollNowUrl = computed(() => {
             if (selectedDept.value) {
-                return `../enrollment-system/index.html?dept=${selectedDept.value}`;
+                return `../enrollment-system/?dept=${selectedDept.value}`;
             }
-            return '../enrollment-system/index.html';
+            return '../enrollment-system/';
         });
         
         const navigate = (page) => {

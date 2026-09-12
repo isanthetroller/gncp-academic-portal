@@ -277,7 +277,16 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="student in filteredStudents" :key="student.referenceNumber">
+                                <!-- Table Skeleton Loading Animation -->
+                                <tr v-if="isLoadingQueue" v-for="n in 5" :key="'skel-med-q-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-ticket"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 150px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 90px;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 75px;"></div></td>
+                                </tr>
+                                <tr v-else v-for="student in filteredStudents" :key="student.referenceNumber" class="table-row-enter">
                                      <!-- Queue Ticket -->
                                      <td>
                                          <span class="queue-ticket-badge" :class="getQueueRank(student) === 1 ? 'ticket-next' : 'ticket-default'">
@@ -309,7 +318,7 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr v-if="filteredStudents.length === 0">
+                                <tr v-if="!isLoadingQueue && filteredStudents.length === 0">
                                     <td colspan="6" class="empty-state py-5 text-center text-muted">
                                         <i class="fa-solid fa-inbox fs-2 mb-2 d-block text-secondary"></i>
                                         <p class="mb-0">No students matching the criteria found in the clinic queue.</p>
@@ -386,7 +395,18 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="student in completedStudents" :key="student.referenceNumber">
+                                <!-- Table Skeleton Loading Animation -->
+                                <tr v-if="isLoadingQueue" v-for="n in 4" :key="'skel-med-comp-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 70px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 70px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 80px;"></div></td>
+                                </tr>
+                                <tr v-else v-for="student in completedStudents" :key="student.referenceNumber" class="table-row-enter">
                                     <td><code>{{ student.referenceNumber }}</code></td>
                                     <td><strong>{{ student.name }}</strong></td>
                                     <td><span class="badge bg-secondary-subtle text-secondary">{{ student.program }}</span></td>
@@ -404,7 +424,7 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr v-if="completedStudents.length === 0">
+                                <tr v-if="!isLoadingQueue && completedStudents.length === 0">
                                     <td colspan="8" class="empty-state py-5 text-center text-muted">
                                         <i class="fa-solid fa-user-check fs-2 mb-2 d-block text-secondary"></i>
                                         <p class="mb-0">No completed medical check-up records found yet.</p>

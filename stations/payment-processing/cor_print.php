@@ -348,6 +348,13 @@ try {
     $paymentMode       = $student['payment_mode'] ?? 'Full';
     $paymentSchedule   = AssessmentService::calculatePaymentSchedule($cashTotal, $installmentTotal, $paymentMode, $paymentData);
 
+    $paymentBalance    = AssessmentService::calculateBalance($assessment, $paymentData);
+    $amountPaid        = (float)($paymentBalance['amountPaid'] ?? 0.00);
+    $balance           = (float)($paymentBalance['balance'] ?? 0.00);
+    $totalFee          = (float)($paymentBalance['totalFee'] ?? $cashTotal);
+    $orNumber          = $paymentData['orNumber'] ?? ($paymentData['transactionRef'] ?? ($student['or_number'] ?? 'N/A'));
+    $paymentStatus     = $paymentData['status'] ?? ($balance <= 0 ? 'PAID' : 'PARTIALLY_PAID');
+
 } catch (Exception $e) {
     die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>Database error: " . $e->getMessage() . "</h1>");
 }
@@ -649,6 +656,34 @@ try {
             </tr>
         </tbody>
     </table>
+
+    <!-- Accounts Ledger Assessment & Payment Record -->
+    <div style="margin-bottom: 12px; border: 1pt solid #000; padding: 6px 10px; background: #fafafa;">
+        <div style="font-family: Arial, Helvetica, sans-serif; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 0.75pt solid #ccc; padding-bottom: 3px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <span>Accounts Ledger Assessment &amp; Official Receipt</span>
+            <span>Status: <strong><?php echo htmlspecialchars($balance <= 0 ? 'OFFICIALLY ENROLLED / FULLY PAID' : ($amountPaid > 0 ? 'DOWNPAYMENT CLEARED / PARTIALLY PAID' : 'PENDING PAYMENT')); ?></strong></span>
+        </div>
+        <div style="display: table; width: 100%;">
+            <div style="display: table-row;">
+                <div style="display: table-cell; width: 25%;">
+                    <span class="field-label">Total Assessed Fees</span>
+                    <span class="mono" style="font-size: 9.5pt; font-weight: bold;">&#8369; <?php echo number_format($totalFee, 2); ?></span>
+                </div>
+                <div style="display: table-cell; width: 25%;">
+                    <span class="field-label">Amount Paid</span>
+                    <span class="mono" style="font-size: 9.5pt; font-weight: bold; color: #166534;">&#8369; <?php echo number_format($amountPaid, 2); ?></span>
+                </div>
+                <div style="display: table-cell; width: 25%;">
+                    <span class="field-label">Remaining Balance</span>
+                    <span class="mono" style="font-size: 9.5pt; font-weight: bold; <?php echo $balance > 0 ? 'color: #991b1b;' : 'color: #333;'; ?>">&#8369; <?php echo number_format($balance, 2); ?></span>
+                </div>
+                <div style="display: table-cell; width: 25%;">
+                    <span class="field-label">Official Receipt (OR) / Ref</span>
+                    <span class="mono" style="font-size: 9.5pt; font-weight: bold;"><?php echo htmlspecialchars($orNumber); ?></span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="two-col">
         <div class="col-left">

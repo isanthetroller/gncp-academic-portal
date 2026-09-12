@@ -16,7 +16,12 @@ window.StudentPortalController = {
         const showLogoutConfirm = ref(false);
         const isMobileMenuOpen = ref(false);
         const photoInput = ref(null);
+        const isUploadingPhoto = ref(false);
         const updateSuccessMsg = ref('');
+        const avatarLoadError = ref(false);
+        const onAvatarError = () => {
+            avatarLoadError.value = true;
+        };
 
         // Data State
         const state = reactive({
@@ -108,22 +113,33 @@ window.StudentPortalController = {
         // ── Documents & Undertaking Management State ──────────────────────────
         const documentsData = reactive({
             requirements: [],
+            pendingRequirements: [],
+            completedRequirements: [],
             stats: {
-                totalRequired: 5,
+                totalRequired: 0,
                 verifiedCount: 0,
                 pendingReviewCount: 0,
                 undertakingCount: 0,
                 missingCount: 0,
-                isFullyCompliant: false
+                actionableCount: 0,
+                isFullyCompliant: false,
+                isComplete: false
             },
             loading: false
         });
 
         const missingDocsCount = computed(() => {
-            const m = documentsData.stats?.missingCount || 0;
-            const u = documentsData.stats?.undertakingCount || 0;
-            return m + u;
+            // Only count genuinely actionable required documents.
+            // When all requirements are cleared or processed by registrar, count is 0.
+            return documentsData.stats?.actionableCount !== undefined
+                ? documentsData.stats.actionableCount
+                : (documentsData.pendingRequirements?.length || 0);
         });
+
+        const showCompletedDocs = ref(false);
+        const toggleShowCompletedDocs = () => {
+            showCompletedDocs.value = !showCompletedDocs.value;
+        };
 
         const showUploadDocModal = ref(false);
         const selectedDocRequirement = ref(null);
@@ -156,18 +172,23 @@ window.StudentPortalController = {
         const loadStudentDocuments = async () => {
             if (!currentStudent.value) return;
             const studentId = currentStudent.value.id || currentStudent.value.studentId || currentStudent.value.temp_reference_no;
+            const pin = currentStudent.value.temp_pin || currentStudent.value.personalInfo?.temp_pin || '';
             documentsData.loading = true;
             try {
-                const res = await StudentApiService.fetchDocuments(studentId);
+                const res = await StudentApiService.fetchDocuments(studentId, pin);
                 if (res.success && res.data) {
                     documentsData.requirements = res.data.requirements || [];
+                    documentsData.pendingRequirements = res.data.pendingRequirements || [];
+                    documentsData.completedRequirements = res.data.completedRequirements || [];
                     documentsData.stats = res.data.stats || {
-                        totalRequired: 5,
+                        totalRequired: 0,
                         verifiedCount: 0,
                         pendingReviewCount: 0,
                         undertakingCount: 0,
                         missingCount: 0,
-                        isFullyCompliant: false
+                        actionableCount: 0,
+                        isFullyCompliant: false,
+                        isComplete: false
                     };
                 }
             } catch (e) {
@@ -177,9 +198,15 @@ window.StudentPortalController = {
             }
         };
 
+        watch(activeTab, (newTab) => {
+            if (newTab === 'documents') {
+                loadStudentDocuments();
+            }
+        });
+
         const openUploadDocModal = (doc = null) => {
             selectedDocRequirement.value = doc;
-            docUploadForm.docKey = doc ? doc.key : (documentsData.requirements[0]?.key || 'form_138');
+            docUploadForm.docKey = doc ? doc.key : (documentsData.pendingRequirements[0]?.key || documentsData.requirements[0]?.key || 'form_138');
             docUploadForm.fileName = '';
             docUploadForm.fileType = '';
             docUploadForm.fileSize = 0;
@@ -243,8 +270,10 @@ window.StudentPortalController = {
             uploadDocSuccess.value = '';
 
             const studentId = currentStudent.value.id || currentStudent.value.studentId || currentStudent.value.temp_reference_no;
+            const pin = currentStudent.value.temp_pin || currentStudent.value.personalInfo?.temp_pin || '';
             const payload = {
                 studentId,
+                pin,
                 docKey: docUploadForm.docKey,
                 fileName: docUploadForm.fileName,
                 fileType: docUploadForm.fileType,
@@ -375,11 +404,11 @@ window.StudentPortalController = {
                 } catch (e) {
                     console.error('[StudentPortal::Session] Invalid stored session JSON:', e);
                     sessionStorage.removeItem('gncp_portal_student');
-                    window.location.href = 'login.html';
+                    window.location.href = 'login';
                 }
             } else {
-                console.warn('[StudentPortal::Session] No active student session found. Redirecting to login.html...');
-                window.location.href = 'login.html';
+                console.warn('[StudentPortal::Session] No active student session found. Redirecting to login...');
+                window.location.href = 'login';
             }
         };
 
@@ -394,49 +423,61 @@ window.StudentPortalController = {
         };
 
         const isRefreshing = ref(false);
+        const isLoadingCor = ref(true);
 
         // Fetch Complete Dashboard Data
         const fetchDashboardData = async (isBackgroundPoll = false) => {
             if (!currentStudent.value) return;
-            if (!isBackgroundPoll) isRefreshing.value = true;
+            if (!isBackgroundPoll) {
+                isRefreshing.value = true;
+                if (!state.corData) {
+                    isLoadingCor.value = true;
+                }
+            }
 
-            const res = await StudentApiService.fetchDashboard(currentStudent.value.id);
-            if (!isBackgroundPoll) isRefreshing.value = false;
+            try {
+                const res = await StudentApiService.fetchDashboard(currentStudent.value.id);
+                if (res.success && res.data) {
+                    if (res.data.profile) {
+                        StudentModel.hydrateProfileFromSession(state.profile, res.data.profile);
+                        avatarLoadError.value = false;
+                        syncStudentFormFromProfile();
 
-            if (res.success && res.data) {
-                if (res.data.profile) {
-                    StudentModel.hydrateProfileFromSession(state.profile, res.data.profile);
-                    syncStudentFormFromProfile();
-
-                    if (res.data.profile.must_change_password && (!currentStudent.value || !currentStudent.value.must_change_password)) {
-                        if (currentStudent.value) currentStudent.value.must_change_password = true;
-                        if (typeof window.PasswordChangeGuard !== 'undefined') {
-                            window.PasswordChangeGuard.checkAndPrompt(currentStudent.value || res.data.profile, (changed) => {
-                                if (changed) {
-                                    if (currentStudent.value) currentStudent.value.must_change_password = false;
-                                    state.profile.must_change_password = false;
-                                }
-                            });
+                        if (res.data.profile.must_change_password && (!currentStudent.value || !currentStudent.value.must_change_password)) {
+                            if (currentStudent.value) currentStudent.value.must_change_password = true;
+                            if (typeof window.PasswordChangeGuard !== 'undefined') {
+                                window.PasswordChangeGuard.checkAndPrompt(currentStudent.value || res.data.profile, (changed) => {
+                                    if (changed) {
+                                        if (currentStudent.value) currentStudent.value.must_change_password = false;
+                                        state.profile.must_change_password = false;
+                                    }
+                                });
+                            }
                         }
                     }
-                }
-                state.roadmap = res.data.roadmap || [];
-                state.requirements = res.data.requirements || null;
-                state.medical = res.data.medical || null;
-                state.scholarship = res.data.scholarship || null;
-                state.payment = res.data.payment || null;
-                state.helpdesk = res.data.helpdesk || null;
-                state.enrollment = res.data.enrollment || null;
-                state.subjects = res.data.subjects || [];
-                state.corData = res.data.corData || null;
-                state.activePeriod = res.data.activePeriod || null;
-                if (res.data.milestones && Array.isArray(res.data.milestones)) {
-                    milestones.value = res.data.milestones;
-                }
+                    state.roadmap = res.data.roadmap || [];
+                    state.requirements = res.data.requirements || null;
+                    state.medical = res.data.medical || null;
+                    state.scholarship = res.data.scholarship || null;
+                    state.payment = res.data.payment || null;
+                    state.helpdesk = res.data.helpdesk || null;
+                    state.enrollment = res.data.enrollment || null;
+                    state.subjects = res.data.subjects || [];
+                    state.corData = res.data.corData || null;
+                    state.activePeriod = res.data.activePeriod || null;
+                    if (res.data.milestones && Array.isArray(res.data.milestones)) {
+                        milestones.value = res.data.milestones;
+                    }
 
-                if (!isBackgroundPoll) {
-                    console.log('[StudentPortal::Dashboard] Data loaded successfully.', state);
+                    if (!isBackgroundPoll) {
+                        console.log('[StudentPortal::Dashboard] Data loaded successfully.', state);
+                    }
                 }
+            } catch (err) {
+                console.error('[StudentPortal::Dashboard] Error fetching dashboard data:', err);
+            } finally {
+                isLoadingCor.value = false;
+                if (!isBackgroundPoll) isRefreshing.value = false;
             }
         };
 
@@ -448,29 +489,86 @@ window.StudentPortalController = {
         };
 
         const handlePhotoSelect = async (e) => {
-            const file = e.target.files[0];
+            const file = e.target.files && e.target.files[0];
             if (!file) return;
 
-            if (file.size > 2 * 1024 * 1024) {
-                alert('File size exceeds 2MB limits. Please select a smaller photo.');
+            if (file.size > 5 * 1024 * 1024) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'File Too Large',
+                        text: 'Profile photo size exceeds 5MB limit. Please select a smaller photo.',
+                        confirmButtonColor: '#006A4E'
+                    });
+                } else {
+                    alert('Profile photo size exceeds 5MB limit. Please select a smaller photo.');
+                }
+                if (e.target) e.target.value = '';
                 return;
             }
 
+            if (file.type && !file.type.startsWith('image/')) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Invalid File',
+                        text: 'Please select an image file (JPG, PNG, WebP).',
+                        confirmButtonColor: '#006A4E'
+                    });
+                } else {
+                    alert('Please select an image file (JPG, PNG, WebP).');
+                }
+                if (e.target) e.target.value = '';
+                return;
+            }
+
+            isUploadingPhoto.value = true;
             const reader = new FileReader();
             reader.onload = async (evt) => {
-                const base64Data = evt.target.result;
-                const res = await StudentApiService.uploadPhoto(currentStudent.value.id, base64Data);
-                if (res.success && res.data) {
-                    state.profile.photo = res.data.photo;
-                    if (currentStudent.value) {
-                        currentStudent.value.photo = res.data.photo;
-                        sessionStorage.setItem('gncp_portal_student', JSON.stringify(currentStudent.value));
-                        localStorage.setItem('gncp_portal_student', JSON.stringify(currentStudent.value));
+                try {
+                    const base64Data = evt.target.result;
+                    const studentId = currentStudent.value?.id || state.profile?.id;
+                    const res = await StudentApiService.uploadPhoto(studentId, base64Data);
+
+                    if (res.success && res.data) {
+                        const newPhoto = res.data.photo;
+                        state.profile.photo = newPhoto;
+                        avatarLoadError.value = false;
+                        if (currentStudent.value) {
+                            currentStudent.value.photo = newPhoto;
+                            sessionStorage.setItem('gncp_portal_student', JSON.stringify(currentStudent.value));
+                            localStorage.setItem('gncp_portal_student', JSON.stringify(currentStudent.value));
+                        }
+
+                        updateSuccessMsg.value = 'Profile picture updated successfully!';
+                        setTimeout(() => { updateSuccessMsg.value = ''; }, 3500);
+
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Profile Picture Updated!',
+                                text: 'Your new profile portrait has been uploaded and applied.',
+                                timer: 2200,
+                                showConfirmButton: false
+                            });
+                        }
+                    } else {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Upload Failed',
+                                text: res.message || 'Failed to upload photo.',
+                                confirmButtonColor: '#006A4E'
+                            });
+                        } else {
+                            alert(res.message || 'Failed to upload photo.');
+                        }
                     }
-                    updateSuccessMsg.value = 'Profile portrait updated successfully!';
-                    setTimeout(() => { updateSuccessMsg.value = ''; }, 3500);
-                } else {
-                    alert(res.message || 'Failed to upload photo.');
+                } catch (err) {
+                    console.error('[StudentPortal] Photo upload exception:', err);
+                } finally {
+                    isUploadingPhoto.value = false;
+                    if (e.target) e.target.value = '';
                 }
             };
             reader.readAsDataURL(file);
@@ -481,6 +579,8 @@ window.StudentPortalController = {
             if (photo.startsWith('data:image') || photo.startsWith('http://') || photo.startsWith('https://')) return photo;
             if (photo.startsWith('../') || photo.startsWith('../../')) return photo;
             if (photo.startsWith('uploads/')) return '../' + photo;
+            if (photo.startsWith('stations/')) return '../' + photo;
+            if (photo.startsWith('/')) return '..' + photo;
             return '../uploads/avatars/' + photo.replace(/^\/+/, '');
         };
 
@@ -908,6 +1008,7 @@ window.StudentPortalController = {
             totalAssignedSections,
             timeGreeting,
             isRefreshing,
+            isLoadingCor,
             fetchDashboardData,
             printForm,
             handleLogout,
@@ -915,6 +1016,7 @@ window.StudentPortalController = {
             confirmLogout,
             formatCurrency: StudentModel.formatCurrency,
             photoInput,
+            isUploadingPhoto,
             updateSuccessMsg,
             triggerPhotoUpload,
             handlePhotoSelect,
@@ -972,10 +1074,14 @@ window.StudentPortalController = {
             formatTimeAgo,
             formatDateRange,
             formattedProfilePhoto,
+            avatarLoadError,
+            onAvatarError,
 
             // Documents & Undertakings Hub
             documentsData,
             missingDocsCount,
+            showCompletedDocs,
+            toggleShowCompletedDocs,
             showUploadDocModal,
             selectedDocRequirement,
             docFileInput,

@@ -69,12 +69,12 @@
                         `,
                         confirmButtonText: '<i class="fa-solid fa-check-circle" style="margin-right: 6px;"></i> Update Password & Continue',
                         confirmButtonColor: '#006A4E',
-                        showCloseButton: true,
+                        showCloseButton: false,
                         showCancelButton: true,
                         cancelButtonText: '<i class="fa-solid fa-arrow-left" style="margin-right: 5px;"></i> Cancel & Logout',
                         cancelButtonColor: '#64748b',
                         allowOutsideClick: false,
-                        allowEscapeKey: true,
+                        allowEscapeKey: false,
                         allowEnterKey: true,
                         didOpen: () => {
                             const inputs = document.querySelectorAll('#swal-curr-pass, #swal-new-pass, #swal-confirm-pass');
@@ -210,16 +210,16 @@
                             if (isStudent) {
                                 sessionStorage.removeItem('gncp_portal_student');
                                 localStorage.removeItem('gncp_portal_student');
-                                window.location.href = 'login.html';
+                                window.location.href = 'login';
                             } else {
                                 sessionStorage.removeItem('gncp_admin_user');
                                 sessionStorage.removeItem('gncp_station_user');
 
-                                let loginPath = 'index.html';
+                                let loginPath = './';
                                 if (window.location.pathname.includes('/stations/')) {
-                                    loginPath = '../../index.html';
+                                    loginPath = '../../';
                                 } else if (window.location.pathname.includes('/registrar/') || window.location.pathname.includes('/admin/')) {
-                                    loginPath = '../index.html';
+                                    loginPath = '../';
                                 }
                                 window.location.href = loginPath;
                             }

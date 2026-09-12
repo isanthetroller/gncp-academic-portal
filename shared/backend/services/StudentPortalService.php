@@ -298,11 +298,46 @@ class StudentPortalService {
 
         $assessment = AssessmentService::calculateAssessment($pdo, $advisedSubjects, $nstpType, $discount, $snapshot);
 
-        $orNumber = $payment['orNumber'] ?? $payment['or_number'] ?? $student['or_number'] ?? null;
-        $encoder  = $payment['processedBy'] ?? $student['cashier_name'] ?? 'cashier';
-        $paymentMode = $payment['paymentMode'] ?? $student['payment_mode'] ?? 'Full';
+        // Authoritative Cashier Payment Resolution
+        $rawAmountPaid = 0.00;
+        if (!empty($payment)) {
+            $rawAmountPaid = (float)($payment['amountPaid'] ?? $payment['amount_paid'] ?? $payment['amount'] ?? 0.00);
+            if ($rawAmountPaid <= 0) {
+                $txList = !empty($payment['payments']) && is_array($payment['payments'])
+                    ? $payment['payments']
+                    : (!empty($payment['history']) && is_array($payment['history']) ? $payment['history'] : []);
+                foreach ($txList as $p) {
+                    $pStatus = strtoupper(trim($p['status'] ?? 'PAID'));
+                    if ($pStatus !== 'VOIDED' && $pStatus !== 'CANCELLED') {
+                        $rawAmountPaid += (float)($p['amountPaid'] ?? $p['amount'] ?? 0.00);
+                    }
+                }
+            }
+        }
+        $amountPaid = max(0.00, round($rawAmountPaid, 2));
 
-        $paymentSchedule = AssessmentService::calculatePaymentSchedule($assessment['cashTotal'], $assessment['installmentTotal'], $paymentMode, $payment);
+        $totalFee = (float)($payment['totalFee'] ?? $assessment['cashTotal']);
+        if ($totalFee <= 0) {
+            $totalFee = (float)$assessment['cashTotal'];
+        }
+
+        $balance = isset($payment['balance']) ? (float)$payment['balance'] : max(0.00, round($totalFee - $amountPaid, 2));
+        if ($amountPaid >= $totalFee && $totalFee > 0) {
+            $balance = 0.00;
+        }
+
+        $paymentStatus = strtoupper(trim($payment['status'] ?? ''));
+        if (!$paymentStatus) {
+            $paymentStatus = ($balance <= 0 && $amountPaid > 0) ? 'PAID' : ($amountPaid > 0 ? 'PARTIAL' : 'UNPAID');
+        } elseif ($balance <= 0 && $amountPaid > 0) {
+            $paymentStatus = 'PAID';
+        }
+
+        $orNumber = $payment['orNumber'] ?? $payment['or_number'] ?? $payment['transactionRef'] ?? $student['or_number'] ?? ($preEnrollment['or_number'] ?? null);
+        $encoder  = $payment['processedBy'] ?? $payment['verifiedBy'] ?? $student['cashier_name'] ?? ($preEnrollment['cashier_name'] ?? 'cashier');
+        $paymentMode = $payment['paymentMode'] ?? $payment['paymentType'] ?? $student['payment_mode'] ?? ($preEnrollment['payment_mode'] ?? 'Full');
+
+        $paymentSchedule = AssessmentService::calculatePaymentSchedule($assessment['cashTotal'], $assessment['installmentTotal'], $paymentMode, $payment ?: $amountPaid);
 
         $nameParts = explode(' ', trim($student['name'] ?? ''));
         $lastName  = !empty($personalInfo['lastName']) ? $personalInfo['lastName'] : (!empty($preEnrollment['last_name']) ? $preEnrollment['last_name'] : (count($nameParts) > 1 ? end($nameParts) : $student['name']));
@@ -338,6 +373,11 @@ class StudentPortalService {
             'installmentTotal' => $assessment['installmentTotal'],
             'paymentMode'      => $paymentMode,
             'paymentSchedule'  => $paymentSchedule,
+            'totalFee'         => $totalFee,
+            'amountPaid'       => $amountPaid,
+            'balance'          => $balance,
+            'paymentStatus'    => $paymentStatus,
+            'financialStatus'  => $balance <= 0 ? 'CLEARED' : 'PENDING_BALANCE',
             'orNumber'         => $orNumber,
             'encoder'          => $encoder,
             'createdAt'        => $student['created_at'] ?? date('Y-m-d H:i:s')
@@ -366,7 +406,19 @@ class StudentPortalService {
                 'requirements' => $requirements,
                 'medical'      => $medical,
                 'scholarship'  => $scholarship,
-                'payment'      => $payment,
+                'payment'      => !empty($payment) ? array_merge($payment, [
+                    'amountPaid' => $amountPaid,
+                    'balance'    => $balance,
+                    'totalFee'   => $totalFee,
+                    'status'     => $paymentStatus
+                ]) : [
+                    'amountPaid'     => $amountPaid,
+                    'balance'        => $balance,
+                    'totalFee'       => $totalFee,
+                    'status'         => $paymentStatus,
+                    'transactionRef' => $orNumber,
+                    'history'        => []
+                ],
                 'helpdesk'     => $helpdesk,
                 'enrollment'   => $enrollment,
                 'subjects'     => $subjects,
@@ -412,36 +464,51 @@ class StudentPortalService {
         }
 
         $photoFile = $student['photo'];
-        if (!empty($payload['photoData'])) {
-            $base64Data = $payload['photoData'];
+        $photoData = $payload['photoData'] ?? ($payload['photo'] ?? ($payload['avatar'] ?? null));
+        if (!empty($photoData) && is_string($photoData)) {
+            $base64Data = $photoData;
             $ext = 'png';
             if (preg_match('/^data:image\/(\w+);base64,/', $base64Data, $type)) {
                 $base64Data = substr($base64Data, strpos($base64Data, ',') + 1);
                 $rawExt = strtolower($type[1]);
                 if (in_array($rawExt, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-                    $ext = $rawExt;
+                    $ext = ($rawExt === 'jpeg') ? 'jpg' : $rawExt;
                 }
             }
             $imageData = base64_decode($base64Data);
-            if ($imageData !== false) {
-                // Validate image magic bytes
+            if ($imageData !== false && strlen($imageData) > 0) {
+                // Validate image magic bytes / getimagesize
                 $imageInfo = @getimagesizefromstring($imageData);
+                if ($imageInfo === false && function_exists('imagecreatefromstring')) {
+                    $gdImg = @imagecreatefromstring($imageData);
+                    if ($gdImg) {
+                        $imageInfo = [imagesx($gdImg), imagesy($gdImg)];
+                        @imagedestroy($gdImg);
+                    }
+                }
                 if ($imageInfo !== false) {
-                    $uploadDir1 = __DIR__ . '/../../stations/it-center/assets/uploads/';
-                    $uploadDir2 = __DIR__ . '/../../shared/assets/uploads/';
-                    $uploadDir3 = __DIR__ . '/../../uploads/avatars/';
+                    $baseDir = dirname(dirname(dirname(__DIR__)));
+                    $uploadDir1 = $baseDir . '/stations/it-center/assets/uploads/';
+                    $uploadDir2 = $baseDir . '/shared/assets/uploads/';
+                    $uploadDir3 = $baseDir . '/uploads/avatars/';
                     if (!is_dir($uploadDir1)) @mkdir($uploadDir1, 0777, true);
                     if (!is_dir($uploadDir2)) @mkdir($uploadDir2, 0777, true);
                     if (!is_dir($uploadDir3)) @mkdir($uploadDir3, 0777, true);
+
                     $safeId = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $studentId);
                     $filename = 'portrait_' . $safeId . '_' . time() . '.' . $ext;
                     @file_put_contents($uploadDir1 . $filename, $imageData);
                     @file_put_contents($uploadDir2 . $filename, $imageData);
                     @file_put_contents($uploadDir3 . $filename, $imageData);
                     $photoFile = $filename;
+                } else {
+                    return ['success' => false, 'message' => 'Invalid image format. Please select a valid JPG, PNG, or WebP photo.', 'code' => 400];
                 }
+            } else {
+                return ['success' => false, 'message' => 'Failed to decode image data.', 'code' => 400];
             }
         }
+
 
         $upd = $pdo->prepare("UPDATE `students` SET `personal_info` = :pinfo, `photo` = :photo WHERE `id` = :id");
         $upd->execute([

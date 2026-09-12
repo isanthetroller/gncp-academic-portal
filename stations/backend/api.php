@@ -93,5 +93,5 @@ try {
 
 } catch (Exception $e) {
     logAppError('Station API Gateway Error: ' . $e->getMessage(), ['action' => $action]);
-    sendResponse(false, null, $e->getMessage(), 500);
+    sendResponse(false, null, 'An unexpected issue occurred while processing your workstation request.', 500);
 }

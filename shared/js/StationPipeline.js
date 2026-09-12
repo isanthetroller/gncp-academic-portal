@@ -150,17 +150,31 @@
             if (!cfg) return 'PENDING';
 
             // 1. Check station-specific data objects first
-            if (stationKey === 'helpdesk') {
+            if (stationKey === 'registrar') {
+                const st = String(student.status || '').toUpperCase();
+                if (['RETURNED', 'NEEDS_CORRECTION'].includes(st)) return 'RETURNED';
+                if (st === 'REJECTED') return 'REJECTED';
+                const r = student.requirements || {};
+                if (['VERIFIED', 'APPROVED', 'CLEARED', 'COMPLETED'].includes(String(r.status || '').toUpperCase()) || r.verifiedBy) return 'COMPLETED';
+                if (['VERIFIED', 'APPROVED', 'ADVISED', 'MEDICAL_CLEARED', 'PAID', 'ENROLLED', 'PROMOTED', 'ACTIVE'].includes(st)) return 'COMPLETED';
+            } else if (stationKey === 'helpdesk') {
                 const h = student.helpdesk || {};
+                const st = String(student.status || '').toUpperCase();
+                if (['RETURNED', 'NEEDS_CORRECTION'].includes(st) || String(h.status || '').toUpperCase() === 'RETURNED') return 'RETURNED';
                 if (['COMPLETED', 'ADVISED', 'CLEARED'].includes(String(h.status || '').toUpperCase())) return 'COMPLETED';
                 if (String(h.status || '').toUpperCase() === 'FLAGGED') return 'FLAGGED';
             } else if (stationKey === 'medical') {
                 const m = student.medical || {};
+                const st = String(student.status || '').toUpperCase();
+                if (['RETURNED', 'NEEDS_CORRECTION'].includes(st)) return 'RETURNED';
                 if (['FIT', 'CLEARED', 'COMPLETED'].includes(String(m.status || '').toUpperCase()) || m.verifiedBy) return 'COMPLETED';
                 if (['UNFIT', 'CONDITIONAL', 'FLAGGED'].includes(String(m.status || '').toUpperCase())) return 'FLAGGED';
             } else if (stationKey === 'cashier') {
                 const p = student.payment || {};
-                if (['PAID', 'PARTIAL', 'COMPLETED'].includes(String(p.status || '').toUpperCase())) return 'COMPLETED';
+                const st = String(student.status || '').toUpperCase();
+                if (['RETURNED', 'NEEDS_CORRECTION'].includes(st)) return 'RETURNED';
+                if (['PAID', 'COMPLETED'].includes(String(p.status || '').toUpperCase()) || Boolean(student.orNumber)) return 'COMPLETED';
+                if (String(p.status || '').toUpperCase() === 'PARTIAL') return 'PARTIAL';
                 if (String(p.status || '').toUpperCase() === 'REJECTED') return 'FLAGGED';
             } else if (stationKey === 'it') {
                 const e = student.enrollment || {};
@@ -178,11 +192,56 @@
             if (step) {
                 const s = String(step.status || '').toUpperCase();
                 if (s === 'COMPLETED') return 'COMPLETED';
-                if (s === 'FLAGGED') return 'FLAGGED';
-                if (s === 'IN_PROGRESS') return 'PENDING'; // Ready to be served in queue
+                if (s === 'FLAGGED' || s === 'RETURNED') return s;
+                if (s === 'IN_PROGRESS') return 'PENDING';
             }
 
             return 'PENDING';
+        },
+
+        /**
+         * Determines if a student belongs in the ACTIVE QUEUE for the given station.
+         * Students who have already completed the station are strictly excluded.
+         */
+        isEligibleForActiveQueue(stationKey, student) {
+            if (!student) return false;
+            const cfg = STATION_CONFIG[stationKey];
+            if (!cfg) return false;
+
+            const st = String(student.status || '').toUpperCase();
+            if (st === 'REJECTED') return false;
+
+            const stepStatus = this.getStepStatus(stationKey, student);
+
+            // If station action is already completed and not returned, it must NOT be in active queue
+            if (stepStatus === 'COMPLETED') {
+                return false;
+            }
+
+            // Check upstream eligibility
+            const studentLevel = this.getStageLevel(student.status);
+            if (studentLevel < cfg.requiredUpstreamLevel) {
+                // Check if roadmap unlocked this step early
+                const step = this.findStep(student.roadmap, cfg.stepIds, cfg.stepNames);
+                if (!step || !['IN_PROGRESS', 'PENDING', 'FLAGGED', 'RETURNED'].includes(String(step.status || '').toUpperCase())) {
+                    return false;
+                }
+            }
+
+            return true;
+        },
+
+        /**
+         * Determines if a student belongs in the REVIEW HISTORY for the given station.
+         */
+        isEligibleForHistory(stationKey, student) {
+            if (!student) return false;
+            const stepStatus = this.getStepStatus(stationKey, student);
+            if (stationKey === 'registrar') {
+                const st = String(student.status || '').toUpperCase();
+                if (st === 'REJECTED') return true;
+            }
+            return stepStatus === 'COMPLETED';
         },
 
         /**

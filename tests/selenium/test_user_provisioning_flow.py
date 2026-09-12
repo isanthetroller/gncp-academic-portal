@@ -104,7 +104,11 @@ class StationUsersProvisioningTest:
     def cleanup_old_test_users(self):
         self.log("Purging old test station user records...")
         try:
-            resp = requests.post(
+            auth_session = requests.Session()
+            if self.driver:
+                for c in self.driver.get_cookies():
+                    auth_session.cookies.set(c['name'], c['value'])
+            resp = auth_session.post(
                 f"{config.BASE_URL}/api/index.php?action=admin/cleanup_test_users",
                 json={"pattern": "test_%_auto_%"},
                 timeout=10
@@ -118,7 +122,6 @@ class StationUsersProvisioningTest:
     def run_test(self):
         self.init_driver()
         try:
-            self.cleanup_old_test_users()
 
             # ── 1. Admin UI Login Verification ──
             self.log("Step 1: Authenticating Super Admin via Employee Gateway...")
@@ -143,10 +146,15 @@ class StationUsersProvisioningTest:
             time.sleep(3.0)
             self.save_screenshot("provisioning_01_admin_logged_in")
             self.log(f"Super Admin authenticated successfully. Active URL: {self.driver.current_url}")
+            self.cleanup_old_test_users()
 
             # ── 2. Provision New Station User Accounts ──
             self.log("Step 2: Provisioning new station user accounts for each station role...")
             default_password = f"AutoStation#{self.test_ts % 10000}!"
+
+            auth_session = requests.Session()
+            for c in self.driver.get_cookies():
+                auth_session.cookies.set(c['name'], c['value'])
 
             for station in STATION_ROLES:
                 role = station["role"]
@@ -166,7 +174,7 @@ class StationUsersProvisioningTest:
                     }
                 }
 
-                resp = requests.post(f"{config.BASE_URL}/api/index.php?action=admin/save_user", json=payload, timeout=10)
+                resp = auth_session.post(f"{config.BASE_URL}/api/index.php?action=admin/save_user", json=payload, timeout=10)
                 res_json = resp.json()
 
                 if not res_json.get("success"):

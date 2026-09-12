@@ -19,12 +19,35 @@ if (!defined('GNCP_SECURITY_GUARD_LOADED')) {
         header('X-Permitted-Cross-Domain-Policies: none');
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()');
+        header("Content-Security-Policy: upgrade-insecure-requests; default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; font-src 'self' https: data:; img-src 'self' data: blob: https:;");
         
-        $isHttps = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') 
-            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') 
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+            || (!empty($_SERVER['HTTP_FRONT_END_HTTPS']) && strtolower($_SERVER['HTTP_FRONT_END_HTTPS']) !== 'off')
+            || (!empty($_SERVER['HTTP_CF_VISITOR']) && str_contains($_SERVER['HTTP_CF_VISITOR'], '"scheme":"https"'));
         
+        // Enforce HTTPS redirection for live production domains
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        $rawHost = strtolower(explode(':', $host)[0]);
+        $isLocalhost = in_array($rawHost, ['localhost', '127.0.0.1', '::1'], true);
+
+        if (!$isLocalhost && !$isHttps && (php_sapi_name() !== 'cli' || defined('GNCP_TEST_HTTPS_CLI'))) {
+            $redirectUrl = 'https://' . $host . ($_SERVER['REQUEST_URI'] ?? '/');
+            header('HTTP/1.1 301 Moved Permanently');
+            header('Location: ' . $redirectUrl);
+            header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+            if (defined('GNCP_TEST_HTTPS_CLI')) {
+                $GLOBALS['__GNCP_TEST_HEADERS'] = [
+                    'Location' => $redirectUrl,
+                    'Strict-Transport-Security' => 'max-age=31536000; includeSubDomains; preload'
+                ];
+                return;
+            }
+            exit;
+        }
+
         if ($isHttps) {
-            header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+            header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
         }
 
         // Configure Hardened Session Cookie Parameters

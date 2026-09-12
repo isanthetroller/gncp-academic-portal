@@ -7,25 +7,7 @@
     <title>Student Portal Gateway — Go-on National College of the Philippines</title>
     <meta name="description" content="Official student and applicant portal gateway for Go-on National College of the Philippines.">
 
-    <script>
-        (function() {
-            try {
-                localStorage.removeItem('gncp_portal_student');
-                const params = new URLSearchParams(window.location.search);
-                if (params.get('clear') === 'true' || params.get('logout') === 'true') {
-                    sessionStorage.removeItem('gncp_portal_student');
-                    return;
-                }
-                const stored = sessionStorage.getItem('gncp_portal_student');
-                if (stored) {
-                    const student = JSON.parse(stored);
-                    if (student && (student.id || student.studentId)) {
-                        window.location.replace('./');
-                    }
-                }
-            } catch (e) {}
-        })();
-    </script>
+    <script src="assets/js/login-init.js?v=12"></script>
 
     <link rel="stylesheet" href="../shared/libs/fonts/fonts.css">
     <link rel="stylesheet" href="../shared/libs/bootstrap.min.css">
@@ -592,7 +574,7 @@
                             <span v-if="hasSavedCredentials" @click="clearSavedCredentials" class="text-secondary cursor-pointer fw-medium" style="font-size:0.81rem;">
                                 <i class="fa-solid fa-eraser me-1"></i>Clear
                             </span>
-                            <a href="forgot-password.html" class="fw-bold text-decoration-none" style="font-size:0.82rem; color:var(--primary-green);">
+                            <a href="forgot-password" class="fw-bold text-decoration-none" style="font-size:0.82rem; color:var(--primary-green);">
                                 <i class="fa-solid fa-key me-1"></i>Forgot Password?
                             </a>
                         </div>
@@ -609,7 +591,7 @@
                 </form>
 
                 <div class="mt-4 pt-3 text-center border-top border-light">
-                    <a href="../school-website/index.html" class="text-secondary text-decoration-none" style="font-size: 0.82rem;">
+                    <a href="../school-website/" class="text-secondary text-decoration-none" style="font-size: 0.82rem;">
                         <i class="fa-solid fa-house me-1"></i> Return to GNCP Main Website
                     </a>
                 </div>

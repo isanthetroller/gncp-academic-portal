@@ -18,6 +18,7 @@ window.app = createApp({
         const sortDesc = ref(false);
         const selectedStudent = ref(null);
         const students = ref([]);
+        const isLoadingQueue = ref(true);
         const hasSubmitted = ref(false);
 
         // Authentication State
@@ -126,6 +127,9 @@ window.app = createApp({
             for (let i = 0; i < students.value.length; i++) {
                 const student = students.value[i];
                 const stepStatus = getMedicalStepStatus(student);
+
+                // Active queue strictly excludes completed students
+                if (stepStatus === 'COMPLETED') continue;
                 
                 // Matches query
                 let matchesQuery = true;
@@ -138,11 +142,7 @@ window.app = createApp({
 
                 // Matches filter
                 let matchesFilter = false;
-                if (activeFilter.value === 'All') {
-                    matchesFilter = true;
-                } else if (activeFilter.value === 'Pending' && stepStatus !== 'COMPLETED') {
-                    matchesFilter = true;
-                } else if (activeFilter.value === 'Cleared' && stepStatus === 'COMPLETED') {
+                if (activeFilter.value === 'All' || activeFilter.value === 'Pending') {
                     matchesFilter = true;
                 } else if (activeFilter.value === 'Conditional' && (student.status === 'conditional' || student.status === 'unfit' || stepStatus === 'FLAGGED')) {
                     matchesFilter = true;
@@ -237,6 +237,7 @@ window.app = createApp({
                 result.push(normalized);
             }
             students.value = result;
+            isLoadingQueue.value = false;
         };
 
         const fetchCurrentProfile = () => {
@@ -265,7 +266,7 @@ window.app = createApp({
             if (cachedRaw) {
                 try {
                     const parsed = JSON.parse(cachedRaw);
-                    if (parsed && ['MEDICAL', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'].includes(parsed.role)) {
+                    if (parsed && ['MEDICAL', 'SUPER_ADMIN', 'ADMIN'].includes(parsed.role)) {
                         currentUser.value = parsed;
                     }
                 } catch (e) {}
@@ -278,7 +279,7 @@ window.app = createApp({
                 const res = await fetch('../../api/index.php?action=auth/check', { credentials: 'same-origin' });
                 if (res.ok) {
                     const result = await res.json();
-                    const allowedRoles = ['MEDICAL', 'SUPER_ADMIN', 'ADMIN', 'REGISTRAR'];
+                    const allowedRoles = ['MEDICAL', 'SUPER_ADMIN', 'ADMIN'];
                     if (result.success && result.data && allowedRoles.includes(result.data.role)) {
                         currentUser.value = result.data;
                         const sessionKey = (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN') ? 'gncp_admin_user' : 'gncp_station_user';
@@ -761,6 +762,7 @@ window.app = createApp({
             toggleSort,
             getSortIcon,
             students,
+            isLoadingQueue,
             filteredStudents,
             completedStudents,
             nextInQueue,

@@ -20,6 +20,8 @@ if (empty($envPass) && file_exists(__DIR__ . '/mail.local.php')) {
     }
 }
 
+$envPass = str_replace(' ', '', (string)$envPass);
+
 return [
     'driver'     => 'smtp',
     'host'       => $envHost,

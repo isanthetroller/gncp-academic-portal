@@ -3,6 +3,10 @@
  * 28-Point Comprehensive Financial System Automated Test Suite
  * Philippine College / University Enrollment Financial Engine Verification
  */
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    die('CLI execution only.');
+}
 
 require_once __DIR__ . '/../shared/backend/config/database.php';
 require_once __DIR__ . '/../shared/backend/services/AssessmentService.php';
