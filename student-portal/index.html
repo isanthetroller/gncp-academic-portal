@@ -10,12 +10,13 @@
     <link rel="stylesheet" href="../shared/libs/fonts/fonts.css">
     <link rel="stylesheet" href="../shared/libs/bootstrap.min.css">
     <link rel="stylesheet" href="../shared/libs/font-awesome/css/all.min.css">
-    <link rel="stylesheet" href="../shared/css/admin_workstation_theme.css?v=1789204778">
+    <link rel="stylesheet" href="../shared/css/admin_workstation_theme.css?v=20260825_light">
     <!-- Vue 3 & Core Libraries -->
 
     <script src="../shared/libs/vue.global.js"></script>
     <script src="../shared/libs/sweetalert2.all.min.js"></script>
     <script src="../shared/js/PasswordChangeGuard.js"></script>
+    <script src="../shared/js/DataCache.js"></script>
     <style>
         [v-cloak] {
             display: none !important;
@@ -2198,6 +2199,16 @@
                                     </div>
 
                                     <div class="quick-hub-card">
+                                        <div class="quick-hub-icon" style="background: #f0fdf4; color: #166534;">
+                                            <i class="fa-solid fa-receipt"></i>
+                                        </div>
+                                        <div>
+                                            <div class="quick-hub-val font-monospace">₱ {{ formatCurrency(corData ? (corData.totalFee || corData.cashTotal) : (payment ? payment.totalFee : 18300)) }}</div>
+                                            <div class="quick-hub-lbl">Overall Semester Fee</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="quick-hub-card">
                                         <div class="quick-hub-icon" :style="isOfficeOpen ? 'background: #f0fdf4; color: #16a34a;' : 'background: #f3f4f6; color: #6b7280;'">
                                             <i class="fa-solid fa-clock"></i>
                                         </div>
@@ -2501,7 +2512,7 @@
 
                             <!-- Schedule Table -->
                             <div class="table-responsive mb-3">
-                                <table class="cor-schedule-table" style="min-width: 750px;">
+                                <table class="cor-schedule-table table-layout-fixed" style="min-width: 750px;">
                                     <thead>
                                         <tr>
                                             <th style="width: 10%;">Code</th>
@@ -2570,8 +2581,8 @@
                                 </div>
                                 <div class="row g-2 text-center text-md-start" style="margin: 0;">
                                     <div class="col-6 col-md-3" style="padding: 2px 6px;">
-                                        <span class="cor-label">Total Assessed Fees</span>
-                                        <span class="cor-val font-monospace" style="font-size: 11.5px;">₱ {{ formatCurrency(corData ? (corData.totalFee || corData.cashTotal) : (payment ? payment.totalFee : 0)) }}</span>
+                                        <span class="cor-label">Overall Semester Assessment</span>
+                                        <span class="cor-val font-monospace" style="font-size: 11.5px;">₱ {{ formatCurrency(corData ? (corData.totalFee || corData.cashTotal) : (payment ? payment.totalFee : 18300)) }}</span>
                                     </div>
                                     <div class="col-6 col-md-3" style="padding: 2px 6px;">
                                         <span class="cor-label">Amount Paid</span>
@@ -2641,19 +2652,19 @@
 
                                 <div class="cor-col-6">
                                     <div class="cor-sec-title">Schedule of Payment(s)</div>
-                                    <table class="cor-pay-table">
+                                    <table class="cor-pay-table table-layout-fixed">
                                         <thead>
                                             <tr>
-                                                <th>Milestone</th>
-                                                <th>Due Date</th>
-                                                <th>Amount Due</th>
+                                                <th style="width: 45%;">Milestone</th>
+                                                <th style="width: 25%;">Due Date</th>
+                                                <th style="width: 30%;">Amount Due</th>
                                             </tr>
                                         </thead>
                                         <tbody v-if="isLoadingCor">
                                             <tr v-for="n in 5" :key="'pay-skel-' + n" class="table-skeleton-row">
-                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 90px;"></div></td>
-                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 75px;"></div></td>
-                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 65px;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 80%;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 80%;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 80%;"></div></td>
                                             </tr>
                                         </tbody>
                                         <tbody v-else-if="corData && corData.paymentSchedule && corData.paymentSchedule.items">
@@ -2790,8 +2801,8 @@
                                 </div>
                             </div>
 
-                            <!-- Loading State -->
-                            <div v-if="documentsData.loading" class="card border-0 shadow-sm rounded-4 p-5 text-center mb-4">
+                            <!-- Loading State (Initial Cold Load Only) -->
+                            <div v-if="documentsData.loading && (!documentsData.requirements || documentsData.requirements.length === 0)" class="card border-0 shadow-sm rounded-4 p-5 text-center mb-4">
                                 <div class="spinner-border text-success mb-3" role="status">
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
@@ -2799,7 +2810,7 @@
                             </div>
 
                             <!-- Loaded Content Area -->
-                            <div v-else>
+                            <div v-else class="stable-table-container">
                                 <!-- SCENARIO D: COMPLETE REQUIREMENTS HERO STATE -->
                                 <div v-if="documentsData.stats && documentsData.stats.isComplete"
                                     class="card border-0 shadow-sm rounded-4 p-5 text-center mb-4"
@@ -3518,7 +3529,7 @@
     <!-- Modular System Architecture Scripts -->
     <script src="assets/js/models/StudentModel.js?v=<?= time() ?>"></script>
     <script src="assets/js/services/StudentApiService.js?v=<?= time() ?>"></script>
-    <script src="assets/js/controllers/StudentPortalController.js?v=1789204778"></script>
+    <script src="assets/js/controllers/StudentPortalController.js?v=20260822_swal"></script>
     <script>
         window.app = Vue.createApp(StudentPortalController).mount('#app');
     </script>

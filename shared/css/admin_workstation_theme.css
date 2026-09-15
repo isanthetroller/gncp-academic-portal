@@ -1191,3 +1191,60 @@ html, body {
     border-radius: 2px 2px 0 0;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   ZERO-LAYOUT-SHIFT & STABLE TABLE DIMENSIONS
+   ══════════════════════════════════════════════════════════════════ */
+.stable-table-container {
+    min-height: 380px;
+    position: relative;
+    transition: min-height 0.2s ease, opacity 0.2s ease;
+}
+
+.table-layout-fixed {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+
+.table-layout-fixed th,
+.table-layout-fixed td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.table-skeleton-row .skeleton-fluid {
+    width: 75%;
+    max-width: 100%;
+}
+
+.revalidating-pulse {
+    animation: revalidatingPulse 1.6s infinite ease-in-out;
+}
+
+@keyframes revalidatingPulse {
+    0% { opacity: 0.65; }
+    50% { opacity: 1; }
+    100% { opacity: 0.65; }
+}
+
+.revalidating-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--primary, #006A4E);
+    background: rgba(0, 106, 78, 0.08);
+    border: 1px solid rgba(0, 106, 78, 0.2);
+    border-radius: 20px;
+    padding: 2px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ── SWEETALERT2 ELEVATION & ACCESSIBILITY GUARANTEE ───────────────────────── */
+/* Ensures SweetAlert2 popups, backdrops, and toasts are always rendered       */
+/* strictly above all workstation and admin overlays, drawers, and modal cards */
+.swal2-container,
+div:where(.swal2-container) {
+    z-index: 999999 !important;
+}
+

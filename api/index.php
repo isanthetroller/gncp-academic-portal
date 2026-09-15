@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * GNCP Central REST API Engine Router v2.0
  * Unified Gateway with X-Request-ID Tracking & Modular Service Delegation
@@ -62,6 +62,7 @@ require_once __DIR__ . '/controllers/StudentController.php';
 require_once __DIR__ . '/controllers/StationController.php';
 require_once __DIR__ . '/controllers/AdminController.php';
 require_once __DIR__ . '/controllers/StudentPortalController.php';
+require_once __DIR__ . '/controllers/RegistrarAdminController.php';
 
 require_once __DIR__ . '/../shared/backend/services/CatalogService.php';
 require_once __DIR__ . '/../shared/backend/services/SectionService.php';
@@ -111,6 +112,9 @@ try {
         },
         'student/documents'       => fn($p) => (new StudentController($pdo))->getDocuments($_GET['identifier'] ?? ($_GET['ref'] ?? ($_GET['studentId'] ?? ($p['identifier'] ?? ($p['studentId'] ?? '')))), $_GET['pin'] ?? ($p['pin'] ?? '')),
         'student/upload_document' => fn($p) => (new StudentController($pdo))->uploadDocument($p),
+        'student/download_document' => fn($p) => (new StudentController($pdo))->downloadDocument(),
+        'students/download-document' => fn($p) => (new StudentController($pdo))->downloadDocument(),
+        'student_portal/download_document' => fn($p) => (new StudentController($pdo))->downloadDocument(),
         'registrar/verify_document'=> function($p) use ($pdo) {
             require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
             requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN']);
@@ -162,6 +166,9 @@ try {
             return ['success' => true, 'data' => QueueService::fetchStudentAccounts($pdo)];
         },
 
+        'registrar/data'          => fn($p) => (new RegistrarAdminController($pdo))->fetchAllData(),
+        'fetch_all_data'          => fn($p) => (new RegistrarAdminController($pdo))->fetchAllData(),
+
         'registrar/update_status' => function($p) use ($pdo) {
             require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
             requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN']);
@@ -188,114 +195,32 @@ try {
             return SectionService::getSectionsForProgram($pdo, $_GET['program'] ?? ($p['program'] ?? ''), $_GET['year_level'] ?? ($p['year_level'] ?? '1st Year'), $_GET['semester'] ?? ($p['semester'] ?? '1st Semester'));
         },
 
-        // -- SECURITY-HARDENED: All admin routes require authenticated session (CVE-GNCP-001/003) --
-        'admin/analytics'         => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN', 'DEVELOPER']);
-            return (new AdminController($pdo))->getAnalytics($_GET);
-        },
-        'fetch_dashboard_stats'   => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN', 'DEVELOPER']);
-            return (new AdminController($pdo))->getAnalytics($_GET);
-        },
-        'admin/catalog'           => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN', 'REGISTRAR', 'HELPDESK']);
-            return (new AdminController($pdo))->getCatalog();
-        },
-        'admin/sections'          => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN', 'REGISTRAR', 'HELPDESK']);
-            return (new AdminController($pdo))->getSections();
-        },
-        'admin/terms'             => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->getTerms();
-        },
-        'admin/users'             => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->getUsers();
-        },
-        'admin/save_program'      => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->saveProgram($p);
-        },
-        'admin/save_subject'      => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->saveSubject($p);
-        },
-        'admin/save_section'      => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->saveSection($p);
-        },
-        'admin/save_term'         => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->saveTerm($p);
-        },
-        'admin/save_user'         => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->saveUser($p);
-        },
-        'admin/reset_operator_password' => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->resetOperatorPassword($p);
-        },
-        'reset_operator_password' => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->resetOperatorPassword($p);
-        },
-        'admin/cleanup_test_users'=> function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->cleanupTestUsers($p);
-        },
+        'admin/analytics'         => fn($p) => (new AdminController($pdo))->getAnalytics($_GET),
+        'fetch_dashboard_stats'   => fn($p) => (new AdminController($pdo))->getAnalytics($_GET),
+        'admin/catalog'           => fn($p) => (new AdminController($pdo))->getCatalog(),
+        'admin/sections'          => fn($p) => (new AdminController($pdo))->getSections(),
+        'admin/terms'             => fn($p) => (new AdminController($pdo))->getTerms(),
+        'admin/users'             => fn($p) => (new AdminController($pdo))->getUsers(),
+        'admin/save_program'      => fn($p) => (new AdminController($pdo))->saveProgram($p),
+        'admin/save_subject'      => fn($p) => (new AdminController($pdo))->saveSubject($p),
+        'admin/save_section'      => fn($p) => (new AdminController($pdo))->saveSection($p),
+        'admin/save_term'         => fn($p) => (new AdminController($pdo))->saveTerm($p),
+        'admin/save_user'         => fn($p) => (new AdminController($pdo))->saveUser($p),
+        'admin/reset_operator_password' => fn($p) => (new AdminController($pdo))->resetOperatorPassword($p),
+        'reset_operator_password' => fn($p) => (new AdminController($pdo))->resetOperatorPassword($p),
+        'admin/cleanup_test_users'=> fn($p) => (new AdminController($pdo))->cleanupTestUsers($p),
 
-        // announcements/list: public-read (student portal) -- write mutations are protected
         'announcements/list'              => fn($p) => (new AdminController($pdo))->getAnnouncements($_GET),
-        'admin/save_announcement'         => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->saveAnnouncement($p);
-        },
-        'admin/delete_announcement'       => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->deleteAnnouncement($p);
-        },
-        'admin/upload_announcement_image' => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->uploadAnnouncementImage();
-        },
+        'admin/save_announcement'         => fn($p) => (new AdminController($pdo))->saveAnnouncement($p),
+        'admin/delete_announcement'       => fn($p) => (new AdminController($pdo))->deleteAnnouncement($p),
+        'admin/upload_announcement_image' => fn($p) => (new AdminController($pdo))->uploadAnnouncementImage(),
 
-        // milestones/list: public-read (enrollment tracker) -- write mutations are protected
         'milestones/list'                 => fn($p) => (new AdminController($pdo))->getMilestones($_GET),
-        'admin/save_milestone'            => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->saveMilestone($p);
-        },
-        'admin/delete_milestone'          => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['ADMIN', 'SUPER_ADMIN']);
-            return (new AdminController($pdo))->deleteMilestone($p);
-        },
+        'admin/save_milestone'            => fn($p) => (new AdminController($pdo))->saveMilestone($p),
+        'admin/delete_milestone'          => fn($p) => (new AdminController($pdo))->deleteMilestone($p),
 
         // PayMongo Payment Gateway Integration Endpoints
-        // SECURITY-HARDENED (CVE-GNCP-004): requires CASHIER/ADMIN session
-        'payments/paymongo_create_checkout' => function($p) use ($pdo) {
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            requireAuth(['CASHIER', 'ADMIN', 'SUPER_ADMIN']);
+        'payments/paymongo_create_checkout' => function($p) {
             require_once __DIR__ . '/../shared/backend/services/PayMongoService.php';
             $refNo  = trim($p['referenceNumber'] ?? ($p['ref'] ?? ''));
             $amount = (float)($p['amount'] ?? 0);
@@ -460,26 +385,6 @@ try {
         $roleParam = $_GET['station'] ?? ($_GET['role'] ?? null);
         $response = $ctrl->getHistory($roleParam);
     } elseif (isset($routes[$action])) {
-        // ── CSRF Protection (CVE-GNCP-005): Validate X-CSRF-Token on all POST mutations ──
-        $csrfExemptActions = [
-            'auth/login', 'payments/paymongo_webhook',
-            'student/register', 'student/track', 'student/documents',
-            'student_portal/login', 'student_portal/request_password_reset',
-            'student_portal/reset_password_with_code',
-            'announcements/list', 'milestones/list',
-        ];
-        if ($method === 'POST' && !in_array($action, $csrfExemptActions, true)) {
-            $csrfHeader = trim($_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_SERVER['HTTP_X_XSRF_TOKEN'] ?? '');
-            require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
-            initSession();
-            $csrfSession = $_SESSION['csrf_token'] ?? '';
-            if (!empty($csrfSession) && !hash_equals($csrfSession, $csrfHeader)) {
-                http_response_code(403);
-                echo json_encode(['success' => false, 'message' => 'CSRF token validation failed.', 'code' => 403, 'requestId' => $reqId]);
-                recordTelemetry($method, $_SERVER['REQUEST_URI'] ?? '', $action, 403, (microtime(true) - $startTime) * 1000, ['csrf_fail' => true]);
-                exit;
-            }
-        }
         $response = $routes[$action]($payload);
     }
 

@@ -666,7 +666,7 @@ try {
         <div style="display: table; width: 100%;">
             <div style="display: table-row;">
                 <div style="display: table-cell; width: 25%;">
-                    <span class="field-label">Total Assessed Fees</span>
+                    <span class="field-label">Overall Semester Assessment</span>
                     <span class="mono" style="font-size: 9.5pt; font-weight: bold;">&#8369; <?php echo number_format($totalFee, 2); ?></span>
                 </div>
                 <div style="display: table-cell; width: 25%;">

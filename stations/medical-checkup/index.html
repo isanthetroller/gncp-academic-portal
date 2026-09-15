@@ -9,9 +9,9 @@
     <link rel="stylesheet" href="../../shared/libs/fonts/fonts.css">
     <link href="../../shared/libs/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../shared/libs/font-awesome/css/all.min.css">
-    <link rel="stylesheet" href="./assets/css/style.css?v=1789204778">
-    <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=1789204778">
-    <link rel="stylesheet" href="../../shared/css/sidebar.css?v=1789204778">
+    <link rel="stylesheet" href="./assets/css/style.css?v=20260822_v3">
+    <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=20260825_light">
+    <link rel="stylesheet" href="../../shared/css/sidebar.css?v=10">
     <script src="../../shared/libs/sweetalert2.all.min.js"></script>
     <script src="../../shared/js/PasswordChangeGuard.js"></script>
     <style>
@@ -256,35 +256,35 @@
                             Showing {{ filteredStudents.length }} of {{ students.length }} Records
                         </span>
                     </div>
-                    <div class="table-responsive">
-                        <table class="data-table">
+                    <div class="table-responsive stable-table-container">
+                        <table class="data-table table-layout-fixed">
                             <thead>
                                 <tr>
-                                    <th style="width:110px;">Queue Ticket</th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
+                                    <th style="width: 14%;">Queue Ticket</th>
+                                    <th style="width: 16%;" class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
                                         Ref No. <i :class="getSortIcon('referenceNumber')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('name')">
+                                    <th style="width: 28%;" class="cursor-pointer select-none" @click="toggleSort('name')">
                                         Student Name <i :class="getSortIcon('name')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('program')">
+                                    <th style="width: 16%;" class="cursor-pointer select-none" @click="toggleSort('program')">
                                         Program <i :class="getSortIcon('program')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('status')">
+                                    <th style="width: 14%;" class="cursor-pointer select-none" @click="toggleSort('status')">
                                         Clearance Status <i :class="getSortIcon('status')"></i>
                                     </th>
-                                    <th style="width:120px;">Action</th>
+                                    <th style="width: 12%;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <!-- Table Skeleton Loading Animation -->
-                                <tr v-if="isLoadingQueue" v-for="n in 5" :key="'skel-med-q-' + n" class="table-skeleton-row" aria-hidden="true">
-                                    <td><div class="skeleton-ticket"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 150px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 90px;"></div></td>
-                                    <td><div class="skeleton-btn" style="width: 75px;"></div></td>
+                                <tr v-if="isLoadingQueue && (!filteredStudents || filteredStudents.length === 0)" v-for="n in 5" :key="'skel-med-q-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-ticket" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 80%;"></div></td>
                                 </tr>
                                 <tr v-else v-for="student in filteredStudents" :key="student.referenceNumber" class="table-row-enter">
                                      <!-- Queue Ticket -->
@@ -368,43 +368,43 @@
                             Showing {{ completedStudents.length }} Record(s)
                         </span>
                     </div>
-                    <div class="table-responsive">
-                        <table class="data-table">
+                    <div class="table-responsive stable-table-container">
+                        <table class="data-table table-layout-fixed">
                             <thead>
                                 <tr>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')" style="cursor: pointer;">
+                                    <th style="width: 13%;" class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
                                         Ref No. <i :class="getSortIcon('referenceNumber')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('name')" style="cursor: pointer;">
+                                    <th style="width: 20%;" class="cursor-pointer select-none" @click="toggleSort('name')">
                                         Student Name <i :class="getSortIcon('name')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('program')" style="cursor: pointer;">
+                                    <th style="width: 13%;" class="cursor-pointer select-none" @click="toggleSort('program')">
                                         Program <i :class="getSortIcon('program')"></i>
                                     </th>
-                                    <th>Declared Health</th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('peFitness')" style="cursor: pointer;">
+                                    <th style="width: 14%;">Declared Health</th>
+                                    <th style="width: 11%;" class="cursor-pointer select-none" @click="toggleSort('peFitness')">
                                         PE Fitness <i :class="getSortIcon('peFitness')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('nstpFitness')" style="cursor: pointer;">
+                                    <th style="width: 11%;" class="cursor-pointer select-none" @click="toggleSort('nstpFitness')">
                                         NSTP Fitness <i :class="getSortIcon('nstpFitness')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('status')" style="cursor: pointer;">
+                                    <th style="width: 10%;" class="cursor-pointer select-none" @click="toggleSort('status')">
                                         Clearance Status <i :class="getSortIcon('status')"></i>
                                     </th>
-                                    <th>Action</th>
+                                    <th style="width: 8%;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <!-- Table Skeleton Loading Animation -->
-                                <tr v-if="isLoadingQueue" v-for="n in 4" :key="'skel-med-comp-' + n" class="table-skeleton-row" aria-hidden="true">
-                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 70px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 70px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
-                                    <td><div class="skeleton-btn" style="width: 80px;"></div></td>
+                                <tr v-if="isLoadingQueue && (!completedStudents || completedStudents.length === 0)" v-for="n in 4" :key="'skel-med-comp-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 80%;"></div></td>
                                 </tr>
                                 <tr v-else v-for="student in completedStudents" :key="student.referenceNumber" class="table-row-enter">
                                     <td><code>{{ student.referenceNumber }}</code></td>
@@ -693,11 +693,11 @@
     <script src="../../shared/libs/bootstrap.bundle.min.js"></script>
     <script src="../../shared/libs/vue.global.js"></script>
     <script src="../../shared/libs/sweetalert2.all.min.js"></script>
-    <script src="../../shared/js/SessionExpirationGuard.js?v=1789204778"></script>
-    <script src="../../shared/js/PasswordChangeGuard.js?v=1789204778"></script>
-    <script src="../../shared/js/components/EmployeeSidebar.js?v=1789204778"></script>
-    <script src="../../shared/js/StationPipeline.js?v=1789204778"></script>
-    <script src="../assets/js/DataBus.js?v=1789204778"></script>
-    <script src="./assets/js/app.js?v=1789204778"></script>
+    <script src="../../shared/js/SessionExpirationGuard.js?v=20260826_v9"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js?v=20260826_v9"></script>
+    <script src="../../shared/js/components/EmployeeSidebar.js?v=20260826_v9"></script>
+    <script src="../../shared/js/StationPipeline.js?v=20260826_v9"></script>
+    <script src="../assets/js/DataBus.js?v=20260826_v9"></script>
+    <script src="./assets/js/app.js?v=20260826_v9"></script>
 </body>
 </html>

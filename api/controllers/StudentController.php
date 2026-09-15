@@ -253,7 +253,7 @@ class StudentController {
             }
 
             $appBase = (isset($_SERVER['SCRIPT_NAME']) && preg_match('#^/([^/]+)#', $_SERVER['SCRIPT_NAME'], $m)) ? '/' . $m[1] : '';
-            $softCopyUrl = "{$appBase}/uploads/documents/{$targetName}";
+            $softCopyUrl = "{$appBase}/api/index.php?action=student/download_document&file={$targetName}";
             $fileSize = strlen($binaryData);
             $fileType = 'application/pdf';
             if (empty($fileName)) {
@@ -310,7 +310,7 @@ class StudentController {
             }
 
             $appBase = (isset($_SERVER['SCRIPT_NAME']) && preg_match('#^/([^/]+)#', $_SERVER['SCRIPT_NAME'], $m)) ? '/' . $m[1] : '';
-            $softCopyUrl = "{$appBase}/uploads/documents/{$targetName}";
+            $softCopyUrl = "{$appBase}/api/index.php?action=student/download_document&file={$targetName}";
             $fileName = basename($file['name']);
             $fileType = 'application/pdf';
             $fileSize = $file['size'];
@@ -387,5 +387,149 @@ class StudentController {
             }
             return ['success' => false, 'message' => $e->getMessage(), 'code' => 500];
         }
+    }
+
+    /**
+     * Authenticated Document Streaming Proxy
+     * Streams uploaded student documents with session authorization & path traversal protection.
+     */
+    public function downloadDocument() {
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+
+        $isStaff = !empty($_SESSION['gncp_admin_user']) || !empty($_SESSION['gncp_station_user']);
+        $isStudent = !empty($_SESSION['gncp_student']) || !empty($_SESSION['gncp_portal_student']);
+
+        // Check optional PIN authentication for public applicant tracking view
+        $hasPinAuth = false;
+        $applicant = null;
+        $ref = trim($_GET['ref'] ?? '');
+        $pin = trim($_GET['pin'] ?? '');
+        if (!empty($ref) && !empty($pin) && preg_match('/^\d{6}$/', $pin)) {
+            $applicant = $this->studentModel->findApplicantByRef($ref);
+            if ($applicant && !empty($applicant['security_pin'])) {
+                if (password_verify($pin, $applicant['security_pin']) || $pin === $applicant['security_pin']) {
+                    $hasPinAuth = true;
+                }
+            }
+        }
+
+        if (!$isStaff && !$isStudent && !$hasPinAuth) {
+            http_response_code(401);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Authentication required to view or download admission documents.', 'code' => 401]);
+            exit;
+        }
+
+        $requestedFile = trim($_GET['file'] ?? ($_GET['path'] ?? ''));
+        $filename = basename($requestedFile);
+
+        if (empty($filename) || !preg_match('/^[a-zA-Z0-9_\.-]+\.pdf$/i', $filename)) {
+            http_response_code(400);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Invalid or missing document filename.', 'code' => 400]);
+            exit;
+        }
+
+        // IDOR Authorization Safeguard: If requester is not staff, verify document ownership
+        if (!$isStaff) {
+            $isAuthorizedForFile = false;
+
+            // Check 1: Applicant tracking session (PIN verified)
+            if ($hasPinAuth && !empty($applicant)) {
+                $reqDataStr = (string)($applicant['requirements_data'] ?? '');
+                $refNo = (string)($applicant['temp_student_id'] ?? '');
+                if (str_contains($reqDataStr, $filename) || (!empty($refNo) && str_contains($filename, $refNo))) {
+                    $isAuthorizedForFile = true;
+                }
+            }
+
+            // Check 2: Enrolled student session
+            if ($isStudent && !$isAuthorizedForFile) {
+                $sessStudent = $_SESSION['gncp_student'] ?? ($_SESSION['gncp_portal_student'] ?? []);
+                $studentId = trim((string)($sessStudent['student_id'] ?? ($sessStudent['id'] ?? '')));
+                $studentEmail = trim((string)($sessStudent['email'] ?? ''));
+
+                if (!empty($studentId) || !empty($studentEmail)) {
+                    $stmtStud = $this->pdo->prepare("
+                        SELECT `id`, `temp_reference_no`, `requirements_data` 
+                        FROM `students` 
+                        WHERE `id` = :id OR `email` = :email 
+                        LIMIT 1
+                    ");
+                    $stmtStud->execute(['id' => $studentId, 'email' => $studentEmail]);
+                    $studRow = $stmtStud->fetch(PDO::FETCH_ASSOC);
+
+                    if ($studRow) {
+                        $sReqData = (string)($studRow['requirements_data'] ?? '');
+                        $sId = (string)($studRow['id'] ?? '');
+                        $sTempRef = (string)($studRow['temp_reference_no'] ?? '');
+
+                        if (str_contains($sReqData, $filename) 
+                            || (!empty($sId) && str_contains($filename, $sId)) 
+                            || (!empty($sTempRef) && str_contains($filename, $sTempRef))) {
+                            $isAuthorizedForFile = true;
+                        }
+
+                        // Also verify against pre_enrollments staging if reference is linked
+                        if (!$isAuthorizedForFile && !empty($sTempRef)) {
+                            $stmtPre = $this->pdo->prepare("
+                                SELECT `requirements_data`, `temp_student_id` 
+                                FROM `pre_enrollments` 
+                                WHERE `temp_student_id` = :ref 
+                                LIMIT 1
+                            ");
+                            $stmtPre->execute(['ref' => $sTempRef]);
+                            $preRow = $stmtPre->fetch(PDO::FETCH_ASSOC);
+                            if ($preRow) {
+                                $pReqData = (string)($preRow['requirements_data'] ?? '');
+                                $pRef = (string)($preRow['temp_student_id'] ?? '');
+                                if (str_contains($pReqData, $filename) || (!empty($pRef) && str_contains($filename, $pRef))) {
+                                    $isAuthorizedForFile = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!$isAuthorizedForFile) {
+                http_response_code(403);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => false, 
+                    'message' => 'Access denied: You do not have permission to access or download this document.', 
+                    'code' => 403
+                ]);
+                exit;
+            }
+        }
+
+        $uploadDir = realpath(__DIR__ . '/../../uploads/documents');
+        if (!$uploadDir || !is_dir($uploadDir)) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Upload directory unavailable.', 'code' => 500]);
+            exit;
+        }
+
+        $filePath = realpath($uploadDir . DIRECTORY_SEPARATOR . $filename);
+        if ($filePath === false || !str_starts_with($filePath, $uploadDir) || !is_file($filePath)) {
+            http_response_code(404);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Requested document not found on server.', 'code' => 404]);
+            exit;
+        }
+
+        // Send streaming headers
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($filePath));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, max-age=0, must-revalidate');
+        header('Pragma: public');
+        readfile($filePath);
+        exit;
     }
 }

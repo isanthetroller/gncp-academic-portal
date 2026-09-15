@@ -697,19 +697,23 @@
                                         <div class="invoice-container shadow-sm p-4 rounded-4">
                                             <div class="invoice-header d-flex justify-content-between align-items-center mb-3">
                                                 <span class="invoice-title"><i class="fas fa-receipt me-2"></i>Assessment of Fees</span>
-                                                <span class="invoice-meta">Undergraduate</span>
+                                                <span class="invoice-meta">{{ form.yearLevelApplied || '1st Year' }} &middot; {{ activePeriodInfo ? activePeriodInfo.semester : '1st Semester' }}</span>
                                             </div>
                                             <div class="invoice-body">
                                                 <div class="invoice-row d-flex justify-content-between mb-2">
-                                                    <span>Tuition Fee (21 Units)</span>
+                                                    <span>Tuition Fee ({{ calcUnits }} Units @ ₱{{ calcTuitionRate }}/unit)</span>
                                                     <span>₱ {{ formatPrice(calcTuition) }}</span>
                                                 </div>
+                                                <div class="invoice-row d-flex justify-content-between mb-2" v-if="calcLabFees > 0">
+                                                    <span>Laboratory &amp; IT Facilities ({{ calcLabSubjectCount }} Lab Subjects)</span>
+                                                    <span>₱ {{ formatPrice(calcLabFees) }}</span>
+                                                </div>
                                                 <div class="invoice-row d-flex justify-content-between mb-2">
-                                                    <span>Miscellaneous &amp; Lab Fees</span>
+                                                    <span>Registration &amp; Miscellaneous Fees</span>
                                                     <span>₱ {{ formatPrice(calcMisc) }}</span>
                                                 </div>
                                                 <div class="invoice-row d-flex justify-content-between text-success mb-2" v-if="calcDiscount > 0">
-                                                    <span>Scholarship Discount</span>
+                                                    <span>Scholarship Discount ({{ form.scholarship }})</span>
                                                     <span>- ₱ {{ formatPrice(calcDiscount) }}</span>
                                                 </div>
                                                 <div class="invoice-row d-flex justify-content-between text-success mb-2" v-if="form.paymentMode === 'CASH'">
@@ -718,22 +722,32 @@
                                                 </div>
                                                 <hr class="invoice-divider my-3">
                                                 <div class="invoice-row d-flex justify-content-between total-row mb-3">
-                                                    <span>TOTAL FEES:</span>
-                                                    <span class="text-primary-green">₱ {{ formatPrice(calcTotal) }}</span>
+                                                    <div class="d-flex flex-column">
+                                                        <span class="fw-bold text-uppercase" style="letter-spacing: 0.5px;">OVERALL SEMESTER TUITION &amp; FEES:</span>
+                                                        <span class="text-muted" style="font-size: 0.75rem; font-weight: normal;">Full semester assessment based on {{ calcSubjectsCount }} subjects</span>
+                                                    </div>
+                                                    <span class="text-primary-green fs-5 fw-bold font-monospace">₱ {{ formatPrice(calcOverallSemesterCost) }}</span>
+                                                </div>
+                                                <div class="d-flex justify-content-between text-success small mb-3 px-1" v-if="form.paymentMode === 'CASH' && calcCashDiscount > 0">
+                                                    <span>Net Cash Payable (After 5% Discount):</span>
+                                                    <span class="fw-bold font-monospace">₱ {{ formatPrice(calcTotal) }}</span>
                                                 </div>
                                                 <div class="payment-schedule-box rounded-3 p-3 bg-light" v-if="calcInstallmentAmount > 0">
-                                                    <div class="schedule-title mb-2 text-uppercase font-monospace text-muted small fw-bold">Installment Schedule</div>
+                                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                                        <span class="text-uppercase font-monospace text-muted small fw-bold">Installment Payment Breakdown</span>
+                                                        <span class="badge bg-secondary-subtle text-secondary font-monospace" style="font-size: 0.7rem;">Total: ₱ {{ formatPrice(calcTotal) }}</span>
+                                                    </div>
                                                     <div class="d-flex justify-content-between mb-1 small text-dark">
                                                         <span>Upon Registration (Downpayment):</span>
-                                                        <span class="fw-bold">₱ {{ formatPrice(calcDownpayment) }}</span>
+                                                        <span class="fw-bold font-monospace text-primary-green">₱ {{ formatPrice(calcDownpayment) }}</span>
                                                     </div>
                                                     <div class="d-flex justify-content-between small text-dark">
-                                                        <span>Remaining ({{ form.paymentMode === 'SEMI' ? '2x' : '3x' }}):</span>
-                                                        <span class="fw-bold">₱ {{ formatPrice(calcInstallmentAmount) }} / term</span>
+                                                        <span>Remaining Balance ({{ form.paymentMode === 'SEMI' ? '2x' : '3x' }}):</span>
+                                                        <span class="fw-bold font-monospace">₱ {{ formatPrice(calcInstallmentAmount) }} / term</span>
                                                     </div>
                                                 </div>
                                                 <div class="payment-schedule-box rounded-3 p-3 bg-light text-center text-success" v-else>
-                                                    <i class="fas fa-check-circle me-1"></i> Full Cash Payment Plan Selected. No installments due.
+                                                    <i class="fas fa-check-circle me-1"></i> Full Cash Payment Plan Selected. Total semester fee payable in full.
                                                 </div>
                                             </div>
                                         </div>
@@ -796,8 +810,11 @@
 
                                         <div class="summary-section">
                                             <h5 class="summary-section-title"><i class="fas fa-coins me-2 text-primary-gold"></i>Financial Summary</h5>
+                                            <p class="summary-item mb-2"><strong>Academic Term Load:</strong> {{ calcSubjectsCount }} Subjects ({{ calcUnits }} Units) &middot; {{ form.yearLevelApplied || '1st Year' }} ({{ activePeriodInfo ? activePeriodInfo.semester : '1st Semester' }})</p>
                                             <p class="summary-item mb-2"><strong>Payment Scheme:</strong> {{ getPaymentModeLabel(form.paymentMode) }}</p>
-                                            <p class="summary-item mb-0"><strong>Total Assessed Fees:</strong> <span class="fw-bold text-primary-green fs-6">₱ {{ formatPrice(calcTotal) }}</span></p>
+                                            <p class="summary-item mb-2"><strong>Overall Semester Cost:</strong> <span class="fw-bold text-primary-green fs-6">₱ {{ formatPrice(calcOverallSemesterCost) }}</span></p>
+                                            <p class="summary-item mb-2 text-success" v-if="form.paymentMode === 'CASH' && calcCashDiscount > 0"><strong>Net Cash Payable (5% Discount):</strong> <span class="fw-bold">₱ {{ formatPrice(calcTotal) }}</span></p>
+                                            <p class="summary-item mb-0" v-if="form.paymentMode !== 'CASH'"><strong>Initial Cashier Downpayment:</strong> <span class="fw-bold text-dark">₱ {{ formatPrice(calcDownpayment) }}</span></p>
                                         </div>
                                     </div>
 
@@ -999,10 +1016,10 @@
     <script src="../shared/libs/vue.global.js"></script>
     <script src="../shared/academic_constants.js"></script>
 
-    <script src="assets/js/services/ApiService.js?v=1789204778"></script>
+    <script src="assets/js/services/ApiService.js?v=11"></script>
 
-    <script src="assets/js/models/EnrollmentModel.js?v=1789204778"></script>
+    <script src="assets/js/models/EnrollmentModel.js?v=11"></script>
 
-    <script src="assets/js/App.js?v=1789204778"></script>
+    <script src="assets/js/App.js?v=11"></script>
 </body>
 </html>

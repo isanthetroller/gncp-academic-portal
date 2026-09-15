@@ -119,9 +119,6 @@ class AnalyticsService {
             if ($deptCode && $prog['department'] !== ($deptName ?: $deptCode) && $prog['department'] !== $deptCode) continue;
 
             // Applications in staging
-            $stmtPeProg = $pdo->prepare("SELECT COUNT(*) FROM `pre_enrollments` pe WHERE pe.`course_code` = ? AND ($peClause)");
-            $peP = array_merge([$pCode], array_values($peParams));
-            // Bind cleanly using positionals for sub-query
             $stmtPeP = $pdo->prepare("SELECT COUNT(*) FROM `pre_enrollments` pe WHERE pe.`course_code` = :pcode AND $peClause");
             $pParams = array_merge([':pcode' => $pCode], $peParams);
             $stmtPeP->execute($pParams);

@@ -6,6 +6,8 @@
 
 require_once __DIR__ . '/../../shared/backend/config/database.php';
 require_once __DIR__ . '/../../shared/backend/utils/response.php';
+require_once __DIR__ . '/../../shared/backend/utils/student.php';
+require_once __DIR__ . '/../../shared/backend/services/AssessmentService.php';
 
 // ─── GET: Fetch active academic period and program catalog ───────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'get_active_programs') {
@@ -15,10 +17,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'get_act
         // Fetch active academic period
         $periodStmt = $pdo->query("SELECT * FROM `academic_periods` WHERE `status` = 'Active' LIMIT 1");
         $activePeriod = $periodStmt->fetch();
+        $activeSem = $activePeriod['semester'] ?? '1st Semester';
         
         // Fetch all active programs
         $programs = $pdo->query("SELECT * FROM `programs` WHERE `status` = 'Active' ORDER BY `name` ASC")->fetchAll();
         
+        // Build curriculumFeeMap for active semester across all programs and year levels
+        $curriculumFeeMap = [];
+        $yearLevels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+
+        foreach ($programs as $prog) {
+            $pCode = $prog['code'];
+            $curriculumFeeMap[$pCode] = [];
+            foreach ($yearLevels as $yl) {
+                $subjects = getCurriculumSubjects($pdo, $pCode, $yl, $activeSem);
+                if (!empty($subjects)) {
+                    $assessment = AssessmentService::calculateAssessment($pdo, $subjects, 'REGULAR');
+                    $labCount = 0;
+                    foreach ($subjects as $s) {
+                        if (((float)($s['lab_fee'] ?? 0) > 0) || ((float)($s['lab_units'] ?? 0) > 0)) {
+                            $labCount++;
+                        }
+                    }
+                    $curriculumFeeMap[$pCode][$yl] = [
+                        'totalUnits'       => (float)($assessment['totalUnits'] ?? 0),
+                        'subjectsCount'    => count($subjects),
+                        'tuitionRate'      => (float)($assessment['tuitionRate'] ?? 650),
+                        'tuitionFee'       => (float)($assessment['tuitionFee'] ?? 0),
+                        'totalLabFee'      => (float)($assessment['totalLabFee'] ?? 0),
+                        'labSubjectsCount' => $labCount,
+                        'miscFee'          => (float)($assessment['miscFee'] ?? 2300),
+                        'cashTotal'        => (float)($assessment['cashTotal'] ?? 0),
+                        'installmentTotal' => (float)($assessment['installmentTotal'] ?? 0)
+                    ];
+                }
+            }
+        }
+
         sendResponse(true, [
             'activePeriod' => $activePeriod ? [
                 'id' => (int)$activePeriod['id'],
@@ -37,7 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'get_act
                     'department' => $prog['department'],
                     'status' => $prog['status']
                 ];
-            }, $programs)
+            }, $programs),
+            'curriculumFeeMap' => $curriculumFeeMap
         ]);
     } catch (PDOException $e) {
         error_log("Failed to fetch active programs: " . $e->getMessage());
@@ -418,23 +454,48 @@ try {
         'dateVerified' => ''
     ];
 
+    // Calculate authoritative assessment based on course, year level, and semester
+    $appCourse = $formData['courseCode'] ?? 'BSIT';
+    $appYearLevel = !empty($formData['yearLevelApplied']) ? $formData['yearLevelApplied'] : '1st Year';
+    $activePeriodQuery = $pdo->query("SELECT semester FROM `academic_periods` WHERE `status` = 'Active' LIMIT 1");
+    $activeSemRow = $activePeriodQuery ? $activePeriodQuery->fetch(PDO::FETCH_ASSOC) : null;
+    $activeSem = $activeSemRow['semester'] ?? '1st Semester';
+    
+    $advisedSubjects = getCurriculumSubjects($pdo, $appCourse, $appYearLevel, $activeSem);
+    $nstpChoice = $formData['nstp'] ?? 'NONE';
+    $scholarshipCode = strtoupper($formData['scholarship'] ?? 'NONE');
+    $initialDiscount = 0.0;
+    
+    // Preliminary calculation for scholarship discount if applicable
+    $prelimAssessment = AssessmentService::calculateAssessment($pdo, $advisedSubjects, $nstpChoice, 0);
+    $prelimTuition = (float)($prelimAssessment['tuitionFee'] ?? 0);
+    if ($scholarshipCode === 'HONOR') $initialDiscount = $prelimTuition * 0.20;
+    else if ($scholarshipCode === 'ATHLETIC') $initialDiscount = $prelimTuition * 0.15;
+    else if ($scholarshipCode === 'FINANCIAL') $initialDiscount = $prelimTuition * 0.10;
+
+    $assessment = AssessmentService::calculateAssessment($pdo, $advisedSubjects, $nstpChoice, $initialDiscount);
+    $calculatedCashTotal = (float)($assessment['cashTotal'] ?? 18300.00);
+
     $scholarshipData = [
-        'status' => 'PENDING',
-        'notes' => '',
-        'verifiedBy' => '',
+        'status'       => $scholarshipCode !== 'NONE' ? 'PENDING' : 'NONE',
+        'code'         => $scholarshipCode,
+        'discount'     => $initialDiscount,
+        'notes'        => '',
+        'verifiedBy'   => '',
         'dateVerified' => ''
     ];
 
     $paymentData = [
-        'status' => 'PENDING',
-        'totalFee' => 24000,
-        'amountPaid' => 0,
-        'balance' => 24000,
-        'paymentType' => $formData['paymentMode'] ?? 'Cash',
-        'transactionRef' => '',
-        'notes' => '',
-        'verifiedBy' => '',
-        'dateVerified' => ''
+        'status'             => 'PENDING',
+        'totalFee'           => $calculatedCashTotal,
+        'amountPaid'         => 0,
+        'balance'            => $calculatedCashTotal,
+        'paymentType'        => $formData['paymentMode'] ?? 'Cash',
+        'transactionRef'     => '',
+        'assessmentSnapshot' => $assessment,
+        'notes'              => '',
+        'verifiedBy'         => '',
+        'dateVerified'       => ''
     ];
 
     $helpdeskData = [

@@ -4,10 +4,12 @@
  * Configures Gmail SMTP transport parameters for automated credential dispatches.
  */
 
-$envPass = getenv('GNCP_SMTP_PASS') ?: ($_ENV['GNCP_SMTP_PASS'] ?? '');
-$envUser = getenv('GNCP_SMTP_USER') ?: ($_ENV['GNCP_SMTP_USER'] ?? '');
-$envHost = getenv('GNCP_SMTP_HOST') ?: ($_ENV['GNCP_SMTP_HOST'] ?? 'smtp.gmail.com');
-$envPort = intval(getenv('GNCP_SMTP_PORT') ?: ($_ENV['GNCP_SMTP_PORT'] ?? 587));
+require_once __DIR__ . '/env.php';
+
+$envPass = env('GNCP_SMTP_PASS') ?: '';
+$envUser = env('GNCP_SMTP_USER') ?: '';
+$envHost = env('GNCP_SMTP_HOST') ?: 'smtp.gmail.com';
+$envPort = intval(env('GNCP_SMTP_PORT') ?: 587);
 
 // Local development fallback file (if present on local machine)
 if (empty($envPass) && file_exists(__DIR__ . '/mail.local.php')) {

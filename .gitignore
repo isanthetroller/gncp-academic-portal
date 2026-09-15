@@ -1,15 +1,70 @@
-.git/
-uploads/
-shared/backend/logs/
-shared/backend/config/db_config.php
-shared/backend/config/mail.local.php
-tools/.ftp_credentials
-*.log
-*.tmp
-*.pyc
-__pycache__/
+# Node modules
 node_modules/
+
+# Local configuration files
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+shared/backend/config/mail.local.php
+shared/backend/config/db_config.php
+shared/backend/config/*.local.php
+tools/.ftp_credentials
+*.credentials
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+shared/backend/logs/
+
+# Python Caches & Screenshots
+__pycache__/
+*.pyc
+tests/**/__pycache__/
+tests/selenium/__pycache__/
+tests/playwright/__pycache__/
+tests/selenium/screenshots/*.png
+!tests/selenium/screenshots/.gitkeep
+tests/playwright/screenshots/*_[0-9]*.png
+
+# IDEs and editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
 .DS_Store
 Thumbs.db
-scratch_*.txt
+
+# Temporary scratch dumps and text diffs
+scratch/
+test_output.txt
+snippet_*.txt
+line_*.txt
+recovered_*.txt
+recovered_*.html
+admin_index_diff.txt
+unstaged_changes.diff
+announcement_*.txt
+announcements_modal_full.html
+announcements_table_full.html
+test_station_integration.html
+test_ui.html
+
+# User Uploaded Avatars & Documents (keep folder structure and security configs)
+uploads/avatars/*
+!uploads/avatars/.gitkeep
+!uploads/avatars/.htaccess
+uploads/documents/*
+!uploads/documents/.gitkeep
+!uploads/documents/.htaccess
+shared/assets/uploads/avatar_*
+stations/it-center/assets/uploads/avatar_*

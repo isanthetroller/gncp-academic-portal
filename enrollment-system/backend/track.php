@@ -77,8 +77,10 @@ try {
                 'fitness_participation' => 1,
                 'emergency_contact_name' => '',
                 'emergency_contact_phone' => '',
-                'payment_mode' => '',
-                'scholarship' => '',
+                'course_code' => $studentRow['program'],
+                'year_level' => $studentRow['year_level'],
+                'payment_data' => $studentRow['payment_data'],
+                'or_number' => $studentRow['or_number'] ?? '',
                 'roadmap' => $studentRow['roadmap']
             ];
         } else {
@@ -110,15 +112,33 @@ try {
     $reqData = $studentModel->getStudentRequirements($record['temp_student_id']);
     $requirements = $reqData ? $reqData['requirements'] : [];
 
+    $paymentData = json_decode($record['payment_data'] ?? '{}', true) ?: [];
+    $courseCode = $record['course_code'] ?? 'BSIT';
+    $yearLevel = $record['year_level'] ?? ($record['year_level_applied'] ?? '1st Year');
+
     sendResponse(true, [
-        'tempStudentId' => $record['temp_student_id'],
-        'referenceNumber'=> $record['temp_student_id'],
-        'status'        => $record['status'],
-        'createdAt'     => $record['created_at'],
-        'permanentId'   => $record['permanent_id'] ?? null,
+        'tempStudentId'      => $record['temp_student_id'],
+        'referenceNumber'    => $record['temp_student_id'],
+        'status'             => $record['status'],
+        'createdAt'          => $record['created_at'],
+        'permanentId'        => $record['permanent_id'] ?? null,
         'institutionalEmail' => $record['institutional_email'] ?? null,
         'portalLoginUrl'     => '../student-portal/login',
+        'courseCode'         => $courseCode,
+        'yearLevel'          => $yearLevel,
+        'payment'            => [
+            'totalFee'           => (float)($paymentData['totalFee'] ?? 18300.00),
+            'amountPaid'         => (float)($paymentData['amountPaid'] ?? 0.00),
+            'balance'            => (float)($paymentData['balance'] ?? ($paymentData['totalFee'] ?? 18300.00)),
+            'status'             => $paymentData['status'] ?? ($record['status'] === 'ENROLLED' ? 'PAID' : 'PENDING'),
+            'paymentType'        => $paymentData['paymentType'] ?? ($record['payment_mode'] ?? 'Cash'),
+            'transactionRef'     => $paymentData['transactionRef'] ?? ($record['or_number'] ?? ''),
+            'orNumber'           => $paymentData['orNumber'] ?? ($record['or_number'] ?? ''),
+            'assessmentSnapshot' => $paymentData['assessmentSnapshot'] ?? null
+        ],
         'form'          => [
+            'courseCode'            => $courseCode,
+            'yearLevel'             => $yearLevel,
             'firstName'             => $record['first_name'],
             'middleName'            => $record['middle_name'],
             'lastName'              => $record['last_name'],

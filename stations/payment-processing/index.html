@@ -9,9 +9,9 @@
     <link href="../../shared/libs/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../shared/libs/font-awesome/css/all.min.css">
     <link rel="stylesheet" href="../../shared/libs/fonts/fonts.css">
-    <link rel="stylesheet" href="assets/css/style.css?v=1789204778">
-    <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=1789204778">
-    <link rel="stylesheet" href="../../shared/css/sidebar.css?v=1789204778">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260823_v4">
+    <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=20260825_light">
+    <link rel="stylesheet" href="../../shared/css/sidebar.css?v=10">
     <script src="../../shared/libs/sweetalert2.all.min.js"></script>
     <script src="../../shared/js/PasswordChangeGuard.js"></script>
     <style>
@@ -232,31 +232,31 @@
                             <p>Latest payment records processed by the treasury unit.</p>
                         </div>
                     </div>
-                    <div class="table-responsive">
-                        <table class="data-table">
+                    <div class="table-responsive stable-table-container">
+                        <table class="data-table table-layout-fixed">
                             <thead>
                                 <tr>
-                                    <th>Ref No.</th>
-                                    <th>Student Name</th>
-                                    <th>Program</th>
-                                    <th>Payment Type</th>
-                                    <th>Amount Paid</th>
-                                    <th>Balance</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
+                                    <th style="width: 14%;">Ref No.</th>
+                                    <th style="width: 22%;">Student Name</th>
+                                    <th style="width: 12%;">Program</th>
+                                    <th style="width: 12%;">Payment Type</th>
+                                    <th style="width: 11%;">Amount Paid</th>
+                                    <th style="width: 11%;">Balance</th>
+                                    <th style="width: 9%;">Status</th>
+                                    <th style="width: 9%;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <!-- Table Skeleton Loading Animation -->
-                                <tr v-if="isLoadingQueue" v-for="n in 4" :key="'skel-rec-tx-' + n" class="table-skeleton-row" aria-hidden="true">
-                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 130px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 50px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
-                                    <td><div class="skeleton-btn" style="width: 65px;"></div></td>
+                                <tr v-if="isLoadingQueue && (!recentTransactions || recentTransactions.length === 0)" v-for="n in 4" :key="'skel-rec-tx-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 80%;"></div></td>
                                 </tr>
                                 <tr v-else v-for="student in recentTransactions" :key="student.referenceNumber" class="table-row-enter">
                                      <td><code>{{ student.referenceNumber }}</code></td>
@@ -384,43 +384,43 @@
                             Showing {{ filteredStudents.length }} of {{ students.length }} Records
                         </span>
                     </div>
-                    <div class="table-responsive">
-                        <table class="data-table">
+                    <div class="table-responsive stable-table-container">
+                        <table class="data-table table-layout-fixed">
                             <thead>
                                 <tr>
-                                    <th style="width:110px;">Queue Ticket</th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
+                                    <th style="width: 10%;">Queue Ticket</th>
+                                    <th style="width: 12%;" class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
                                         Ref No. <i :class="getSortIcon('referenceNumber')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('studentName')">
+                                    <th style="width: 18%;" class="cursor-pointer select-none" @click="toggleSort('studentName')">
                                         Student Name <i :class="getSortIcon('studentName')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('program')">
+                                    <th style="width: 10%;" class="cursor-pointer select-none" @click="toggleSort('program')">
                                         Program <i :class="getSortIcon('program')"></i>
                                     </th>
-                                    <th>Chosen Plan / Mode</th>
-                                    <th>Total Assessment</th>
-                                    <th>Amount Paid</th>
-                                    <th>Balance</th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('status')">
+                                    <th style="width: 12%;">Chosen Plan / Mode</th>
+                                    <th style="width: 10%;">Total Assessment</th>
+                                    <th style="width: 9%;">Amount Paid</th>
+                                    <th style="width: 9%;">Balance</th>
+                                    <th style="width: 5%;" class="cursor-pointer select-none" @click="toggleSort('status')">
                                         Status <i :class="getSortIcon('status')"></i>
                                     </th>
-                                    <th style="width:120px;">Action</th>
+                                    <th style="width: 5%;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <!-- Table Skeleton Loading Animation -->
-                                <tr v-if="isLoadingQueue" v-for="n in 5" :key="'skel-pay-q-' + n" class="table-skeleton-row" aria-hidden="true">
-                                    <td><div class="skeleton-ticket"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 75px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 90px;"></div></td>
-                                    <td><div class="skeleton-btn" style="width: 75px;"></div></td>
+                                <tr v-if="isLoadingQueue && (!filteredStudents || filteredStudents.length === 0)" v-for="n in 5" :key="'skel-pay-q-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-ticket" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 80%;"></div></td>
                                 </tr>
                                 <tr v-else v-for="student in filteredStudents" :key="student.referenceNumber" class="table-row-enter">
                                      <!-- Queue Ticket -->
@@ -503,29 +503,29 @@
                         </span>
                     </div>
 
-                    <div class="table-responsive">
-                        <table class="data-table">
+                    <div class="table-responsive stable-table-container">
+                        <table class="data-table table-layout-fixed">
                             <thead>
                                 <tr>
-                                    <th>Ref / ID</th>
-                                    <th>Student Name</th>
-                                    <th>Program</th>
-                                    <th>OR / Ref No.</th>
-                                    <th>Cashier</th>
-                                    <th>Settlement Time</th>
-                                    <th>Status</th>
+                                    <th style="width: 14%;">Ref / ID</th>
+                                    <th style="width: 20%;">Student Name</th>
+                                    <th style="width: 12%;">Program</th>
+                                    <th style="width: 16%;">OR / Ref No.</th>
+                                    <th style="width: 14%;">Cashier</th>
+                                    <th style="width: 14%;">Settlement Time</th>
+                                    <th style="width: 10%;">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <!-- Table Skeleton Loading Animation -->
-                                <tr v-if="isLoadingHistory" v-for="n in 4" :key="'skel-pay-hist-' + n" class="table-skeleton-row" aria-hidden="true">
-                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 100px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 90px;"></div></td>
-                                    <td><div class="skeleton-bar" style="width: 110px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
+                                <tr v-if="isLoadingHistory && (!completedStudents || completedStudents.length === 0)" v-for="n in 4" :key="'skel-pay-hist-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 80%;"></div></td>
                                 </tr>
                                 <tr v-else v-for="item in completedStudents" :key="item.auditId || item.referenceNumber || item.id" class="table-row-enter">
                                     <td><code>{{ item.referenceNumber || item.studentId || item.id }}</code></td>
@@ -1064,11 +1064,11 @@
     <script src="../../shared/libs/bootstrap.bundle.min.js"></script>
     <script src="../../shared/libs/vue.global.js"></script>
     <script src="../../shared/libs/sweetalert2.all.min.js"></script>
-    <script src="../../shared/js/SessionExpirationGuard.js?v=1789204778"></script>
-    <script src="../../shared/js/PasswordChangeGuard.js?v=1789204778"></script>
-    <script src="../../shared/js/components/EmployeeSidebar.js?v=1789204778"></script>
-    <script src="../../shared/js/StationPipeline.js?v=1789204778"></script>
-    <script src="../assets/js/DataBus.js?v=1789204778"></script>
-    <script src="assets/js/app.js?v=1789204778"></script>
+    <script src="../../shared/js/SessionExpirationGuard.js?v=20260826_v9"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js?v=20260826_v9"></script>
+    <script src="../../shared/js/components/EmployeeSidebar.js?v=20260826_v9"></script>
+    <script src="../../shared/js/StationPipeline.js?v=20260826_v9"></script>
+    <script src="../assets/js/DataBus.js?v=20260826_v9"></script>
+    <script src="assets/js/app.js?v=20260826_v9"></script>
 </body>
 </html>

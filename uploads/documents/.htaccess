@@ -1,0 +1,9 @@
+# GNCP Documents Security Hardening
+# Denies direct public HTTP access to private student uploaded documents
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order Deny,Allow
+    Deny from all
+</IfModule>

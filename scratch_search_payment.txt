@@ -1,0 +1,255 @@
+c:/xampp/htdocs/systemtest\admin\index.html:2374:<td style="border:1px solid #cbd5e1;padding:6px;background:#f8fafc;"><strong>Outstanding Balances:</strong></td>
+c:/xampp/htdocs/systemtest\admin\index.html:2375:<td style="border:1px solid #cbd5e1;padding:6px;color:#d97706;font-weight:700;">₱{{ Number(financialMetrics.outstanding_balance || 0).toLocaleString() }}</td>
+c:/xampp/htdocs/systemtest\enrollment-system\index.html:727:<span>Upon Registration (Downpayment):</span>
+c:/xampp/htdocs/systemtest\enrollment-system\index.html:728:<span class="fw-bold">₱ {{ formatPrice(calcDownpayment) }}</span>
+c:/xampp/htdocs/systemtest\enrollment-system\tracker.html:293:<a :href="'../shared/paymongo/checkout.html?ref=' + encodeURIComponent(enrollmentData.referenceNumber) + '&amount=' + encodeURIComponent(enrollmentData.payment?.balance || 3000) + '&desc=' + encodeURIComponent('Tuition Assessment - ' + (enrollmentData.form?.firstName || '') + ' ' + (enrollmentData.form?.lastName || '')) + '&return_url=' + encodeURIComponent(currentUrl)"
+c:/xampp/htdocs/systemtest\enrollment-system\tracker.html:396:<a :href="'../shared/paymongo/checkout.html?ref=' + encodeURIComponent(enrollmentData.referenceNumber) + '&amount=' + encodeURIComponent(enrollmentData.payment?.balance || 3000) + '&desc=' + encodeURIComponent('Tuition Assessment - ' + (enrollmentData.form?.firstName || '') + ' ' + (enrollmentData.form?.lastName || '')) + '&return_url=' + encodeURIComponent(currentUrl)"
+c:/xampp/htdocs/systemtest\registrar\index.html:925:<small class="text-success fw-bold text-uppercase d-block" style="font-size:0.68rem;">Amount Paid</small>
+c:/xampp/htdocs/systemtest\registrar\index.html:926:<strong class="text-success fs-5">₱{{ parseFloat(selectedStudent.paymentData.amountPaid || 0).toLocaleString() }}</strong>
+c:/xampp/htdocs/systemtest\registrar\index.html:931:<small class="text-danger fw-bold text-uppercase d-block" style="font-size:0.68rem;">Outstanding Balance</small>
+c:/xampp/htdocs/systemtest\registrar\index.html:932:<strong class="text-danger fs-5">₱{{ parseFloat(selectedStudent.paymentData.balance || 0).toLocaleString() }}</strong>
+c:/xampp/htdocs/systemtest\shared\paymongo\checkout.html:356:<span class="text-muted">New Remaining Balance:</span>
+c:/xampp/htdocs/systemtest\shared\paymongo\checkout.html:357:<strong class="text-dark">₱{{ formatCurrency(settlementData.balance) }}</strong>
+c:/xampp/htdocs/systemtest\stations\it-center\index.html:691:<div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Amount Paid</div>
+c:/xampp/htdocs/systemtest\stations\it-center\index.html:692:<div class="fw-bold text-success">₱{{ parseFloat(corDetails.student.payment.amountPaid).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</div>
+c:/xampp/htdocs/systemtest\stations\it-center\index.html:695:<div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Ledger Balance</div>
+c:/xampp/htdocs/systemtest\stations\it-center\index.html:696:<div class="fw-bold text-danger" v-if="parseFloat(corDetails.student.payment.balance) > 0">
+c:/xampp/htdocs/systemtest\stations\it-center\index.html:697:₱{{ parseFloat(corDetails.student.payment.balance).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+c:/xampp/htdocs/systemtest\stations\it-center\index.html:705:<span class="badge ms-2" :class="parseFloat(corDetails.student.payment.balance) === 0 ? 'bg-success' : 'bg-warning text-dark'">
+c:/xampp/htdocs/systemtest\stations\it-center\index.html:706:{{ parseFloat(corDetails.student.payment.balance) === 0 ? 'Officially Enrolled' : 'Downpayment Cleared' }}
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:243:<th>Amount Paid</th>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:244:<th>Balance</th>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:255:<td><strong class="text-success">₱{{ formatCurrency(student.payment.amountPaid) }}</strong></td>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:256:<td><span class="text-secondary">₱{{ formatCurrency(student.payment.balance) }}</span></td>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:286:<div style="font-size:0.7rem;color:#9ca3af;">full balance due</div>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:293:<div style="font-size:0.7rem;color:#9ca3af;">downpayment collected</div>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:369:<p>First-Come, First-Served fee settlements, installment downpayments, and OR issuance — click headers to sort</p>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:392:<th>Amount Paid</th>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:393:<th>Balance</th>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:424:<td><strong class="text-success">₱{{ formatCurrency(student.payment.amountPaid) }}</strong></td>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:425:<td><strong :class="(student.payment.balance && student.payment.balance > 0) ? 'text-danger' : 'text-success'">₱{{ formatCurrency(student.payment.balance) }}</strong></td>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:565:<span class="text-success fw-bold ms-1">₱{{ formatCurrency(selectedStudent.payment.amountPaid) }}</span>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:568:<strong>Outstanding Balance:</strong>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:569:<span class="text-danger fw-bold ms-1">₱{{ formatCurrency(selectedStudent.payment.balance) }}</span>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:575:<div class="panel p-3.5 bg-white border rounded-3 shadow-sm mb-3" style="border-color: #E2E8F0 !important;" v-if="selectedStudent.payment.balance > 0">
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:605:<div class="plan-card-amount">₱{{ formatCurrency(selectedStudent.payment.balance) }}</div>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:609:<!-- Minimum Downpayment Option -->
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:610:<div class="plan-card" v-if="selectedStudent.payment.balance >= 3000" :class="{'is-selected': paymentScheme === 'DOWNPAYMENT'}" @click="selectScheme('DOWNPAYMENT')">
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:613:<i class="fa-solid fa-layer-group text-warning"></i> Downpayment
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:655:<input class="payment-input-control" type="number" :min="selectedStudent.payment.balance < 3000 ? selectedStudent.payment.balance : 3000" :max="selectedStudent.payment.balance" v-model.number="payAmountInput" :readonly="paymentScheme !== 'CUSTOM'" @input="onAmountChanged" placeholder="0">
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:661:<span class="text-muted" style="font-size: 0.7rem; font-weight: 600;">Min: ₱{{ formatCurrency(selectedStudent.payment.balance < 3000 ? selectedStudent.payment.balance : 3000) }}</span>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:663:{{ paymentScheme === 'FULL' ? 'Full Settlement' : 'Minimum Downpayment' }}
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:729:<span class="d-flex align-items-center"><i class="fa-solid fa-wallet me-2 text-muted"></i>Current Assessment Balance:</span>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:730:<span class="fw-bold text-dark fs-6">₱{{ formatCurrency(selectedStudent.payment.balance) }}</span>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:738:<span class="fw-bold text-dark d-flex align-items-center"><i class="fa-solid fa-scale-balanced me-2 text-muted"></i>New Remaining Balance:</span>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:739:<span class="badge rounded-pill px-2.5 py-1 fw-bold" :class="newBalance === 0 ? 'bg-success text-white' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'" style="font-size: 0.7rem;">
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:740:{{ newBalance === 0 ? 'Fully Cleared' : 'Remaining Balance' }}
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:743:<span class="fw-bold fs-5" :class="newBalance === 0 ? 'text-success' : 'text-danger'">
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:744:₱{{ formatCurrency(newBalance) }}
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:756:<p class="small text-white-50 mb-3">All tuition and matriculation fees for this term have been paid in full (Balance: ₱0.00).</p>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:866:<div class="mb-1" v-if="selectedStudent.payment.balance > 0">
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:883:<th>Amount Paid</th>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:973:<th>Amount Paid</th>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:974:<th>Outstanding Balance</th>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:981:<td class="fw-bold text-success">₱{{ formatCurrency(receiptData.amountPaid) }}</td>
+c:/xampp/htdocs/systemtest\stations\payment-processing\index.html:982:<td class="fw-bold text-danger">₱{{ formatCurrency(receiptData.balance) }}</td>
+c:/xampp/htdocs/systemtest\tests\playwright\ui\index.html:559:{ num: '4', key: '4. Partial Downpayment Settlement',   label: '4. GCash / Maya Simulation',      sub: 'Downpayment & OR Recording',     icon: 'fa-mobile-screen-button' },
+c:/xampp/htdocs/systemtest\tests\playwright\ui\index.html:560:{ num: '5', key: '5. Full Balance Settlement',          label: '5. Full Balance Settlement',      sub: 'Zero Remaining Balance State',   icon: 'fa-money-bill-transfer' },
+c:/xampp/htdocs/systemtest\tests\playwright\ui\index.html:581:{ num: '6',  key: '6. Cashier Payment',                   label: '6. Cashier Fee Payment & OR',     sub: 'Downpayment & OR Issuance',       icon: 'fa-wallet' },
+c:/xampp/htdocs/systemtest\tests\selenium\ui\index.html:559:{ num: '4', key: '4. Partial Downpayment Settlement',   label: '4. GCash / Maya Simulation',      sub: 'Downpayment & OR Recording',     icon: 'fa-mobile-screen-button' },
+c:/xampp/htdocs/systemtest\tests\selenium\ui\index.html:560:{ num: '5', key: '5. Full Balance Settlement',          label: '5. Full Balance Settlement',      sub: 'Zero Remaining Balance State',   icon: 'fa-money-bill-transfer' },
+c:/xampp/htdocs/systemtest\tests\selenium\ui\index.html:581:{ num: '6',  key: '6. Cashier Payment',                   label: '6. Cashier Fee Payment & OR',     sub: 'Downpayment & OR Issuance',       icon: 'fa-wallet' },
+c:/xampp/htdocs/systemtest\test_system.php:128:$payData = ['status' => 'PENDING', 'totalFee' => 24000, 'amountPaid' => 0, 'balance' => 24000];
+c:/xampp/htdocs/systemtest\test_system.php:201:$payData['amountPaid'] = 24000;
+c:/xampp/htdocs/systemtest\test_system.php:202:$payData['balance'] = 0;
+c:/xampp/htdocs/systemtest\test_system.php:209:$steps[] = ['name' => '6. Station 5: Cashier Ledger Payment process', 'status' => 'SUCCESS', 'message' => 'Balance paid, transaction ID logged.'];
+c:/xampp/htdocs/systemtest\api\controllers\StationController.php:98:$isActualPayment = (isset($pPayload['amountPaid']) && (float)$pPayload['amountPaid'] > 0) ||
+c:/xampp/htdocs/systemtest\database\migrations\create_financial_and_clearance_tables.php:27:`payment_type` VARCHAR(50) NOT NULL DEFAULT 'DOWNPAYMENT',
+c:/xampp/htdocs/systemtest\database\migrations\fix_curriculum_and_fee_duplicates.php:161:$amtPaid = (float)($payment['amountPaid'] ?? 0);
+c:/xampp/htdocs/systemtest\database\migrations\fix_curriculum_and_fee_duplicates.php:162:$payment['balance'] = max(0.00, round($newAssessment['cashTotal'] - $amtPaid, 2));
+c:/xampp/htdocs/systemtest\database\migrations\migrate_financial_ledger.php:71:$amount = (float)($txn['amountPaid'] ?? ($txn['amount'] ?? 0.00));
+c:/xampp/htdocs/systemtest\database\migrations\migrate_financial_ledger.php:78:$plan = $txn['plan'] ?? ($pData['plan'] ?? 'DOWNPAYMENT');
+c:/xampp/htdocs/systemtest\enrollment-system\backend\register.php:266:'description' => 'Pay tuition and miscellaneous fees to clear billing ledger balance.',
+c:/xampp/htdocs/systemtest\enrollment-system\backend\register.php:324:'description' => 'Pay tuition and miscellaneous fees to clear billing ledger balance.',
+c:/xampp/htdocs/systemtest\enrollment-system\backend\register.php:431:'amountPaid' => 0,
+c:/xampp/htdocs/systemtest\enrollment-system\backend\register.php:432:'balance' => 24000,
+c:/xampp/htdocs/systemtest\shared\backend\services\AnalyticsService.php:240:$amt = (float)($pmt['amountPaid'] ?? $pmt['amount'] ?? 0);
+c:/xampp/htdocs/systemtest\shared\backend\services\AnalyticsService.php:247:$paid = 3000.00; // Baseline standard downpayment
+c:/xampp/htdocs/systemtest\shared\backend\services\AnalyticsService.php:262:$outstandingBalance = max(0.0, $totalAssessed - $totalCollected);
+c:/xampp/htdocs/systemtest\shared\backend\services\AnalyticsService.php:266:'outstanding_balance' => round($outstandingBalance, 2),
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:152:* Calculates payment balance and financial status deterministically supporting multiple payment transactions and voiding.
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:156:* @return array Balance, total paid, remaining balance, and financial status
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:158:public static function calculateBalance(float $cashTotal, $paymentData = []): array {
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:160:$totalPaid = 0.00;
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:164:$totalPaid = max(0.00, round((float)$paymentData, 2));
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:169:: (isset($paymentData['amountPaid']) ? [$paymentData] : []);
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:174:$amt = (float)($p['amountPaid'] ?? $p['amount'] ?? 0.00);
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:175:$totalPaid += max(0.00, round($amt, 2));
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:181:$balance = round($cashTotal - $totalPaid, 2);
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:184:if ($totalPaid >= $cashTotal && $cashTotal > 0) {
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:186:$balance = 0.00;
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:187:} elseif ($totalPaid > 0 && $totalPaid < $cashTotal) {
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:193:'totalPaid'     => $totalPaid,
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:194:'amountPaid'    => $totalPaid,
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:195:'balance'       => max(0.00, $balance),
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:207:* @param array|float $paymentData Payment snapshot or amount paid
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:215:$amountPaid = 0.00;
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:217:$amountPaid = (float)$paymentData;
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:219:$amountPaid = (float)($paymentData['amountPaid'] ?? $paymentData['amount_paid'] ?? $paymentData['amount'] ?? 0.00);
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:220:if ($amountPaid <= 0 && !empty($paymentData['payments']) && is_array($paymentData['payments'])) {
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:224:$amountPaid += (float)($p['amountPaid'] ?? $p['amount'] ?? 0.00);
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:231:$isPaid = ($amountPaid >= $cashTotal && $cashTotal > 0);
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:235:'amountPaid'       => $amountPaid,
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:236:'remainingBalance' => max(0.00, round($cashTotal - $amountPaid, 2)),
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:278:$downpayment = $amountPaid > 0 ? min($amountPaid, round($totalAssessment * 0.35, 2)) : max(3500.00, round($totalAssessment * 0.20, 2));
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:279:$remaining = max(0.00, round($totalAssessment - $downpayment, 2));
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:283:$cum1 = $downpayment;
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:284:$cum2 = $downpayment + $chunk;
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:285:$cum3 = $downpayment + (2 * $chunk);
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:286:$cum4 = $downpayment + (3 * $chunk);
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:292:'downpayment'      => $downpayment,
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:293:'remainingBalance' => max(0.00, round($totalAssessment - $amountPaid, 2)),
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:298:'amountDue'       => $downpayment,
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:299:'formattedAmount' => '₱ ' . number_format($downpayment, 2),
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:300:'status'          => ($amountPaid >= $cum1) ? 'PAID' : 'DUE'
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:307:'status'          => ($amountPaid >= $cum2) ? 'PAID' : 'DUE'
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:314:'status'          => ($amountPaid >= $cum3) ? 'PAID' : 'DUE'
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:321:'status'          => ($amountPaid >= $cum4) ? 'PAID' : 'DUE'
+c:/xampp/htdocs/systemtest\shared\backend\services\AssessmentService.php:328:'status'          => ($amountPaid >= $cum5) ? 'PAID' : 'DUE'
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:37:// Validate student status and remaining tuition balance
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:55:if (isset($pData['balance'])) {
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:56:$maxBal = (float)$pData['balance'];
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:58:throw new InvalidArgumentException("Payment amount (PHP " . number_format($amount, 2) . ") exceeds remaining balance (PHP " . number_format($maxBal, 2) . ").");
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:67:error_log('[PayMongoService::BalanceCheck] ' . $e->getMessage());
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:194:$amountPaid = (float)($paymentData['amountPaid'] ?? $paymentData['amount_paid'] ?? 0.00);
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:195:$currentBal = isset($paymentData['balance']) ? (float)$paymentData['balance'] : max(0.00, $totalFee - $amountPaid);
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:207:$newAmountPaid = round($amountPaid + $payAmount, 2);
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:208:$newBalance    = max(0.00, round($currentBal - $payAmount, 2));
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:209:$newStatus     = ($newBalance <= 0.00) ? 'PAID' : 'PARTIAL';
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:225:$paymentData['amountPaid']     = $newAmountPaid;
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:226:$paymentData['balance']        = $newBalance;
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:321:'amountPaid'     => $payAmount,
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:322:'totalPaid'      => $newAmountPaid,
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:323:'balance'        => $newBalance,
+c:/xampp/htdocs/systemtest\shared\backend\services\PayMongoService.php:325:'isFullPayment'  => ($newBalance <= 0.00)
+c:/xampp/htdocs/systemtest\stations\backend\services\EnrollmentService.php:76:$isActualPayment = (isset($pPayload['amountPaid']) && (float)$pPayload['amountPaid'] > 0) ||
+c:/xampp/htdocs/systemtest\stations\backend\services\EnrollmentService.php:377:$payAmt = (float)($latestTxn['amountPaid'] ?? ($latestTxn['amount'] ?? ($pInfo['amountPaid'] ?? 0.00)));
+c:/xampp/htdocs/systemtest\stations\backend\services\EnrollmentService.php:381:$plan = $pInfo['plan'] ?? ($latestTxn['plan'] ?? 'DOWNPAYMENT');
+c:/xampp/htdocs/systemtest\stations\payment-processing\receipt_print.php:110:// Calculate fee assessment and payment balance via authoritative AssessmentService
+c:/xampp/htdocs/systemtest\stations\payment-processing\receipt_print.php:128:$rawPaid = isset($payment['amountPaid']) ? (float)$payment['amountPaid'] : $cashTotal;
+c:/xampp/htdocs/systemtest\stations\payment-processing\receipt_print.php:129:$balInfo = AssessmentService::calculateBalance($cashTotal, $rawPaid);
+c:/xampp/htdocs/systemtest\stations\payment-processing\receipt_print.php:131:$amountPaid  = $balInfo['amountPaid'];
+c:/xampp/htdocs/systemtest\stations\payment-processing\receipt_print.php:132:$balance     = $balInfo['balance'];
+c:/xampp/htdocs/systemtest\stations\payment-processing\receipt_print.php:343:<th>Amount Paid</th>
+c:/xampp/htdocs/systemtest\stations\payment-processing\receipt_print.php:344:<th>Outstanding Balance</th>
+c:/xampp/htdocs/systemtest\stations\payment-processing\receipt_print.php:357:<td class="text-center fw-bold text-success">₱<?php echo number_format($amountPaid, 2); ?></td>
+c:/xampp/htdocs/systemtest\stations\payment-processing\receipt_print.php:358:<td class="text-center fw-bold <?php echo $balance > 0 ? 'text-danger' : 'text-success'; ?>">₱<?php echo number_format($balance, 2); ?></td>
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:42:echo "  Total Paid       : ₱" . number_format($b['totalPaid'] ?? 0, 2) . "\n";
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:43:echo "  Remaining Balance: ₱" . number_format($b['balance'] ?? 0, 2) . "\n";
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:78:// TEST 2: Unpaid Student Balance
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:79:$b2 = AssessmentService::calculateBalance($a1['cashTotal'], 0.00);
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:80:runScenario(2, "Unpaid Student Balance",
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:81:$b2['balance'] == $a1['cashTotal'] && $b2['status'] === 'UNPAID',
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:82:$a1, $b2, "No payments made. Balance equals Cash Total."
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:86:$payments3 = [['orNumber' => 'OR-101', 'amountPaid' => 5000.00, 'status' => 'PAID']];
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:87:$b3 = AssessmentService::calculateBalance($a1['cashTotal'], ['payments' => $payments3]);
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:89:$b3['totalPaid'] == 5000.00 && $b3['status'] === 'PARTIALLY_PAID',
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:90:$a1, $b3, "Paid ₱5,000. Balance remaining: ₱{$b3['balance']}."
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:94:$payments4 = [['orNumber' => 'OR-101', 'amountPaid' => $a1['cashTotal'], 'status' => 'PAID']];
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:95:$b4 = AssessmentService::calculateBalance($a1['cashTotal'], ['payments' => $payments4]);
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:97:$b4['balance'] == 0.00 && $b4['status'] === 'PAID',
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:98:$a1, $b4, "Paid full cash total. Balance: ₱0.00."
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:103:['orNumber' => 'OR-201', 'amountPaid' => 5000.00, 'status' => 'PAID'],
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:104:['orNumber' => 'OR-202', 'amountPaid' => 4000.00, 'status' => 'PAID']
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:106:$b5 = AssessmentService::calculateBalance($a1['cashTotal'], ['payments' => $payments5]);
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:108:$b5['totalPaid'] == 9000.00,
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:165:['orNumber' => 'OR-301', 'amountPaid' => 5000.00, 'status' => 'PAID'],
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:166:['orNumber' => 'OR-302', 'amountPaid' => 5000.00, 'status' => 'VOIDED']
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:168:$b13 = AssessmentService::calculateBalance($a1['cashTotal'], ['payments' => $payments13]);
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:170:$b13['totalPaid'] == 5000.00,
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:171:$a1, $b13, "Voided OR-302 ignored. Total Paid remains ₱5,000.00."
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:175:$payments14 = [['orNumber' => 'OR-401', 'amountPaid' => $a1['cashTotal'] + 2000.00, 'status' => 'PAID']];
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:176:$b14 = AssessmentService::calculateBalance($a1['cashTotal'], ['payments' => $payments14]);
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:178:$b14['totalPaid'] == $a1['cashTotal'] + 2000.00 && $b14['status'] === 'PAID',
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:179:$a1, $b14, "Total Paid ₱{$b14['totalPaid']} exceeds Cash Total ₱{$a1['cashTotal']} without wiping data."
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:210:$b18 = AssessmentService::calculateBalance($a1['cashTotal'], -500.00);
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:212:$b18['totalPaid'] == 0.00,
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:217:$b19 = AssessmentService::calculateBalance($a1['cashTotal'], 0.00);
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:225:$b18['balance'] == $a1['cashTotal'],
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:226:$a1, $b18, "Balance equals Cash Total."
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:237:$b4['balance'] == 0.00,
+c:/xampp/htdocs/systemtest\tests\test_financial_system.php:249:$b5['totalPaid'] == 9000.00,
+c:/xampp/htdocs/systemtest\tests\test_paymongo_simulation.php:49:$session = PayMongoService::createCheckoutSession($refNo, $amount, 'Tuition Downpayment Test');
+c:/xampp/htdocs/systemtest\tests\test_paymongo_simulation.php:82:'amountPaid' => 0.00,
+c:/xampp/htdocs/systemtest\tests\test_paymongo_simulation.php:83:'balance'    => 18500.00,
+c:/xampp/htdocs/systemtest\tests\test_paymongo_simulation.php:123:$partialRes = PayMongoService::processPaymentSuccess($testStudentRef, 3000.00, 'GCash', '', 'Cashier Officer (PayMongo)', 'Downpayment collection test');
+c:/xampp/htdocs/systemtest\tests\test_paymongo_simulation.php:125:assertCondition("Amount paid is 3000.00", (float)$partialRes['amountPaid'] === 3000.00);
+c:/xampp/htdocs/systemtest\tests\test_paymongo_simulation.php:126:assertCondition("Remaining balance is 15500.00", (float)$partialRes['balance'] === 15500.00);
+c:/xampp/htdocs/systemtest\tests\test_paymongo_simulation.php:150:// --- Scenario 6: Full Balance Settlement (PARTIAL -> PAID) ---
+c:/xampp/htdocs/systemtest\tests\test_paymongo_simulation.php:152:$fullRes = PayMongoService::processPaymentSuccess($testStudentRef, 15500.00, 'Maya', '', 'PayMongo Gateway', 'Final balance settlement');
+c:/xampp/htdocs/systemtest\tests\test_paymongo_simulation.php:153:assertCondition("Full balance settlement succeeded", $fullRes['success'] === true);
+c:/xampp/htdocs/systemtest\tests\test_paymongo_simulation.php:154:assertCondition("Total paid equals 18500.00", (float)$fullRes['totalPaid'] === 18500.00);
+c:/xampp/htdocs/systemtest\tests\test_paymongo_simulation.php:155:assertCondition("Remaining balance equals 0.00", (float)$fullRes['balance'] === 0.00);
+c:/xampp/htdocs/systemtest\tests\update_student_payment_state.php:11:'amountPaid' => 0,
+c:/xampp/htdocs/systemtest\tests\update_student_payment_state.php:12:'balance' => 18300,
+c:/xampp/htdocs/systemtest\tests\security\test_security_hardening.php:338:'updateData' => ['payment' => ['amountPaid' => 5000.00, 'status' => 'PAID']]
+c:/xampp/htdocs/systemtest\tests\security\test_security_hardening.php:376:// ── TEST 10: PayMongo Tuition Balance Validation ──
+c:/xampp/htdocs/systemtest\tests\security\test_security_hardening.php:377:echo "\n10. PayMongo Tuition Balance & Status Verification\n";
+c:/xampp/htdocs/systemtest\admin\assets\js\controllers\AdminController.js:707:label: 'Downpayment Settled',
+c:/xampp/htdocs/systemtest\admin\assets\js\controllers\AdminController.js:740:outstanding_balance: 0,
+c:/xampp/htdocs/systemtest\assets\js\gateway-app.js:92:description: "Treasury window for processing downpayments",
+c:/xampp/htdocs/systemtest\enrollment-system\assets\js\App.js:280:const calcDownpayment = computed(() => fees.value.downpayment);
+c:/xampp/htdocs/systemtest\enrollment-system\assets\js\App.js:505:calcDownpayment,
+c:/xampp/htdocs/systemtest\enrollment-system\assets\js\models\EnrollmentModel.js:44:{ value: 'SEMI', label: 'Semi-Annual Installment',  desc: '30% downpayment, balance in 2 installments.' },
+c:/xampp/htdocs/systemtest\enrollment-system\assets\js\models\EnrollmentModel.js:45:{ value: 'QUAD', label: 'Quarterly Installment',    desc: '30% downpayment, balance in 3 installments.' }
+c:/xampp/htdocs/systemtest\enrollment-system\assets\js\models\EnrollmentModel.js:156:let downpayment = total;
+c:/xampp/htdocs/systemtest\enrollment-system\assets\js\models\EnrollmentModel.js:158:downpayment = total * 0.30;
+c:/xampp/htdocs/systemtest\enrollment-system\assets\js\models\EnrollmentModel.js:162:const remaining = total - downpayment;
+c:/xampp/htdocs/systemtest\enrollment-system\assets\js\models\EnrollmentModel.js:172:downpayment,
+c:/xampp/htdocs/systemtest\school-website\assets\js\models\DataModel.js:299:{ id: "r2", title: "Accounting & Cashier Office Clearance", format: "ORIGINAL", type: "financial", icon: "fas fa-receipt", agency: "GNCP Treasury Office", note: "Certification of zero outstanding balance and financial account clearance." },
+c:/xampp/htdocs/systemtest\school-website\assets\js\views\PagesView.js:262:title: "Tuition Downpayment & OR Issuance",
+c:/xampp/htdocs/systemtest\school-website\assets\js\views\PagesView.js:266:desc: "Settle minimum downpayment or full semester tuition via Over-The-Counter Cash or PayMongo QR Ph / GCash instant verification."
+c:/xampp/htdocs/systemtest\shared\paymongo\checkout-app.js:29:balance: 0,
+c:/xampp/htdocs/systemtest\shared\paymongo\checkout-app.js:102:settlementData.balance = data.data?.balance != null ? data.data.balance : 0;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:104:let balanceVal = (payment.balance != null) ? payment.balance : totalFeeVal;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:144:amountPaid:     payment.amountPaid   || 0,
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:145:balance:        balanceVal,
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:444:const amountPaid = student.payment.amountPaid || 0;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:445:const balance = student.payment.balance || 0;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:446:const scholarshipDiscount = Math.max(0, totalFees - (amountPaid + balance));
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:583:amountPaid: lastTxn ? lastTxn.amount : (found.payment?.amountPaid || 0),
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:584:balance: found.payment?.balance || 0,
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:598:<p class="mb-0"><strong>Remaining Balance:</strong> ₱${(found.payment?.balance || 0).toLocaleString()}</p>
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:636:const balance = selectedStudent.value.payment.balance || 0;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:638:payAmountInput.value = balance;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:639:} else if (paymentScheme.value === 'DOWNPAYMENT') {
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:640:payAmountInput.value = balance >= 3000 ? 3000 : balance;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:657:const newBalance = computed(() => {
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:659:const currentBal = selectedStudent.value.payment.balance || 0;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:683:const currentBal = student.payment.balance || 0;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:687:// SEMI / QUAD -> Downpayment (30% / Min. ₱3,000 entry)
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:690:paymentScheme.value = 'DOWNPAYMENT';
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:694:payAmountInput.value = currentBal; // Default to full outstanding balance
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:789:s.payment.amountPaid     = student.payment.amountPaid;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:790:s.payment.balance        = student.payment.balance;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:830:const currentBal = parseFloat(student.payment.balance) || 0;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:838:text: `The remaining balance is ₱${currentBal.toLocaleString()}. Please enter the full remaining balance of ₱${currentBal.toLocaleString()} to settle payment.`,
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:856:text: 'Payment amount cannot exceed the outstanding balance of ₱' + currentBal.toLocaleString() + '.',
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:896:student.payment.amountPaid = (student.payment.amountPaid || 0) + payAmt;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:897:student.payment.balance = currentBal - payAmt;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:918:s.payment.amountPaid     = student.payment.amountPaid;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:919:s.payment.balance        = student.payment.balance;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:971:amountPaid: payAmt,
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:972:balance: student.payment.balance,
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:983:text: `Successfully collected ₱${payAmt.toLocaleString()}. Remaining balance: ₱${student.payment.balance.toLocaleString()}.`,
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:1136:amountPaid: student.payment?.amountPaid || (lastTxn ? lastTxn.amount : (student.payment?.totalFee || 0)),
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:1137:balance: student.payment?.balance || 0,
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:1167:payAmountInput.value = selectedStudent.value.payment.balance || 0;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:1172:const recordDownPayment = (amount) => {
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:1183:const netAssessment = student.payment.amountPaid + student.payment.balance;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:1186:student.payment.balance = netAssessment;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:1187:student.payment.amountPaid = 0;
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:1457:recordDownPayment,
+c:/xampp/htdocs/systemtest\stations\payment-processing\assets\js\app.js:1481:newBalance,
+c:/xampp/htdocs/systemtest\stations\tlc-helpdesk\assets\js\app.js:453:s.payment.balance = totalAssessment;
+c:/xampp/htdocs/systemtest\stations\tlc-helpdesk\assets\js\app.js:454:s.payment.amountPaid = 0;

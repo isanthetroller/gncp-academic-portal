@@ -139,6 +139,17 @@ class StudentModel {
         return null;
     }
 
+    public function findApplicantByRef($ref) {
+        $stmt = $this->pdo->prepare("SELECT * FROM `pre_enrollments` WHERE `temp_student_id` = :ref OR `id` = :id LIMIT 1");
+        $stmt->execute(['ref' => $ref, 'id' => $ref]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $row['security_pin'] = $row['temp_pin'] ?? '';
+            return $row;
+        }
+        return null;
+    }
+
     public function getQueue() {
         // Delegate to QueueService for dual-table aggregation (pre_enrollments + students),
         // proper status filtering, and N+1-free performance.
