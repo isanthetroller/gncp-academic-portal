@@ -25,42 +25,13 @@ class AuthController {
 
         $user = $this->userModel->findByUsername($username);
 
-        $defaultDevPass = getenv('GNCP_DEV_DEFAULT_PASS') ?: 'Dev#Secure2026!';
-
-        // Auto-bootstrap developer account if not yet seeded
-        if (strtolower($username) === 'developer' && !$user) {
-            try {
-                $devHash = password_hash($defaultDevPass, PASSWORD_DEFAULT);
-                $pdo = Database::getInstance();
-                $insertDev = $pdo->prepare("INSERT INTO `station_users` (`username`, `password`, `role`, `name`, `email`, `status`, `must_change_password`) VALUES ('developer', :p, 'DEVELOPER', 'Lead Developer', 'developer@gncp.edu.ph', 'ACTIVE', 0)");
-                $insertDev->execute(['p' => $devHash]);
-                $user = $this->userModel->findByUsername($username);
-            } catch (Exception $e) {}
-        }
-
         if (!$user) {
             recordLoginFailure('employee_login', $username, 10, 300);
             return ['success' => false, 'message' => 'Invalid username or password.', 'code' => 401];
         }
 
-        // Password verification — bcrypt
+        // Password verification — strict bcrypt
         $isValidPassword = password_verify($password, $user['password']);
-
-        // Self-healing password sync for default developer account
-        if ($user && strtolower($user['username']) === 'developer' && !$isValidPassword && $password === $defaultDevPass) {
-            $isValidPassword = true;
-            try {
-                $this->userModel->changePassword('developer', $defaultDevPass);
-            } catch (Exception $e) {}
-        }
-
-        // One-time legacy migration for unhashed passwords
-        if (!$isValidPassword && !empty($user['password']) && substr($user['password'], 0, 4) !== '$2y$' && $password === $user['password']) {
-            $isValidPassword = true;
-            try {
-                $this->userModel->changePassword($user['username'], $password);
-            } catch (Exception $e) {}
-        }
 
         if (!$isValidPassword) {
             recordLoginFailure('employee_login', $username, 10, 300);
@@ -126,6 +97,10 @@ class AuthController {
         } else {
             $_SESSION['gncp_station_user'] = $sessionPayload;
         }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        $csrfToken = $_SESSION['csrf_token'];
         session_write_close();
 
         return [
@@ -137,7 +112,8 @@ class AuthController {
                 'role'                 => $role,
                 'avatar'               => $userAvatar,
                 'must_change_password' => $mustChangePassword,
-                'redirectUrl'          => $redirectUrl
+                'redirectUrl'          => $redirectUrl,
+                'csrf_token'           => $csrfToken
             ],
             'message' => $mustChangePassword ? 'Password change required.' : 'Login successful.'
         ];

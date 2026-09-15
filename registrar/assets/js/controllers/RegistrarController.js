@@ -645,6 +645,13 @@
                 if (!fileObj) return '';
                 const path = fileObj.filePath || fileObj.softCopyUrl || '';
                 if (!path) return '';
+                if (path.includes('action=student/download_document') || path.includes('action=students/download-document')) {
+                    return path;
+                }
+                if (path.includes('uploads/documents/')) {
+                    const cleanName = path.split('uploads/documents/').pop().split('?')[0];
+                    return '/systemtest/api/index.php?action=student/download_document&file=' + encodeURIComponent(cleanName);
+                }
                 if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
                 if (path.startsWith('/systemtest/')) return path;
                 if (path.startsWith('/')) return path;

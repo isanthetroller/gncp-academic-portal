@@ -62,6 +62,7 @@ require_once __DIR__ . '/controllers/StudentController.php';
 require_once __DIR__ . '/controllers/StationController.php';
 require_once __DIR__ . '/controllers/AdminController.php';
 require_once __DIR__ . '/controllers/StudentPortalController.php';
+require_once __DIR__ . '/controllers/RegistrarAdminController.php';
 
 require_once __DIR__ . '/../shared/backend/services/CatalogService.php';
 require_once __DIR__ . '/../shared/backend/services/SectionService.php';
@@ -111,6 +112,9 @@ try {
         },
         'student/documents'       => fn($p) => (new StudentController($pdo))->getDocuments($_GET['identifier'] ?? ($_GET['ref'] ?? ($_GET['studentId'] ?? ($p['identifier'] ?? ($p['studentId'] ?? '')))), $_GET['pin'] ?? ($p['pin'] ?? '')),
         'student/upload_document' => fn($p) => (new StudentController($pdo))->uploadDocument($p),
+        'student/download_document' => fn($p) => (new StudentController($pdo))->downloadDocument(),
+        'students/download-document' => fn($p) => (new StudentController($pdo))->downloadDocument(),
+        'student_portal/download_document' => fn($p) => (new StudentController($pdo))->downloadDocument(),
         'registrar/verify_document'=> function($p) use ($pdo) {
             require_once __DIR__ . '/../shared/backend/utils/session_guard.php';
             requireAuth(['REGISTRAR', 'ADMIN', 'SUPER_ADMIN']);
@@ -161,6 +165,9 @@ try {
             require_once __DIR__ . '/../stations/backend/services/QueueService.php';
             return ['success' => true, 'data' => QueueService::fetchStudentAccounts($pdo)];
         },
+
+        'registrar/data'          => fn($p) => (new RegistrarAdminController($pdo))->fetchAllData(),
+        'fetch_all_data'          => fn($p) => (new RegistrarAdminController($pdo))->fetchAllData(),
 
         'registrar/update_status' => function($p) use ($pdo) {
             require_once __DIR__ . '/../shared/backend/utils/session_guard.php';

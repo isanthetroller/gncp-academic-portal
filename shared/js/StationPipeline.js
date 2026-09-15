@@ -256,29 +256,67 @@
             const program = s.program || s.courseCode || (s.form ? s.form.courseCode : '') || '---';
             const queueTicket = (cfg && s.queueTickets && s.queueTickets[stationKey]) ? s.queueTickets[stationKey] : ((cfg ? cfg.ticketPrefix : 'Q-') + padId);
             const arrivedAt = (cfg && s.stationArrivals && s.stationArrivals[stationKey]) ? s.stationArrivals[stationKey] : (s.createdAt || s.datePreRegistered || '');
+            const paymentObj = s.payment || {};
+            const helpdeskObj = s.helpdesk || {};
+            const enrollmentObj = s.enrollment || {};
+            const formObj = s.form || {};
+            const sectionCode = s.sectionCode || s.section_code || s.section || enrollmentObj.assignedSection || helpdeskObj.section || '';
+            const orNumber = s.orNumber || paymentObj.orNumber || paymentObj.or_number || null;
+            const cashierName = s.cashierName || paymentObj.cashierName || paymentObj.processedBy || null;
 
             return {
                 id: s.referenceNumber || s.id,
                 referenceNumber: s.referenceNumber || s.id,
                 tempPin: s.tempPin || '',
                 queueTicket: queueTicket,
+                queueTickets: s.queueTickets || {},
                 arrivedAt: arrivedAt,
+                stationArrivals: s.stationArrivals || {},
                 createdAt: s.createdAt || '',
                 name: name,
+                studentName: name,
+                firstName: s.firstName || formObj.firstName || '',
+                middleName: s.middleName || formObj.middleName || '',
+                lastName: s.lastName || formObj.lastName || '',
                 program: program,
-                studentType: s.studentType || (s.form ? s.form.studentType : 'REGULAR'),
-                phone: s.phone || '',
-                email: s.email || '',
+                studentType: s.studentType || formObj.studentType || 'REGULAR',
+                healthStatus: s.healthStatus || formObj.healthStatus || 'GOOD',
+                medicalConditions: s.medicalConditions || formObj.medicalConditions || [],
+                allergies: s.allergies || formObj.allergies || 'None',
+                currentMedication: (s.currentMedication !== undefined) ? s.currentMedication : (formObj.currentMedication !== undefined ? formObj.currentMedication : false),
+                medicationDetails: s.medicationDetails || formObj.medicationDetails || '',
+                fitnessParticipation: (s.fitnessParticipation !== undefined) ? s.fitnessParticipation : (formObj.fitnessParticipation !== undefined ? formObj.fitnessParticipation : true),
+                phone: s.phone || formObj.phone || '',
+                email: s.email || formObj.email || '',
+                gender: s.gender || formObj.gender || 'Not specified',
+                birthDate: s.birthDate || formObj.birthDate || '',
+                address: s.address || formObj.address || '',
+                nstp: s.nstp || helpdeskObj.nstp || formObj.nstp || '',
+                emergencyContactName: s.emergencyContactName || formObj.emergencyContactName || '',
+                emergencyContactPhone: s.emergencyContactPhone || formObj.emergencyContactPhone || '',
+                seniorHighSchool: s.seniorHighSchool || formObj.seniorHighSchool || '',
+                shsTrack: s.shsTrack || formObj.shsTrack || '',
+                sectionCode: sectionCode,
+                section: sectionCode,
+                orNumber: orNumber,
+                enrolledAt: s.enrolledAt || null,
+                cashierName: cashierName,
+                paymentMode: s.paymentMode || paymentObj.paymentMode || formObj.paymentMode || 'Cash',
                 roadmap: Array.isArray(s.roadmap) ? s.roadmap : (typeof s.roadmap === 'string' ? JSON.parse(s.roadmap || '[]') : []),
                 status: stationKey ? this.getStepStatus(stationKey, s) : s.status,
                 overallStatus: s.status || 'PRE_REGISTERED',
-                form: s.form || {},
+                form: formObj,
+                requirements: s.requirements || {},
                 medical: s.medical || {},
-                payment: s.payment || {},
-                helpdesk: s.helpdesk || {},
-                enrollment: s.enrollment || {},
+                scholarship: s.scholarship || {},
+                payment: paymentObj,
+                helpdesk: helpdeskObj,
+                enrollment: enrollmentObj,
                 prospectusSubjects: s.prospectusSubjects || [],
-                availableSections: s.availableSections || []
+                availableSections: s.availableSections || [],
+                activeSemester: s.activeSemester || '1st Semester',
+                academicYear: s.academicYear || '2026-2027',
+                curriculumVersion: s.curriculumVersion || '2022 Curriculum'
             };
         },
 

@@ -458,7 +458,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#admin-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.expandedCats) vm.expandedCats.sections = true;
                 if (vm.setView) vm.setView('sections');
             }
@@ -469,7 +469,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""([secCode, secProg, secYear]) => {
             const appElem = document.querySelector('#admin-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 const periodId = (vm.periods && vm.periods.length > 0) ? vm.periods[0].id : 1;
                 Object.assign(vm.form, {
                     code: secCode,
@@ -508,7 +508,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#admin-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.expandedCats) vm.expandedCats.catalog = true;
                 if (vm.setView) vm.setView('departments_programs');
             }
@@ -519,7 +519,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#admin-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.setView) vm.setView('curriculum');
             }
         }""")
@@ -529,7 +529,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#admin-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.setView) vm.setView('subjects');
             }
         }""")
@@ -549,7 +549,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#admin-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.setView) vm.setView('operators');
             }
         }""")
@@ -623,7 +623,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""([course, nstp]) => {
             const appElem = document.querySelector('#enrollment-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 vm.form.studentType = 'FRESHMAN';
                 vm.selectedCollege = 'COIT';
                 vm.form.courseCode = course;
@@ -639,7 +639,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""([fName, mName, lName, email, phone, bDate, gender, addr]) => {
             const appElem = document.querySelector('#enrollment-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 vm.form.firstName = fName;
                 vm.form.middleName = mName;
                 vm.form.lastName = lName;
@@ -659,7 +659,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""([track]) => {
             const appElem = document.querySelector('#enrollment-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 vm.form.elementarySchool = 'GNCP Elementary School';
                 vm.form.juniorHighSchool = 'GNCP Junior High School';
                 vm.form.seniorHighSchool = 'GNCP Senior High School';
@@ -675,7 +675,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""([ePhone]) => {
             const appElem = document.querySelector('#enrollment-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 vm.form.healthStatus = 'GOOD';
                 vm.form.fitnessParticipation = true;
                 vm.form.emergencyContactName = 'Maria Dela Cruz';
@@ -691,7 +691,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#enrollment-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 vm.form.paymentMode = 'CASH';
                 if (vm.nextStep) vm.nextStep();
             }
@@ -704,7 +704,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#enrollment-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.nextStep) vm.nextStep();
             }
         }""")
@@ -717,7 +717,7 @@ class PlaywrightTestRunner:
             extracted_info = self.page.evaluate("""() => {
                 const appElem = document.querySelector('#enrollment-app') || document.querySelector('#app');
                 if (appElem && appElem.__vue_app__) {
-                    const vm = appElem.__vue_app__._instance.proxy;
+                    const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                     if (vm.tempAccount && (vm.tempAccount.tempStudentId || vm.tempAccount.referenceNumber)) {
                         return {
                             id: vm.tempAccount.tempStudentId || vm.tempAccount.referenceNumber,
@@ -808,7 +808,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""(targetRef) => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 const student = vm.students.find(s => s.referenceNumber === targetRef || s.id === targetRef);
                 if (student && vm.openReview) {
                     vm.openReview(student);
@@ -824,7 +824,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.selectedStudent) {
                     vm.selectedStudent.status = 'VERIFIED';
                     if (vm.approveApplication) {
@@ -885,7 +885,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.setView) vm.setView('queue');
             }
         }""")
@@ -895,7 +895,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""(targetRef) => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 const student = vm.students.find(s => s.referenceNumber === targetRef || s.id === targetRef);
                 if (student && vm.openReview) {
                     vm.openReview(student);
@@ -908,7 +908,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""(secCode) => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.selectedStudent) {
                     vm.selectedStudent.nstp = 'ROTC';
                     vm.selectedStudent.tlcNotes = `Advised regular curriculum block for section ${secCode}. Units confirmed.`;
@@ -949,7 +949,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""(targetRef) => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 const student = vm.students.find(s => s.referenceNumber === targetRef || s.id === targetRef);
                 if (student && vm.openReview) {
                     vm.openReview(student);
@@ -963,7 +963,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""(notes) => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.selectedStudent) {
                     vm.selectedStudent.status = 'fit';
                     vm.selectedStudent.physicalExam = 'fit';
@@ -1008,7 +1008,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""(targetRef) => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 const student = vm.students.find(s => s.referenceNumber === targetRef || s.id === targetRef);
                 if (student && vm.openProcess) {
                     vm.openProcess(student);
@@ -1021,7 +1021,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.selectedStudent) {
                     const bal = parseFloat(vm.selectedStudent.payment.balance) || 20000;
                     vm.selectedStudent.payment.paymentType = 'Cash';
@@ -1065,7 +1065,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""(targetRef) => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 const student = vm.studentsList.find(s => s.referenceNumber === targetRef || s.id === targetRef);
                 if (student && vm.openReview) {
                     vm.openReview(student);
@@ -1078,7 +1078,7 @@ class PlaywrightTestRunner:
         captured_creds = self.page.evaluate("""() => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 return {
                     student_id: vm.generatedStudentId || '',
                     email: vm.generatedEmail || '',
@@ -1092,7 +1092,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.finalizeEnrollment) {
                     vm.finalizeEnrollment();
                 }
@@ -1215,7 +1215,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#admin-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.setView) vm.setView('student_accounts');
             }
         }""")
@@ -1238,7 +1238,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#admin-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.setView) vm.setView('profile');
             }
         }""")
@@ -1255,7 +1255,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#admin-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.setView) vm.setView('dashboard');
                 if (vm.chartViewMode) vm.chartViewMode = 'spline';
             }
@@ -1273,7 +1273,7 @@ class PlaywrightTestRunner:
         self.page.evaluate("""() => {
             const appElem = document.querySelector('#admin-app') || document.querySelector('#app');
             if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
                 if (vm.handleLogout) {
                     vm.handleLogout();
                 }

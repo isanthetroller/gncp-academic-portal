@@ -7,7 +7,7 @@
 * **XAMPP Status:** Active (`mysqld.exe` & `httpd.exe` running)
 * **Browser Engine:** Chromium (Playwright Sync Engine)
 * **Playwright Suite Status:** `PASS` (48/48 tests passed)
-* **Timestamp:** `2026-09-12 16:03:49`
+* **Timestamp:** `2026-09-14 23:02:23`
 
 ---
 
@@ -32,7 +32,7 @@
 * `CASHIER` (`cashier`) — Verified
 * `IT_CENTER` (`it_officer`) — Verified
 * `SUPER_ADMIN` / `ADMIN` (`admin`) — Verified
-* `STUDENT` (`GNCP-2026-22201`) — Verified
+* `STUDENT` (`GNCP-2026-27429`) — Verified
 
 ---
 
@@ -114,23 +114,23 @@
 | RBAC | Role Authentication: ADMIN | **PASSED** | User 'admin' authenticated. Loaded destination 'admin'. |
 | Auth | Logout & Protected Route Guard | **PASSED** | Session cleared. Direct access to /admin/index.php redirected to login. |
 | 5-Layer Trace | Pipeline Consistency Check | **PASSED** | All 5 layers (Database, Backend, API, Frontend State, UI DOM) match 100% without data loss or mapping errors. |
-| CRUD | Announcement CREATE | **PASSED** | Created announcement ID #35 in DB and UI. |
-| CRUD | Announcement READ | **PASSED** | Announcement #35 verified rendered in Admin UI. |
-| CRUD | Announcement UPDATE | **PASSED** | Updated title to 'TEST_E2E_ANNOUNCEMENT_22201_UPDATED'. Persisted in DB & UI across reload. |
-| CRUD | Announcement DELETE | **PASSED** | Announcement #35 successfully deleted from MariaDB and UI. |
-| CRUD | Academic Milestone CREATE | **PASSED** | Created milestone #19 ('TEST_E2E_MILESTONE_22201') in MariaDB. |
-| CRUD | Academic Milestone DELETE | **PASSED** | Deleted milestone #19 successfully. |
+| CRUD | Announcement CREATE | **PASSED** | Created announcement ID #37 in DB and UI. |
+| CRUD | Announcement READ | **PASSED** | Announcement #37 verified rendered in Admin UI. |
+| CRUD | Announcement UPDATE | **PASSED** | Updated title to 'TEST_E2E_ANNOUNCEMENT_27429_UPDATED'. Persisted in DB & UI across reload. |
+| CRUD | Announcement DELETE | **PASSED** | Announcement #37 successfully deleted from MariaDB and UI. |
+| CRUD | Academic Milestone CREATE | **PASSED** | Created milestone #21 ('TEST_E2E_MILESTONE_27429') in MariaDB. |
+| CRUD | Academic Milestone DELETE | **PASSED** | Deleted milestone #21 successfully. |
 | Table | Empty State Handling | **PASSED** | Searching for nonexistent student showed empty state (0 matching rows). |
-| Table | Search Clear & Full Restoration | **PASSED** | Restored 15 rows upon clearing search query. |
+| Table | Search Clear & Full Restoration | **PASSED** | Restored 33 rows upon clearing search query. |
 | Table | Interactive Column Sorting | **PASSED** | Verified interactive sorting logic without runtime exceptions. |
-| Lifecycle | 1. Online Pre-Registration Form | **PASSED** | Candidate registered. Ref: GNCP-2026-158936 | PIN: 272547 | MariaDB status: PRE_REGISTERED |
-| Lifecycle | 2. Public Application Tracker | **PASSED** | Tracker rendered roadmap for applicant GNCP-2026-158936. |
+| Lifecycle | 1. Online Pre-Registration Form | **PASSED** | Candidate registered. Ref: GNCP-2026-185803 | PIN: 482048 | MariaDB status: PRE_REGISTERED |
+| Lifecycle | 2. Public Application Tracker | **PASSED** | Tracker rendered roadmap for applicant GNCP-2026-185803. |
 | Lifecycle | 3. Registrar Verification | **PASSED** | Applicant verified by Registrar. Status updated to 'VERIFIED'. |
 | Lifecycle | 4. TLC Helpdesk Advising | **PASSED** | Applicant advised into Section 'BSIT 1-A' with ROTC. Status updated to 'ADVISED'. |
 | Lifecycle | 5. Medical Clinic Clearance | **PASSED** | Doctor clearance issued. Status updated to 'MEDICAL_CLEARED'. |
 | Lifecycle | 6. Cashier Payment & Tuition Verification | **PASSED** | Tuition calculation verified (₱18,300.00). Full payment recorded. Status updated to 'PAID'. |
-| Lifecycle | 7. IT Center Account Promotion | **PASSED** | Student promoted to MariaDB 'students' directory. Permanent ID: GNCP-2026-22201 |
-| Lifecycle | 8. Student Portal Self-Service Dashboard | **PASSED** | Student GNCP-2026-22201 successfully authenticated to Student Portal. COR and Ledger verified. |
+| Lifecycle | 7. IT Center Account Promotion | **PASSED** | Student promoted to MariaDB 'students' directory. Permanent ID: GNCP-2026-27429 |
+| Lifecycle | 8. Student Portal Self-Service Dashboard | **PASSED** | Student GNCP-2026-27429 successfully authenticated to Student Portal. COR and Ledger verified. |
 | Responsive | Viewport Regression: Desktop (1440x900) | **PASSED** | Rendered without UI clipping or horizontal overflow on Desktop (1440x900). |
 | Responsive | Viewport Regression: Tablet (768x1024) | **PASSED** | Rendered without UI clipping or horizontal overflow on Tablet (768x1024). |
 | Responsive | Viewport Regression: Mobile (375x812) | **PASSED** | Rendered without UI clipping or horizontal overflow on Mobile (375x812). |

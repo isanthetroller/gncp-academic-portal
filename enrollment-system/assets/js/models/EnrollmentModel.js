@@ -140,22 +140,83 @@
                 ];
             }
         },
+        _curriculumFeeMap: null,
+        setCurriculumFeeMap(map) {
+            this._curriculumFeeMap = map;
+        },
+        getCurriculumFeeMap() {
+            return this._curriculumFeeMap;
+        },
+        getFallbackCurriculumFees(courseCode, yearLevel) {
+            const course = (courseCode || 'BSIT').toUpperCase();
+            const yl = yearLevel || '1st Year';
+            const standardFees = {
+                'BSIT': {
+                    '1st Year': { totalUnits: 20, subjectsCount: 7, tuitionRate: 650, tuitionFee: 13000, totalLabFee: 3000, labSubjectsCount: 2, miscFee: 2300, cashTotal: 18300, installmentTotal: 19764 },
+                    '2nd Year': { totalUnits: 17, subjectsCount: 6, tuitionRate: 650, tuitionFee: 11050, totalLabFee: 4500, labSubjectsCount: 3, miscFee: 2300, cashTotal: 17850, installmentTotal: 19278 },
+                    '3rd Year': { totalUnits: 15, subjectsCount: 5, tuitionRate: 650, tuitionFee: 9750,  totalLabFee: 3000, labSubjectsCount: 2, miscFee: 2300, cashTotal: 15050, installmentTotal: 16254 },
+                    '4th Year': { totalUnits: 12, subjectsCount: 4, tuitionRate: 650, tuitionFee: 7800,  totalLabFee: 1500, labSubjectsCount: 1, miscFee: 2300, cashTotal: 11600, installmentTotal: 12528 }
+                },
+                'BSCS': {
+                    '1st Year': { totalUnits: 20, subjectsCount: 7, tuitionRate: 650, tuitionFee: 13000, totalLabFee: 3000, labSubjectsCount: 2, miscFee: 2300, cashTotal: 18300, installmentTotal: 19764 },
+                    '2nd Year': { totalUnits: 17, subjectsCount: 6, tuitionRate: 650, tuitionFee: 11050, totalLabFee: 3000, labSubjectsCount: 2, miscFee: 2300, cashTotal: 16350, installmentTotal: 17658 },
+                    '3rd Year': { totalUnits: 18, subjectsCount: 6, tuitionRate: 650, tuitionFee: 11700, totalLabFee: 3000, labSubjectsCount: 2, miscFee: 2300, cashTotal: 17000, installmentTotal: 18360 },
+                    '4th Year': { totalUnits: 12, subjectsCount: 4, tuitionRate: 650, tuitionFee: 7800,  totalLabFee: 0,    labSubjectsCount: 0, miscFee: 2300, cashTotal: 10100, installmentTotal: 10908 }
+                },
+                'BSCPE': {
+                    '1st Year': { totalUnits: 20, subjectsCount: 7, tuitionRate: 650, tuitionFee: 13000, totalLabFee: 3000, labSubjectsCount: 2, miscFee: 2300, cashTotal: 18300, installmentTotal: 19764 },
+                    '2nd Year': { totalUnits: 18, subjectsCount: 6, tuitionRate: 650, tuitionFee: 11700, totalLabFee: 4500, labSubjectsCount: 3, miscFee: 2300, cashTotal: 18500, installmentTotal: 19980 },
+                    '3rd Year': { totalUnits: 18, subjectsCount: 6, tuitionRate: 650, tuitionFee: 11700, totalLabFee: 4500, labSubjectsCount: 3, miscFee: 2300, cashTotal: 18500, installmentTotal: 19980 },
+                    '4th Year': { totalUnits: 12, subjectsCount: 4, tuitionRate: 650, tuitionFee: 7800,  totalLabFee: 1500, labSubjectsCount: 1, miscFee: 2300, cashTotal: 11600, installmentTotal: 12528 }
+                },
+                'BSBA': {
+                    '1st Year': { totalUnits: 3, subjectsCount: 1, tuitionRate: 650, tuitionFee: 1950, totalLabFee: 0, labSubjectsCount: 0, miscFee: 2300, cashTotal: 4250, installmentTotal: 4590 }
+                },
+                'BSN': {
+                    '1st Year': { totalUnits: 4, subjectsCount: 1, tuitionRate: 650, tuitionFee: 2600, totalLabFee: 2000, labSubjectsCount: 1, miscFee: 2300, cashTotal: 6900, installmentTotal: 7452 }
+                }
+            };
+            if (standardFees[course] && standardFees[course][yl]) {
+                return standardFees[course][yl];
+            }
+            if (standardFees[course] && standardFees[course]['1st Year']) {
+                return standardFees[course]['1st Year'];
+            }
+            return standardFees['BSIT']['1st Year'];
+        },
         calculateFees(form) {
-            const tuition = 21 * 1200; 
-            const misc = 8500;         
+            const course = form.courseCode || 'BSIT';
+            const yearLevel = form.yearLevelApplied || (form.studentType === 'RETURNING' ? (form.returningStudentData?.year_level || '1st Year') : '1st Year');
+            
+            let currData = null;
+            if (this._curriculumFeeMap && this._curriculumFeeMap[course] && this._curriculumFeeMap[course][yearLevel]) {
+                currData = this._curriculumFeeMap[course][yearLevel];
+            } else if (this._curriculumFeeMap && this._curriculumFeeMap[course] && this._curriculumFeeMap[course]['1st Year']) {
+                currData = this._curriculumFeeMap[course]['1st Year'];
+            } else {
+                currData = this.getFallbackCurriculumFees(course, yearLevel);
+            }
+
+            const tuition = currData.tuitionFee;
+            const labFees = currData.totalLabFee;
+            const misc = currData.miscFee;
+            const baseSemesterCost = currData.cashTotal;
+
             let discount = 0;
             if (form.scholarship === 'HONOR') discount = tuition * 0.20;
             else if (form.scholarship === 'ATHLETIC') discount = tuition * 0.15;
             else if (form.scholarship === 'FINANCIAL') discount = tuition * 0.10;
+
             let cashDiscount = 0;
             if (form.paymentMode === 'CASH') {
-                const subtotal = tuition + misc - discount;
+                const subtotal = tuition + labFees + misc - discount;
                 cashDiscount = subtotal * 0.05;
             }
-            const total = tuition + misc - discount - cashDiscount;
+
+            const total = tuition + labFees + misc - discount - cashDiscount;
             let downpayment = total;
             if (form.paymentMode !== 'CASH') {
-                downpayment = total * 0.30;
+                downpayment = Math.round(total * 0.30);
             }
             let installmentAmount = 0;
             if (form.paymentMode !== 'CASH') {
@@ -163,9 +224,16 @@
                 if (form.paymentMode === 'SEMI') installmentAmount = remaining / 2;
                 else if (form.paymentMode === 'QUAD') installmentAmount = remaining / 3;
             }
+
             return {
+                totalUnits: currData.totalUnits,
+                subjectsCount: currData.subjectsCount,
+                tuitionRate: currData.tuitionRate,
                 tuition,
+                labFees,
+                labSubjectCount: currData.labSubjectsCount,
                 misc,
+                overallSemesterCost: baseSemesterCost,
                 discount,
                 cashDiscount,
                 total,

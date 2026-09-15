@@ -70,6 +70,9 @@ function verifyCsrfOrigin(): bool {
         $origin = $_SERVER['HTTP_REFERER'];
     }
 
+    $headerCsrf = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? '');
+    $sessionCsrf = $_SESSION['csrf_token'] ?? '';
+
     if (!empty($origin)) {
         $parsed = parse_url($origin);
         $originHost = strtolower($parsed['host'] ?? '');
@@ -86,14 +89,21 @@ function verifyCsrfOrigin(): bool {
             error_log("[CSRF] Blocked cross-origin mutation attempt from: {$originHost} targeting: {$currentHost}");
             return false;
         }
+    } else {
+        // If Origin and Referer are both omitted, require valid CSRF token on web requests
+        $isPureCli = (php_sapi_name() === 'cli' || PHP_SAPI === 'cli') && !isset($_SERVER['REQUEST_METHOD']);
+        if (!$isPureCli) {
+            if (empty($headerCsrf) || empty($sessionCsrf) || !hash_equals($sessionCsrf, $headerCsrf)) {
+                error_log("[CSRF] Blocked mutation with missing Origin/Referer and missing/invalid CSRF token.");
+                return false;
+            }
+        }
     }
 
-    // If explicit X-CSRF-Token header provided, verify against session
-    $headerCsrf = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    // If explicit CSRF token is provided, verify against session
     if (!empty($headerCsrf)) {
-        $sessionCsrf = $_SESSION['csrf_token'] ?? '';
         if (empty($sessionCsrf) || !hash_equals($sessionCsrf, $headerCsrf)) {
-            error_log("[CSRF] Invalid X-CSRF-Token header received.");
+            error_log("[CSRF] Invalid CSRF token received.");
             return false;
         }
     }

@@ -253,7 +253,7 @@ class StudentController {
             }
 
             $appBase = (isset($_SERVER['SCRIPT_NAME']) && preg_match('#^/([^/]+)#', $_SERVER['SCRIPT_NAME'], $m)) ? '/' . $m[1] : '';
-            $softCopyUrl = "{$appBase}/uploads/documents/{$targetName}";
+            $softCopyUrl = "{$appBase}/api/index.php?action=student/download_document&file={$targetName}";
             $fileSize = strlen($binaryData);
             $fileType = 'application/pdf';
             if (empty($fileName)) {
@@ -310,7 +310,7 @@ class StudentController {
             }
 
             $appBase = (isset($_SERVER['SCRIPT_NAME']) && preg_match('#^/([^/]+)#', $_SERVER['SCRIPT_NAME'], $m)) ? '/' . $m[1] : '';
-            $softCopyUrl = "{$appBase}/uploads/documents/{$targetName}";
+            $softCopyUrl = "{$appBase}/api/index.php?action=student/download_document&file={$targetName}";
             $fileName = basename($file['name']);
             $fileType = 'application/pdf';
             $fileSize = $file['size'];
@@ -387,5 +387,74 @@ class StudentController {
             }
             return ['success' => false, 'message' => $e->getMessage(), 'code' => 500];
         }
+    }
+
+    /**
+     * Authenticated Document Streaming Proxy
+     * Streams uploaded student documents with session authorization & path traversal protection.
+     */
+    public function downloadDocument() {
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+
+        $isStaff = !empty($_SESSION['gncp_admin_user']) || !empty($_SESSION['gncp_station_user']);
+        $isStudent = !empty($_SESSION['gncp_portal_student']);
+
+        // Check optional PIN authentication for public applicant tracking view
+        $hasPinAuth = false;
+        $ref = trim($_GET['ref'] ?? '');
+        $pin = trim($_GET['pin'] ?? '');
+        if (!empty($ref) && !empty($pin) && preg_match('/^\d{6}$/', $pin)) {
+            $applicant = $this->studentModel->findApplicantByRef($ref);
+            if ($applicant && !empty($applicant['security_pin'])) {
+                if (password_verify($pin, $applicant['security_pin']) || $pin === $applicant['security_pin']) {
+                    $hasPinAuth = true;
+                }
+            }
+        }
+
+        if (!$isStaff && !$isStudent && !$hasPinAuth) {
+            http_response_code(401);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Authentication required to view or download admission documents.', 'code' => 401]);
+            exit;
+        }
+
+        $requestedFile = trim($_GET['file'] ?? ($_GET['path'] ?? ''));
+        $filename = basename($requestedFile);
+
+        if (empty($filename) || !preg_match('/^[a-zA-Z0-9_\.-]+\.pdf$/i', $filename)) {
+            http_response_code(400);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Invalid or missing document filename.', 'code' => 400]);
+            exit;
+        }
+
+        $uploadDir = realpath(__DIR__ . '/../../uploads/documents');
+        if (!$uploadDir || !is_dir($uploadDir)) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Upload directory unavailable.', 'code' => 500]);
+            exit;
+        }
+
+        $filePath = realpath($uploadDir . DIRECTORY_SEPARATOR . $filename);
+        if ($filePath === false || !str_starts_with($filePath, $uploadDir) || !is_file($filePath)) {
+            http_response_code(404);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Requested document not found on server.', 'code' => 404]);
+            exit;
+        }
+
+        // Send streaming headers
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($filePath));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, max-age=0, must-revalidate');
+        header('Pragma: public');
+        readfile($filePath);
+        exit;
     }
 }

@@ -58,16 +58,6 @@ class StudentPortalService {
 
         $isValid = password_verify($password, $student['password']);
 
-        // One-time legacy migration fallback for unhashed passwords
-        if (!$isValid && !empty($student['password']) && substr($student['password'], 0, 4) !== '$2y$') {
-            if ($password === $student['password']) {
-                $isValid = true;
-                $rehashed = password_hash($password, PASSWORD_DEFAULT);
-                $pdo->prepare("UPDATE `students` SET `password` = :pwd WHERE `id` = :id")
-                    ->execute(['pwd' => $rehashed, 'id' => $student['id']]);
-            }
-        }
-
         if (!$isValid) {
             recordLoginFailure('student_login', $studentId, 10, 300);
             return ['success' => false, 'message' => 'Invalid Student ID or password.', 'code' => 401];
@@ -94,10 +84,13 @@ class StudentPortalService {
         $mustChange = (bool)($student['must_change_password'] ?? false);
 
         initSession();
+        $csrfToken = '';
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_regenerate_id(true);
             $_SESSION = [];
             $_SESSION['last_activity'] = time();
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+            $csrfToken = $_SESSION['csrf_token'];
             $_SESSION['gncp_student'] = [
                 'id'                   => $student['id'],
                 'name'                 => $student['name'],
@@ -117,7 +110,8 @@ class StudentPortalService {
                 'program'              => $student['program'],
                 'email'                => $student['email'],
                 'photo'                => $student['photo'],
-                'must_change_password' => $mustChange
+                'must_change_password' => $mustChange,
+                'csrf_token'           => $csrfToken
             ],
             'message' => 'Student authenticated successfully.'
         ];

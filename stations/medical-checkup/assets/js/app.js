@@ -127,9 +127,8 @@ window.app = createApp({
             for (let i = 0; i < students.value.length; i++) {
                 const student = students.value[i];
                 const stepStatus = getMedicalStepStatus(student);
-
-                // Active queue strictly excludes completed students
-                if (stepStatus === 'COMPLETED') continue;
+                const isCompleted = (stepStatus === 'COMPLETED');
+                const isConditional = (student.status === 'conditional' || student.status === 'unfit' || stepStatus === 'FLAGGED');
                 
                 // Matches query
                 let matchesQuery = true;
@@ -142,9 +141,13 @@ window.app = createApp({
 
                 // Matches filter
                 let matchesFilter = false;
-                if (activeFilter.value === 'All' || activeFilter.value === 'Pending') {
+                if (activeFilter.value === 'All') {
                     matchesFilter = true;
-                } else if (activeFilter.value === 'Conditional' && (student.status === 'conditional' || student.status === 'unfit' || stepStatus === 'FLAGGED')) {
+                } else if (activeFilter.value === 'Pending' && !isCompleted && !isConditional) {
+                    matchesFilter = true;
+                } else if (activeFilter.value === 'Completed' && isCompleted) {
+                    matchesFilter = true;
+                } else if (activeFilter.value === 'Conditional' && isConditional) {
                     matchesFilter = true;
                 }
 

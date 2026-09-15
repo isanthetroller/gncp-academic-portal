@@ -686,22 +686,22 @@
                                 <tr v-for="sub in corDetails.student.prospectusSubjects" :key="sub.code">
                                     <td class="font-monospace fw-semibold">{{ sub.code }}</td>
                                     <td>{{ sub.title }}</td>
-                                    <td class="text-center font-monospace">{{ corDetails.student.enrollment.sections[sub.code] || 'TBA' }}</td>
+                                    <td class="text-center font-monospace">{{ (corDetails.student.enrollment && corDetails.student.enrollment.sections && corDetails.student.enrollment.sections[sub.code]) ? corDetails.student.enrollment.sections[sub.code] : (corDetails.student.sectionCode || 'TBA') }}</td>
                                     <td class="text-center">{{ parseInt(sub.lecture_units) + parseInt(sub.lab_units) }}</td>
                                     <td>
                                         <!-- Lookup section details -->
-                                        <span v-for="sec in (corDetails.student.availableSections || []).filter(x => x.code === corDetails.student.enrollment.sections[sub.code])" :key="sec.code">
+                                        <span v-for="sec in (corDetails.student.availableSections || []).filter(x => x.code === ((corDetails.student.enrollment && corDetails.student.enrollment.sections) ? corDetails.student.enrollment.sections[sub.code] : corDetails.student.sectionCode))" :key="sec.code">
                                             {{ sec.days }} {{ sec.time }} ({{ sec.room }})
                                         </span>
-                                        <span v-if="(corDetails.student.availableSections || []).filter(x => x.code === corDetails.student.enrollment.sections[sub.code]).length === 0">
+                                        <span v-if="(corDetails.student.availableSections || []).filter(x => x.code === ((corDetails.student.enrollment && corDetails.student.enrollment.sections) ? corDetails.student.enrollment.sections[sub.code] : corDetails.student.sectionCode)).length === 0">
                                             TBA
                                         </span>
                                     </td>
                                     <td>
-                                        <span v-for="sec in (corDetails.student.availableSections || []).filter(x => x.code === corDetails.student.enrollment.sections[sub.code])" :key="sec.code">
+                                        <span v-for="sec in (corDetails.student.availableSections || []).filter(x => x.code === ((corDetails.student.enrollment && corDetails.student.enrollment.sections) ? corDetails.student.enrollment.sections[sub.code] : corDetails.student.sectionCode))" :key="sec.code">
                                             {{ sec.instructor }}
                                         </span>
-                                        <span v-if="(corDetails.student.availableSections || []).filter(x => x.code === corDetails.student.enrollment.sections[sub.code]).length === 0">
+                                        <span v-if="(corDetails.student.availableSections || []).filter(x => x.code === ((corDetails.student.enrollment && corDetails.student.enrollment.sections) ? corDetails.student.enrollment.sections[sub.code] : corDetails.student.sectionCode)).length === 0">
                                             TBA
                                         </span>
                                     </td>
@@ -715,15 +715,15 @@
                     <div class="row g-3 small mb-4" v-if="corDetails && corDetails.student">
                         <div class="col-4">
                             <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Total Assessed Fees</div>
-                            <div class="fw-bold">₱{{ parseFloat(corDetails.student.payment.totalFee).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</div>
+                            <div class="fw-bold">₱{{ (corDetails.student.payment && corDetails.student.payment.totalFee != null) ? parseFloat(corDetails.student.payment.totalFee).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00' }}</div>
                         </div>
                         <div class="col-4">
                             <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Amount Paid</div>
-                            <div class="fw-bold text-success">₱{{ parseFloat(corDetails.student.payment.amountPaid).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</div>
+                            <div class="fw-bold text-success">₱{{ (corDetails.student.payment && corDetails.student.payment.amountPaid != null) ? parseFloat(corDetails.student.payment.amountPaid).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00' }}</div>
                         </div>
                         <div class="col-4">
                             <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Ledger Balance</div>
-                            <div class="fw-bold text-danger" v-if="parseFloat(corDetails.student.payment.balance) > 0">
+                            <div class="fw-bold text-danger" v-if="corDetails.student.payment && parseFloat(corDetails.student.payment.balance || 0) > 0">
                                 ₱{{ parseFloat(corDetails.student.payment.balance).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
                             </div>
                             <div class="fw-bold text-muted" v-else>₱0.00</div>
@@ -731,15 +731,15 @@
                         <div class="col-6">
                             <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Official Receipt Ref / Status</div>
                             <div class="font-monospace text-secondary fw-semibold">
-                                {{ corDetails.student.payment.transactionRef || 'N/A' }} 
-                                <span class="badge ms-2" :class="parseFloat(corDetails.student.payment.balance) === 0 ? 'bg-success' : 'bg-warning text-dark'">
-                                    {{ parseFloat(corDetails.student.payment.balance) === 0 ? 'Officially Enrolled' : 'Downpayment Cleared' }}
+                                {{ (corDetails.student.payment && corDetails.student.payment.transactionRef) ? corDetails.student.payment.transactionRef : 'N/A' }} 
+                                <span class="badge ms-2" :class="(corDetails.student.payment && parseFloat(corDetails.student.payment.balance || 0) === 0) ? 'bg-success' : 'bg-warning text-dark'">
+                                    {{ (corDetails.student.payment && parseFloat(corDetails.student.payment.balance || 0) === 0) ? 'Officially Enrolled' : 'Downpayment Cleared' }}
                                 </span>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Date Activated / Promoted</div>
-                            <div class="fw-bold">{{ corDetails.student.enrollment.dateActivated }}</div>
+                            <div class="fw-bold">{{ (corDetails.student.enrollment && corDetails.student.enrollment.dateActivated) ? corDetails.student.enrollment.dateActivated : (corDetails.student.enrolledAt || 'N/A') }}</div>
                         </div>
                     </div>
 

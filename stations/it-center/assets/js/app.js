@@ -333,9 +333,6 @@
                 for (let i = 0; i < studentsList.value.length; i++) {
                     const s = studentsList.value[i];
                     const isCompleted = getItStepStatus(s) === 'COMPLETED';
-
-                    // Active activation queue strictly excludes already activated/promoted accounts
-                    if (isCompleted) continue;
                     
                     let matchesQuery = true;
                     if (query) {
@@ -345,7 +342,11 @@
                     }
 
                     let matchesFilter = false;
-                    if (activeFilter.value === 'All' || activeFilter.value === 'Pending') {
+                    if (activeFilter.value === 'All') {
+                        matchesFilter = true;
+                    } else if (activeFilter.value === 'Pending' && !isCompleted) {
+                        matchesFilter = true;
+                    } else if (activeFilter.value === 'Completed' && isCompleted) {
                         matchesFilter = true;
                     }
 

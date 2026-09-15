@@ -307,6 +307,18 @@ window.StudentPortalController = {
             }
         };
 
+        const getDocDownloadUrl = (url) => {
+            if (!url) return '';
+            if (url.includes('action=student/download_document') || url.includes('action=students/download-document')) {
+                return url;
+            }
+            if (url.includes('uploads/documents/')) {
+                const cleanName = url.split('uploads/documents/').pop().split('?')[0];
+                return '/systemtest/api/index.php?action=student/download_document&file=' + encodeURIComponent(cleanName);
+            }
+            return url;
+        };
+
         const openDocPreview = (doc) => {
             if (!doc || !doc.softCopyUrl) {
                 if (typeof Swal !== 'undefined') {
@@ -320,11 +332,12 @@ window.StudentPortalController = {
                 return;
             }
 
+            const docUrl = getDocDownloadUrl(doc.softCopyUrl);
             previewDocModal.show = true;
             previewDocModal.title = doc.title;
-            previewDocModal.url = doc.softCopyUrl;
+            previewDocModal.url = docUrl;
             previewDocModal.fileName = doc.fileName || 'document';
-            previewDocModal.fileType = doc.fileType || (doc.softCopyUrl.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+            previewDocModal.fileType = doc.fileType || (docUrl.toLowerCase().includes('.pdf') ? 'application/pdf' : 'image/jpeg');
             previewDocModal.zoom = 100;
             previewDocModal.rotation = 0;
         };
@@ -352,7 +365,7 @@ window.StudentPortalController = {
         const downloadDoc = (doc) => {
             if (!doc || !doc.softCopyUrl) return;
             const a = document.createElement('a');
-            a.href = doc.softCopyUrl;
+            a.href = getDocDownloadUrl(doc.softCopyUrl);
             a.download = doc.fileName || (doc.key + '.pdf');
             document.body.appendChild(a);
             a.click();

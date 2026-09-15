@@ -19,10 +19,9 @@ if ($adminSess) {
     }
 }
 
-$isInstalled = (!empty($currentConfig) && !empty($currentConfig['host']) && !empty($currentConfig['db']));
-if (php_sapi_name() !== 'cli' && $isInstalled && !$isSuperAdmin) {
+if (php_sapi_name() !== 'cli' && !$isSuperAdmin) {
     http_response_code(403);
-    die("<!DOCTYPE html><html><head><title>403 Forbidden</title><style>body{background:#0b1512;color:#fff;font-family:sans-serif;text-align:center;padding:60px;}a{color:#D4AF37;text-decoration:none;font-weight:bold;}</style></head><body><h1>403 Forbidden</h1><p>Database is already provisioned and locked. Modifying database settings requires an active Super Administrator session.</p><p><a href='../admin/'>Go to Super Admin Portal</a></p></body></html>");
+    die("<!DOCTYPE html><html><head><title>403 Forbidden</title><style>body{background:#0b1512;color:#fff;font-family:sans-serif;text-align:center;padding:60px;}a{color:#D4AF37;text-decoration:none;font-weight:bold;}</style></head><body><h1>403 Forbidden</h1><p>Running the database installer requires an active Super Administrator session.</p><p><a href='../admin/'>Go to Super Admin Portal</a></p></body></html>");
 }
 
 $statusMsg = '';

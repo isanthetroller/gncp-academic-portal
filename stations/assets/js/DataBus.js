@@ -19,9 +19,9 @@ class StationDataBus {
     static getApiUrl(action) {
         let basePath = '';
         if (typeof window !== 'undefined' && window.location && window.location.pathname) {
-            const m = window.location.pathname.match(/^\/([^\/]+)/);
-            if (m && ['systemtest', 'systemtest-hardened', 'gncp-hardened', 'systemforsia'].includes(m[1].toLowerCase())) {
-                basePath = '/' + m[1];
+            const pathParts = window.location.pathname.split('/').filter(Boolean);
+            if (pathParts.length > 0 && !['api', 'stations', 'registrar', 'admin', 'student-portal', 'enrollment-system', 'shared', 'tests'].includes(pathParts[0].toLowerCase())) {
+                basePath = '/' + pathParts[0];
             }
         }
         return `${basePath}/api/index.php?action=${action}`;
@@ -38,10 +38,23 @@ class StationDataBus {
         return this._memoryQueue || [];
     }
 
+    static _sanitizeForStorage(queue) {
+        if (!Array.isArray(queue)) return [];
+        return queue.map(s => {
+            if (!s || typeof s !== 'object') return s;
+            const sanitized = { ...s };
+            delete sanitized.password;
+            delete sanitized.security_pin;
+            delete sanitized.active_session_token;
+            return sanitized;
+        });
+    }
+
     static saveQueue(queue) {
         this._memoryQueue = queue;
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+            const safeData = this._sanitizeForStorage(queue);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(safeData));
         } catch (e) {
             console.warn('[DataBus] LocalStorage write failed (quota exceeded or storage disabled); retained in memory:', e);
         }
@@ -170,13 +183,20 @@ class StationDataBus {
                 updateData = studentData;
             }
 
+            const headers = { 'Content-Type': 'application/json' };
+            const csrfToken = window.csrfToken || sessionStorage.getItem('gncp_csrf_token') || '';
+            if (csrfToken) {
+                headers['X-CSRF-Token'] = csrfToken;
+            }
+
             const response = await fetch(this.getApiUrl('stations/update'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 credentials: 'same-origin',
                 body: JSON.stringify({
                     referenceNumber: refNo,
-                    updateData: updateData
+                    updateData: updateData,
+                    csrf_token: csrfToken || undefined
                 })
             });
             if (response.ok) {

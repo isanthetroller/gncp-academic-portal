@@ -116,7 +116,7 @@ Options -Indexes
     </FilesMatch>
 
     # Protect sensitive files from direct download
-    <FilesMatch "(\.(sql|log|git|env|md|jsonl|ini|conf|bak|sh|bat|credentials)|composer\.(json|lock)|package\.(json|lock)|database\.php|mail\.php|db_config\.php|mail\.local\.php|.*\.local\.php)$">
+    <FilesMatch "(^\.env|\.(sql|log|git|env|md|jsonl|ini|conf|bak|sh|bat|credentials)|composer\.(json|lock)|package\.(json|lock)|database\.php|mail\.php|db_config\.php|mail\.local\.php|.*\.local\.php)$">
         <IfModule mod_authz_core.c>
             Require all denied
         </IfModule>

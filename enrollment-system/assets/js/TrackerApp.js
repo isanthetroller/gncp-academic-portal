@@ -5,7 +5,7 @@
     const computed = Vue.computed;
     const onMounted = Vue.onMounted;
     const onUnmounted = Vue.onUnmounted;
-    createApp({
+    const app = createApp({
         setup() {
             const currentView = ref('LOGIN'); 
             const isLoading = ref(false);
@@ -168,6 +168,11 @@
                     }
                 }
             };
+            const formatPrice = (amount) => {
+                const val = parseFloat(amount);
+                if (isNaN(val)) return '0.00';
+                return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            };
             return {
                 currentView,
                 isLoading,
@@ -185,9 +190,11 @@
                 nextPendingStep,
                 getStudentTypeLabel,
                 formatDate,
+                formatPrice,
                 copyToClipboard,
                 currentUrl: window.location.href
             };
         }
-    }).mount('#tracker-app');
+    });
+    window.trackerVm = app.mount('#tracker-app');
 })();

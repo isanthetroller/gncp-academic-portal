@@ -38,10 +38,12 @@ $dbConnected = false;
 $dbError = null;
 $pdo = null;
 
-$host = 'localhost';
-$dbName = 'gncp_portal';
-$dbUser = 'root';
-$dbPass = '';
+require_once __DIR__ . '/shared/backend/config/env.php';
+
+$host = env('DB_HOST', '127.0.0.1');
+$dbName = env('DB_NAME', 'gncp_portal');
+$dbUser = env('DB_USER', 'root');
+$dbPass = env('DB_PASS', '');
 $charset = 'utf8mb4';
 
 try {

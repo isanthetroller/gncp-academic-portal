@@ -42,7 +42,7 @@ CREDENTIALS = {
 # Target UI Page Endpoints
 PAGES = {
     "GATEWAY":              f"{BASE_URL}/index.html",
-    "LOGIN":                f"{BASE_URL}/shared/login.html",
+    "LOGIN":                f"{BASE_URL}/index.html",
     "REGISTRATION":         f"{BASE_URL}/enrollment-system/index.html",
     "TRACKER":              f"{BASE_URL}/enrollment-system/tracker.html",
     "REGISTRAR":            f"{BASE_URL}/registrar/index.html",

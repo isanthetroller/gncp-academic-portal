@@ -428,7 +428,7 @@ class E2EStudentLifecycleSuite:
 
         row = self.page.locator(f"tr:has-text('{self.ref_no}'), tr:has-text('{self.last_name}')").first
         if row.is_visible():
-            row.locator("button:has-text('Process Setup'), button:has-text('View Details')").first.click()
+            row.locator("button:has-text('Process Setup'), button:has-text('View Details'), button:has-text('Process')").first.click()
             time.sleep(1.5)
 
             promote_btn = self.page.locator("button:has-text('Finalize & Activate Account'), button:has-text('Activate Account')").first

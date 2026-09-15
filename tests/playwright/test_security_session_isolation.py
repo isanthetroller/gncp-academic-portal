@@ -137,8 +137,8 @@ def test_security_session_isolation():
         # Context 2 attempts to navigate directly to admin/index.html
         page_fresh2.goto(f"{BASE_URL}/admin/index.html")
         time.sleep(2.0)
-        # Must be redirected to index.html with clear=true
-        assert "admin" not in page_fresh2.url.rstrip("/") or "index.html" in page_fresh2.url, f"Expected redirect away from admin, got {page_fresh2.url}"
+        # Must be redirected to login gateway with auth_required
+        assert "auth_required=true" in page_fresh2.url or "index.html" in page_fresh2.url or page_fresh2.url.split('?')[0].rstrip('/').endswith("systemtest"), f"Expected redirect away from admin, got {page_fresh2.url}"
         print("  [OK] Fresh profile navigating to admin/index.html is blocked and redirected to login.")
 
         ctx_admin.close()

@@ -2198,6 +2198,16 @@
                                     </div>
 
                                     <div class="quick-hub-card">
+                                        <div class="quick-hub-icon" style="background: #f0fdf4; color: #166534;">
+                                            <i class="fa-solid fa-receipt"></i>
+                                        </div>
+                                        <div>
+                                            <div class="quick-hub-val font-monospace">₱ {{ formatCurrency(corData ? (corData.totalFee || corData.cashTotal) : (payment ? payment.totalFee : 18300)) }}</div>
+                                            <div class="quick-hub-lbl">Overall Semester Fee</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="quick-hub-card">
                                         <div class="quick-hub-icon" :style="isOfficeOpen ? 'background: #f0fdf4; color: #16a34a;' : 'background: #f3f4f6; color: #6b7280;'">
                                             <i class="fa-solid fa-clock"></i>
                                         </div>
@@ -2570,8 +2580,8 @@
                                 </div>
                                 <div class="row g-2 text-center text-md-start" style="margin: 0;">
                                     <div class="col-6 col-md-3" style="padding: 2px 6px;">
-                                        <span class="cor-label">Total Assessed Fees</span>
-                                        <span class="cor-val font-monospace" style="font-size: 11.5px;">₱ {{ formatCurrency(corData ? (corData.totalFee || corData.cashTotal) : (payment ? payment.totalFee : 0)) }}</span>
+                                        <span class="cor-label">Overall Semester Assessment</span>
+                                        <span class="cor-val font-monospace" style="font-size: 11.5px;">₱ {{ formatCurrency(corData ? (corData.totalFee || corData.cashTotal) : (payment ? payment.totalFee : 18300)) }}</span>
                                     </div>
                                     <div class="col-6 col-md-3" style="padding: 2px 6px;">
                                         <span class="cor-label">Amount Paid</span>

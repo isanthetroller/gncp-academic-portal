@@ -289,9 +289,8 @@ window.app = createApp({
             const result = [];
             for (let i = 0; i < students.value.length; i++) {
                 const student = students.value[i];
-
-                // Active queue strictly excludes completed students
-                if (student.status === 'COMPLETED') continue;
+                const isCompleted = (student.status === 'COMPLETED');
+                const isFlagged = (student.status === 'FLAGGED');
                 
                 // Matches query
                 let matchesQuery = true;
@@ -304,9 +303,13 @@ window.app = createApp({
 
                 // Matches filter
                 let matchesFilter = false;
-                if (activeFilter.value === 'All' || activeFilter.value === 'Pending') {
+                if (activeFilter.value === 'All') {
                     matchesFilter = true;
-                } else if (activeFilter.value === 'Flagged' && student.status === 'FLAGGED') {
+                } else if (activeFilter.value === 'Pending' && !isCompleted && !isFlagged) {
+                    matchesFilter = true;
+                } else if (activeFilter.value === 'Completed' && isCompleted) {
+                    matchesFilter = true;
+                } else if (activeFilter.value === 'Flagged' && isFlagged) {
                     matchesFilter = true;
                 }
 

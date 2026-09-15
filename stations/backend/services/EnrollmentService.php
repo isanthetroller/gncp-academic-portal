@@ -22,46 +22,56 @@ class EnrollmentService {
         $existingRecord = $checkExist->fetch(PDO::FETCH_ASSOC);
 
         if (!$existingRecord) {
-            // Check permanent students directory
-            $checkStudent = $pdo->prepare("SELECT * FROM `students` WHERE `id` = :r1 OR `temp_reference_no` = :r2");
-            $checkStudent->execute(['r1' => $refNo, 'r2' => $refNo]);
-            $studentInfo = $checkStudent->fetch(PDO::FETCH_ASSOC);
+            // Check permanent students directory with row lock
+            $pdo->beginTransaction();
+            try {
+                $checkStudent = $pdo->prepare("SELECT * FROM `students` WHERE `id` = :r1 OR `temp_reference_no` = :r2 FOR UPDATE");
+                $checkStudent->execute(['r1' => $refNo, 'r2' => $refNo]);
+                $studentInfo = $checkStudent->fetch(PDO::FETCH_ASSOC);
 
-            if ($studentInfo) {
-                $studentSets = [];
-                $studentParams = ['ref1' => $refNo, 'ref2' => $refNo];
+                if ($studentInfo) {
+                    $studentSets = [];
+                    $studentParams = ['ref1' => $refNo, 'ref2' => $refNo];
 
-                if (isset($updateData['roadmap'])) {
-                    $studentSets[] = "`roadmap` = :roadmap";
-                    $studentParams['roadmap'] = json_encode($updateData['roadmap']);
-                }
-                if (isset($updateData['medical'])) {
-                    $studentSets[] = "`medical_data` = :medical_data";
-                    $studentParams['medical_data'] = json_encode($updateData['medical']);
-                }
-                if (isset($updateData['requirements'])) {
-                    $studentSets[] = "`requirements_data` = :requirements_data";
-                    $studentParams['requirements_data'] = json_encode($updateData['requirements']);
-                }
-                if (isset($updateData['payment'])) {
-                    $studentSets[] = "`payment_data` = :payment_data";
-                    $studentParams['payment_data'] = json_encode($updateData['payment']);
-                }
-                if (isset($updateData['helpdesk'])) {
-                    $studentSets[] = "`helpdesk_data` = :helpdesk_data";
-                    $studentParams['helpdesk_data'] = json_encode($updateData['helpdesk']);
-                }
-                if (isset($updateData['enrollment'])) {
-                    $studentSets[] = "`enrollment_data` = :enrollment_data";
-                    $studentParams['enrollment_data'] = json_encode($updateData['enrollment']);
-                }
+                    if (isset($updateData['roadmap'])) {
+                        $studentSets[] = "`roadmap` = :roadmap";
+                        $studentParams['roadmap'] = json_encode($updateData['roadmap']);
+                    }
+                    if (isset($updateData['medical'])) {
+                        $studentSets[] = "`medical_data` = :medical_data";
+                        $studentParams['medical_data'] = json_encode($updateData['medical']);
+                    }
+                    if (isset($updateData['requirements'])) {
+                        $studentSets[] = "`requirements_data` = :requirements_data";
+                        $studentParams['requirements_data'] = json_encode($updateData['requirements']);
+                    }
+                    if (isset($updateData['payment'])) {
+                        $studentSets[] = "`payment_data` = :payment_data";
+                        $studentParams['payment_data'] = json_encode($updateData['payment']);
+                    }
+                    if (isset($updateData['helpdesk'])) {
+                        $studentSets[] = "`helpdesk_data` = :helpdesk_data";
+                        $studentParams['helpdesk_data'] = json_encode($updateData['helpdesk']);
+                    }
+                    if (isset($updateData['enrollment'])) {
+                        $studentSets[] = "`enrollment_data` = :enrollment_data";
+                        $studentParams['enrollment_data'] = json_encode($updateData['enrollment']);
+                    }
 
-                if (!empty($studentSets)) {
-                    $sqlStud = "UPDATE `students` SET " . implode(', ', $studentSets) . " WHERE `temp_reference_no` = :ref1 OR `id` = :ref2";
-                    $stmtStud = $pdo->prepare($sqlStud);
-                    $stmtStud->execute($studentParams);
+                    if (!empty($studentSets)) {
+                        $sqlStud = "UPDATE `students` SET " . implode(', ', $studentSets) . " WHERE `temp_reference_no` = :ref1 OR `id` = :ref2";
+                        $stmtStud = $pdo->prepare($sqlStud);
+                        $stmtStud->execute($studentParams);
+                    }
+                    $pdo->commit();
+                    return ['referenceNumber' => $refNo, 'status' => $studentInfo['status']];
                 }
-                return ['referenceNumber' => $refNo, 'status' => $studentInfo['status']];
+                $pdo->rollBack();
+            } catch (Exception $studEx) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                throw $studEx;
             }
             throw new RuntimeException("Student record not found for: $refNo");
         }

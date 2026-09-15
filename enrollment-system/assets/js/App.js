@@ -5,7 +5,7 @@
     const computed = Vue.computed;
     const watch = Vue.watch;
     const Model = window.EnrollmentModel;
-    createApp({
+    const app = createApp({
         setup() {
             const urlParams = new URLSearchParams(window.location.search);
             const deptParam = urlParams.get('dept') || localStorage.getItem('gncp_selected_dept') || '';
@@ -143,6 +143,9 @@
                                     }
                                 }
                             }
+                            if (res.data.curriculumFeeMap) {
+                                Model.setCurriculumFeeMap(res.data.curriculumFeeMap);
+                            }
                             if (res.data.activePeriod) {
                                 activePeriodInfo.value = res.data.activePeriod;
                             } else {
@@ -273,7 +276,13 @@
                 return Model.calculateFees(form);
             });
             const calcTuition = computed(() => fees.value.tuition);
+            const calcLabFees = computed(() => fees.value.labFees);
+            const calcLabSubjectCount = computed(() => fees.value.labSubjectCount);
+            const calcUnits = computed(() => fees.value.totalUnits);
+            const calcSubjectsCount = computed(() => fees.value.subjectsCount);
+            const calcTuitionRate = computed(() => fees.value.tuitionRate);
             const calcMisc = computed(() => fees.value.misc);
+            const calcOverallSemesterCost = computed(() => fees.value.overallSemesterCost);
             const calcDiscount = computed(() => fees.value.discount);
             const calcCashDiscount = computed(() => fees.value.cashDiscount);
             const calcTotal = computed(() => fees.value.total);
@@ -498,7 +507,13 @@
                 lookupSuccess,
                 toggleCondition,
                 calcTuition,
+                calcLabFees,
+                calcLabSubjectCount,
+                calcUnits,
+                calcSubjectsCount,
+                calcTuitionRate,
                 calcMisc,
+                calcOverallSemesterCost,
                 calcDiscount,
                 calcCashDiscount,
                 calcTotal,
@@ -522,5 +537,7 @@
                 programsLoadError
             };
         }
-    }).mount('#enrollment-app');
+    });
+    window.enrollmentVm = app.mount('#enrollment-app');
+    window.app = window.enrollmentVm;
 })();

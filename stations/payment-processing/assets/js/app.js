@@ -332,9 +332,7 @@ window.app = createApp({
             const result = [];
             for (let i = 0; i < students.value.length; i++) {
                 const student = students.value[i];
-
-                // Active queue strictly excludes paid / completed records
-                if (student.status === 'PAID' || student.status === 'COMPLETED' || Boolean(student.orNumber)) continue;
+                const isPaid = (student.status === 'PAID' || student.status === 'COMPLETED' || Boolean(student.orNumber));
 
                 let matchesQuery = true;
                 if (query) {
@@ -347,12 +345,16 @@ window.app = createApp({
                 }
 
                 let matchesFilter = false;
-                if (activeFilter.value === 'All' || activeFilter.value === 'PENDING') {
+                if (activeFilter.value === 'All') {
                     matchesFilter = true;
-                } else if (activeFilter.value === 'PARTIAL' && student.status === 'PARTIAL') {
-                    matchesFilter = true;
-                } else if (activeFilter.value === 'REJECTED' && student.status === 'REJECTED') {
-                    matchesFilter = true;
+                } else if (activeFilter.value === 'PENDING') {
+                    matchesFilter = (student.status === 'PENDING' && !isPaid);
+                } else if (activeFilter.value === 'PARTIAL') {
+                    matchesFilter = (student.status === 'PARTIAL' && !isPaid);
+                } else if (activeFilter.value === 'PAID') {
+                    matchesFilter = isPaid;
+                } else if (activeFilter.value === 'REJECTED') {
+                    matchesFilter = (student.status === 'REJECTED');
                 }
 
                 if (matchesQuery && matchesFilter) {
@@ -388,7 +390,12 @@ window.app = createApp({
         };
 
         const totalInQueue = computed(() => {
-            return students.value.length;
+            let count = 0;
+            for (let i = 0; i < students.value.length; i++) {
+                const s = students.value[i];
+                if (s.status !== 'PAID' && s.status !== 'COMPLETED' && !Boolean(s.orNumber)) count++;
+            }
+            return count;
         });
 
         const pendingCount = computed(() => {
@@ -404,7 +411,8 @@ window.app = createApp({
         const paidToday = computed(() => {
             let count = 0;
             for (let i = 0; i < students.value.length; i++) {
-                if (students.value[i].status === 'PAID') {
+                const s = students.value[i];
+                if (s.status === 'PAID' || s.status === 'COMPLETED' || Boolean(s.orNumber)) {
                     count++;
                 }
             }
