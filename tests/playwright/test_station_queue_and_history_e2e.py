@@ -125,7 +125,7 @@ def run_e2e_tests():
         assert cashier_hist_nav.is_visible(), "Payment History nav item missing in Cashier sidebar"
         page.evaluate("() => { if (window.app && window.app.setView) window.app.setView('history'); }")
         page.wait_for_timeout(1000)
-        assert page.locator("h3:has-text('Settled & Paid Transactions'), h4:has-text('Cashier Payment')").first.is_visible()
+        assert page.locator("h3:has-text('Completed Payment Records'), h4:has-text('Treasury Payment History')").first.is_visible()
         print("  -> Cashier Payment History rendered successfully.")
 
         # -------------------------------------------------------------

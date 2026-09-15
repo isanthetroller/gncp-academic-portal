@@ -17,6 +17,7 @@
     <script src="../shared/libs/sweetalert2.all.min.js"></script>
     <script src="../shared/js/SessionExpirationGuard.js?v=20260823"></script>
     <script src="../shared/js/PasswordChangeGuard.js"></script>
+    <script src="../shared/js/DataCache.js"></script>
     <script src="../shared/academic_constants.js"></script>
     <style>
         :root {
@@ -147,6 +148,10 @@
         .btn-sm-sky:hover { background:rgba(14,165,233,.12); }
 
         /* ── FORM MODALS ──────────────────────────────────────────────── */
+        .swal2-container,
+        div:where(.swal2-container) {
+            z-index: 999999 !important;
+        }
         .overlay { position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.5); backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center; animation:fadeIn .15s ease; overflow-y:auto; padding:20px; }
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
         .modal-card { background:#fff; border:1px solid var(--border); border-radius:18px; box-shadow:0 20px 50px rgba(0,0,0,.15); padding:28px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; animation:slideUp .2s ease; scroll-behavior:smooth; }
@@ -1848,7 +1853,7 @@
                     </div>
 
                     <!-- 6-Card Executive KPI Ribbon -->
-                    <div v-if="dashboardStats && !isLoadingStats" class="db-grid kpi-grid-6">
+                    <div v-if="dashboardStats" class="db-grid kpi-grid-6">
                         <div class="db-card">
                             <div class="db-card-info">
                                 <div class="db-card-val">{{ dashboardStats.kpi?.total ?? dashboardStats.total }}</div>
@@ -1900,7 +1905,7 @@
                     </div>
 
                     <!-- Main Dashboard Sections Grid: Workstations & Registrations Chart -->
-                    <div v-if="dashboardStats && !isLoadingStats" class="db-sections-grid">
+                    <div v-if="dashboardStats" class="db-sections-grid">
                         <!-- Left Panel: Workstation Queues -->
                         <div class="card">
                             <div class="card-title"><i class="fa-solid fa-network-wired"></i> Workstation Line Load</div>
@@ -2213,7 +2218,7 @@
                     </div>
 
                     <!-- Demographics Panel: Year Level & Department Breakdown -->
-                    <div v-if="dashboardStats && !isLoadingStats" class="card" style="margin-top:16px;">
+                    <div v-if="dashboardStats" class="card" style="margin-top:16px;">
                         <div class="card-title"><i class="fa-solid fa-users-rays"></i> Student Demographics Distribution</div>
                         
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
@@ -2318,7 +2323,7 @@
                     </div>
 
                     <!-- Recent Activity Logs -->
-                    <div v-if="dashboardStats && !isLoadingStats" class="card" style="margin-top: 16px; margin-bottom: 20px;">
+                    <div v-if="dashboardStats" class="card" style="margin-top: 16px; margin-bottom: 20px;">
                         <div class="card-title"><i class="fa-solid fa-receipt"></i> Recent Registrations Feed</div>
                         <div class="activity-list">
                             <div v-for="act in dashboardStats.recent" :key="act.ref" class="activity-item">
@@ -2442,8 +2447,8 @@
                         </div>
                     </div>
 
-                    <!-- Loader while loading stats -->
-                    <div v-if="isLoadingStats || !dashboardStats" style="text-align:center;padding:80px 20px;color:var(--text-muted);">
+                    <!-- Loader while loading stats (Initial Cold Load Only) -->
+                    <div v-if="!dashboardStats && isLoadingStats" style="text-align:center;padding:80px 20px;color:var(--text-muted);">
                         <i class="fa-solid fa-circle-notch fa-spin fa-2x" style="color:var(--primary);margin-bottom:10px;"></i>
                         <div>Loading registration statistics…</div>
                     </div>
@@ -2470,7 +2475,7 @@
                                     <th>College Name</th>
                                     <th>Status</th>
                                 </tr></thead>
-                                <tbody v-if="isLoadingAcademicData">
+                                <tbody v-if="isLoadingAcademicData && (!departments || departments.length === 0)">
                                     <tr v-for="n in 4" :key="'dept-skel-' + n" class="table-skeleton-row">
                                         <td><div class="skeleton-bar skeleton-bar-sm" style="width: 50px;"></div></td>
                                         <td><div class="skeleton-bar" style="width: 130px;"></div></td>
@@ -2510,7 +2515,7 @@
                                     <th>Status</th>
                                     <th class="text-end">Actions</th>
                                 </tr></thead>
-                                <tbody v-if="isLoadingAcademicData">
+                                <tbody v-if="isLoadingAcademicData && (!programs || programs.length === 0)">
                                     <tr v-for="i in 5" :key="'admin-proglist-skel-' + i" class="table-skeleton-row">
                                         <td><div class="skeleton-shimmer skeleton-bar" style="width: 55px;"></div></td>
                                         <td><div class="skeleton-shimmer skeleton-bar" style="width: 150px;"></div></td>
@@ -2584,7 +2589,7 @@
                                 <th class="th-sortable" @click="sortBy('subjects','labFee')">Lab Fee <span class="sort-icon" :class="{active:sortKey==='subjects_labFee'}">{{ sortKey==='subjects_labFee'?(sortDir===1?'▲':'▼'):'⇅' }}</span></th>
                                 <th class="text-end">Actions</th>
                             </tr></thead>
-                                <tbody v-if="isLoadingAcademicData">
+                                <tbody v-if="isLoadingAcademicData && (!subjects || subjects.length === 0)">
                                     <tr v-for="i in 5" :key="'admin-subj-skel-' + i" class="table-skeleton-row">
                                         <td><div class="skeleton-shimmer skeleton-bar" style="width: 60px;"></div></td>
                                         <td><div class="skeleton-shimmer skeleton-bar" style="width: 160px;"></div></td>
@@ -2796,7 +2801,7 @@
                                     <th>Type</th>
                                     <th class="text-end">Actions</th>
                                 </tr></thead>
-                                <tbody v-if="isLoadingAcademicData">
+                                <tbody v-if="isLoadingAcademicData && (!curriculum || curriculum.length === 0)">
                                     <tr v-for="i in 5" :key="'admin-curr-skel-' + i" class="table-skeleton-row">
                                         <td><div class="skeleton-shimmer skeleton-bar" style="width: 120px;"></div></td>
                                         <td><div class="skeleton-shimmer skeleton-pill" style="width: 80px;"></div></td>
@@ -2902,7 +2907,7 @@
                                     <th class="th-sortable" @click="sortBy('periods','status')">Status <span class="sort-icon" :class="{active:sortKey==='periods_status'}">{{ sortKey==='periods_status'?(sortDir===1?'▲':'▼'):'⇅' }}</span></th>
                                     <th class="text-end">Actions</th>
                                 </tr></thead>
-                                <tbody v-if="isLoadingAcademicData">
+                                <tbody v-if="isLoadingAcademicData && (!periods || periods.length === 0)">
                                     <tr v-for="i in 4" :key="'admin-period-skel-' + i" class="table-skeleton-row">
                                         <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
                                         <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
@@ -3042,7 +3047,7 @@
                                 <th>Offerings</th>
                                 <th class="text-end">Actions</th>
                             </tr></thead>
-                            <tbody v-if="isLoadingAcademicData">
+                            <tbody v-if="isLoadingAcademicData && (!sections || sections.length === 0)">
                                 <tr v-for="i in 5" :key="'admin-sect-skel-' + i" class="table-skeleton-row">
                                     <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
                                     <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
@@ -3217,7 +3222,7 @@
                                 <th>Status</th>
                                 <th>Registration Date</th>
                             </tr></thead>
-                            <tbody v-if="isLoadingAcademicData">
+                            <tbody v-if="isLoadingAcademicData && (!students || students.length === 0)">
                                 <tr v-for="n in 6" :key="'st-skel-' + n" class="table-skeleton-row">
                                     <td><div class="skeleton-bar skeleton-bar-sm" style="width: 100px;"></div></td>
                                     <td><div class="skeleton-bar" style="width: 140px;"></div></td>
@@ -3258,7 +3263,7 @@
                     <div class="table-responsive">
                         <table class="tbl">
                             <thead><tr><th>Type</th><th>Label</th><th>Amount</th><th>Per Unit</th><th class="text-end">Actions</th></tr></thead>
-                            <tbody v-if="isLoadingAcademicData">
+                            <tbody v-if="isLoadingAcademicData && (!fees || fees.length === 0)">
                                 <tr v-for="n in 5" :key="'fee-skel-' + n" class="table-skeleton-row">
                                     <td><div class="skeleton-pill" style="width: 70px;"></div></td>
                                     <td><div class="skeleton-bar" style="width: 150px;"></div></td>
@@ -3302,16 +3307,16 @@
                         <button type="button" class="btn-status-filter" :class="{active:filterUserStatus==='ACTIVE'}" @click="filterUserStatus='ACTIVE'">Active</button>
                         <button type="button" class="btn-status-filter" :class="{active:filterUserStatus==='DEACTIVATED'}" @click="filterUserStatus='DEACTIVATED'">Deactivated</button>
                     </div>
-                    <div class="table-responsive">
-                        <table class="tbl">
-                            <thead><tr><th>Name</th><th>Username</th><th>Station / Role</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
-                            <tbody v-if="isLoadingOperators">
+                    <div class="table-responsive stable-table-container">
+                        <table class="tbl table-layout-fixed">
+                            <thead><tr><th style="width:24%;">Name</th><th style="width:18%;">Username</th><th style="width:18%;">Station / Role</th><th style="width:14%;">Status</th><th style="width:26%;" class="text-end">Actions</th></tr></thead>
+                            <tbody v-if="isLoadingOperators && (!users || users.length === 0)">
                                 <tr v-for="n in 5" :key="'op-skel-' + n" class="table-skeleton-row">
-                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
-                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 100px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 80px;"></div></td>
-                                    <td><div class="skeleton-pill" style="width: 70px;"></div></td>
-                                    <td style="text-align:right"><div class="skeleton-btn" style="width: 90px; margin-left: auto;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 70%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 60%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 60%;"></div></td>
+                                    <td style="text-align:right"><div class="skeleton-btn" style="width: 120px; margin-left: auto;"></div></td>
                                 </tr>
                             </tbody>
                             <tbody v-else>

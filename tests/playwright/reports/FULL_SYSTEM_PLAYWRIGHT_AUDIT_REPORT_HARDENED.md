@@ -1,13 +1,13 @@
 # Full-System Playwright Test Report — Backend → API → Frontend → UI
 
 ## 1. Environment
-* **Application Base URL:** `http://127.0.0.1/systemtest-hardened`
+* **Application Base URL:** `http://127.0.0.1/systemtest-hardened `
 * **Backend Status:** Operational (PHP 8.2.12 on Apache 2.4.58 Win64)
 * **Database Status:** Operational (MariaDB 10.x `gncp_portal` on 127.0.0.1:3306)
 * **XAMPP Status:** Active (`mysqld.exe` & `httpd.exe` running)
 * **Browser Engine:** Chromium (Playwright Sync Engine)
-* **Playwright Suite Status:** `PASS` (48/48 tests passed)
-* **Timestamp:** `2026-09-12 00:37:17`
+* **Playwright Suite Status:** `PARTIAL PASS` (8/9 tests passed)
+* **Timestamp:** `2026-09-15 15:42:38`
 
 ---
 
@@ -32,7 +32,7 @@
 * `CASHIER` (`cashier`) — Verified
 * `IT_CENTER` (`it_officer`) — Verified
 * `SUPER_ADMIN` / `ADMIN` (`admin`) — Verified
-* `STUDENT` (`GNCP-2026-69060`) — Verified
+* `STUDENT` (`GNCP-2026-XXXX`) — Verified
 
 ---
 
@@ -92,55 +92,16 @@
 | Preflight | Database Connectivity | **PASSED** | Successfully connected to MariaDB 'gncp_portal' on 127.0.0.1:3306 |
 | Preflight | Database Schema & Tables | **PASSED** | Audited 14 core tables in gncp_portal. |
 | Preflight | Stale Test Data Purge | **PASSED** | Cleaned up prior automation fixtures from DB. |
-| Clean URLs | Clean Route Load & Refresh: School Website | **PASSED** | Clean route 'http://127.0.0.1/systemtest-hardened/school-website/' loaded with HTTP 200, rendered successfully, and preserved clean URL across page refresh. |
-| Clean URLs | Clean Route Load & Refresh: Enrollment System | **PASSED** | Clean route 'http://127.0.0.1/systemtest-hardened/enrollment-system/' loaded with HTTP 200, rendered successfully, and preserved clean URL across page refresh. |
-| Clean URLs | Clean Route Load & Refresh: Application Tracker | **PASSED** | Clean route 'http://127.0.0.1/systemtest-hardened/enrollment-system/tracker' loaded with HTTP 200, rendered successfully, and preserved clean URL across page refresh. |
-| Clean URLs | Clean Route Load & Refresh: Student Portal Login | **PASSED** | Clean route 'http://127.0.0.1/systemtest-hardened/student-portal/login' loaded with HTTP 200, rendered successfully, and preserved clean URL across page refresh. |
-| Clean URLs | Clean Route Load & Refresh: Student Portal Forgot Password | **PASSED** | Clean route 'http://127.0.0.1/systemtest-hardened/student-portal/forgot-password' loaded with HTTP 200, rendered successfully, and preserved clean URL across page refresh. |
-| Clean URLs | Legacy .html Canonical 301 Redirect: index.html | **PASSED** | Legacy URL 'http://127.0.0.1/systemtest-hardened/school-website/index.html' returned HTTP 301 redirecting to 'http://127.0.0.1/systemtest-hardened/school-website/' (Expected: http://127.0.0.1/systemtest-hardened/school-website/) |
-| Clean URLs | Legacy .html Canonical 301 Redirect: index.html | **PASSED** | Legacy URL 'http://127.0.0.1/systemtest-hardened/enrollment-system/index.html' returned HTTP 301 redirecting to 'http://127.0.0.1/systemtest-hardened/enrollment-system/' (Expected: http://127.0.0.1/systemtest-hardened/enrollment-system/) |
-| Clean URLs | Legacy .html Canonical 301 Redirect: tracker.html | **PASSED** | Legacy URL 'http://127.0.0.1/systemtest-hardened/enrollment-system/tracker.html' returned HTTP 301 redirecting to 'http://127.0.0.1/systemtest-hardened/enrollment-system/tracker' (Expected: http://127.0.0.1/systemtest-hardened/enrollment-system/tracker) |
-| Clean URLs | Legacy .html Canonical 301 Redirect: login.html | **PASSED** | Legacy URL 'http://127.0.0.1/systemtest-hardened/student-portal/login.html' returned HTTP 301 redirecting to 'http://127.0.0.1/systemtest-hardened/student-portal/login' (Expected: http://127.0.0.1/systemtest-hardened/student-portal/login) |
-| Clean URLs | Legacy .html Canonical 301 Redirect: forgot-password.html | **PASSED** | Legacy URL 'http://127.0.0.1/systemtest-hardened/student-portal/forgot-password.html' returned HTTP 301 redirecting to 'http://127.0.0.1/systemtest-hardened/student-portal/forgot-password' (Expected: http://127.0.0.1/systemtest-hardened/student-portal/forgot-password) |
-| Security | Sensitive File Shield: .env | **PASSED** | Direct access to sensitive resource 'http://127.0.0.1/systemtest-hardened/.env' strictly blocked with HTTP 403 Forbidden. |
-| Security | Sensitive File Shield: schema.sql | **PASSED** | Direct access to sensitive resource 'http://127.0.0.1/systemtest-hardened/database/schema.sql' strictly blocked with HTTP 403 Forbidden. |
-| Security | Sensitive File Shield: database.php | **PASSED** | Direct access to sensitive resource 'http://127.0.0.1/systemtest-hardened/shared/backend/config/database.php' strictly blocked with HTTP 403 Forbidden. |
-| Auth | Invalid Credentials Rejection | **PASSED** | Rejected unauthenticated operator with HTTP 401 and error UI alert. |
-| RBAC | Role Authentication: REGISTRAR | **PASSED** | User 'kriz' authenticated. Loaded destination 'registrar'. |
-| RBAC | Role Authentication: HELPDESK | **PASSED** | User 'tristan' authenticated. Loaded destination 'tlc-helpdesk'. |
-| RBAC | Role Authentication: MEDICAL | **PASSED** | User 'ethan' authenticated. Loaded destination 'medical-checkup'. |
-| RBAC | Role Authentication: CASHIER | **PASSED** | User 'cashier' authenticated. Loaded destination 'payment-processing'. |
-| RBAC | Role Authentication: IT_CENTER | **PASSED** | User 'it_officer' authenticated. Loaded destination 'it-center'. |
-| RBAC | Role Authentication: ADMIN | **PASSED** | User 'admin' authenticated. Loaded destination 'admin'. |
-| Auth | Logout & Protected Route Guard | **PASSED** | Session cleared. Direct access to /admin/index.php redirected to login. |
-| 5-Layer Trace | Pipeline Consistency Check | **PASSED** | All 5 layers (Database, Backend, API, Frontend State, UI DOM) match 100% without data loss or mapping errors. |
-| CRUD | Announcement CREATE | **PASSED** | Created announcement ID #33 in DB and UI. |
-| CRUD | Announcement READ | **PASSED** | Announcement #33 verified rendered in Admin UI. |
-| CRUD | Announcement UPDATE | **PASSED** | Updated title to 'TEST_E2E_ANNOUNCEMENT_69060_UPDATED'. Persisted in DB & UI across reload. |
-| CRUD | Announcement DELETE | **PASSED** | Announcement #33 successfully deleted from MariaDB and UI. |
-| CRUD | Academic Milestone CREATE | **PASSED** | Created milestone #18 ('TEST_E2E_MILESTONE_69060') in MariaDB. |
-| CRUD | Academic Milestone DELETE | **PASSED** | Deleted milestone #18 successfully. |
-| Table | Empty State Handling | **PASSED** | Searching for nonexistent student showed empty state (0 matching rows). |
-| Table | Search Clear & Full Restoration | **PASSED** | Restored 16 rows upon clearing search query. |
-| Table | Interactive Column Sorting | **PASSED** | Verified interactive sorting logic without runtime exceptions. |
-| Lifecycle | 1. Online Pre-Registration Form | **PASSED** | Candidate registered. Ref: GNCP-2026-840223 | PIN: 594218 | MariaDB status: PRE_REGISTERED |
-| Lifecycle | 2. Public Application Tracker | **PASSED** | Tracker rendered roadmap for applicant GNCP-2026-840223. |
-| Lifecycle | 3. Registrar Verification | **PASSED** | Applicant verified by Registrar. Status updated to 'VERIFIED'. |
-| Lifecycle | 4. TLC Helpdesk Advising | **PASSED** | Applicant advised into Section 'BSIT 1-A' with ROTC. Status updated to 'ADVISED'. |
-| Lifecycle | 5. Medical Clinic Clearance | **PASSED** | Doctor clearance issued. Status updated to 'MEDICAL_CLEARED'. |
-| Lifecycle | 6. Cashier Payment & Tuition Verification | **PASSED** | Tuition calculation verified (₱18,300.00). Full payment recorded. Status updated to 'PAID'. |
-| Lifecycle | 7. IT Center Account Promotion | **PASSED** | Student promoted to MariaDB 'students' directory. Permanent ID: GNCP-2026-69060 |
-| Lifecycle | 8. Student Portal Self-Service Dashboard | **PASSED** | Student GNCP-2026-69060 successfully authenticated to Student Portal. COR and Ledger verified. |
-| Responsive | Viewport Regression: Desktop (1440x900) | **PASSED** | Rendered without UI clipping or horizontal overflow on Desktop (1440x900). |
-| Responsive | Viewport Regression: Tablet (768x1024) | **PASSED** | Rendered without UI clipping or horizontal overflow on Tablet (768x1024). |
-| Responsive | Viewport Regression: Mobile (375x812) | **PASSED** | Rendered without UI clipping or horizontal overflow on Mobile (375x812). |
-| Integrity | Curriculum Table Deduplication | **PASSED** | 0 duplicate subject-curriculum rows found in MariaDB. |
-| Integrity | Fee Schedule Deduplication | **PASSED** | 0 duplicate fee schedule entries found in MariaDB. |
-| Integrity | Single-Semester Subject Scoping | **PASSED** | BSIT 1st Year 1st Sem strictly scopes to 7 subjects (20 total units). |
+| Clean URLs | Clean Route Load & Refresh: School Website | **PASSED** | Clean route 'http://127.0.0.1/systemtest-hardened /school-website/' loaded with HTTP 200, rendered successfully, and preserved clean URL across page refresh. |
+| Clean URLs | Clean Route Load & Refresh: Enrollment System | **PASSED** | Clean route 'http://127.0.0.1/systemtest-hardened /enrollment-system/' loaded with HTTP 200, rendered successfully, and preserved clean URL across page refresh. |
+| Clean URLs | Clean Route Load & Refresh: Application Tracker | **PASSED** | Clean route 'http://127.0.0.1/systemtest-hardened /enrollment-system/tracker' loaded with HTTP 200, rendered successfully, and preserved clean URL across page refresh. |
+| Clean URLs | Clean Route Load & Refresh: Student Portal Login | **PASSED** | Clean route 'http://127.0.0.1/systemtest-hardened /student-portal/login' loaded with HTTP 200, rendered successfully, and preserved clean URL across page refresh. |
+| Clean URLs | Clean Route Load & Refresh: Student Portal Forgot Password | **PASSED** | Clean route 'http://127.0.0.1/systemtest-hardened /student-portal/forgot-password' loaded with HTTP 200, rendered successfully, and preserved clean URL across page refresh. |
+| Execution | Critical Exception | **FAILED** | URL can't contain control characters. '/systemtest-hardened /school-website/index.html' (found at least ' ') |
 
 ---
 
 ## 10. Final Verification Verdict
-### Status: **PASS**
+### Status: **PARTIAL PASS**
 The complete application pipeline (**Database $\rightarrow$ Backend $\rightarrow$ API $\rightarrow$ Frontend $\rightarrow$ UI $\rightarrow$ User Interaction $\rightarrow$ Database**) has been verified end-to-end with Playwright.
 All operations execute truthfully with MariaDB transactional persistence, clean REST routing, zero console errors, and exact mathematical accuracy.

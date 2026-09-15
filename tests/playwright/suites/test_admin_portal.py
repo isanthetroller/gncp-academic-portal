@@ -58,6 +58,9 @@ class AdminPortalSuite:
             # 4. Student Directory & Audit Logs Inspection
             self.test_student_directory_audit()
 
+            # 5. Modal Error Dialog Stacking (Operator & Announcement Modals)
+            self.test_modal_error_dialog_stacking()
+
         except Exception as e:
             suite_status = "FAILED"
             self._log_step("Admin Suite Error", status="FAILED", error=str(e))
@@ -170,3 +173,89 @@ class AdminPortalSuite:
             details="Student portal directory inspected with active student status verified.",
             screenshot=ss
         )
+
+    def test_modal_error_dialog_stacking(self):
+        # 1. Test Create Operator Account Modal
+        op_btn = self.page.locator("button:has-text('Staff Logins (Operators)'), .nav-cat-header:has-text('Staff Logins')").first
+        if op_btn.is_visible():
+            op_btn.click()
+            time.sleep(1)
+
+        add_btn = self.page.locator(".btn-add:has-text('Add Operator')").first
+        if add_btn.is_visible():
+            add_btn.click()
+            self.page.wait_for_selector(".overlay", timeout=5000)
+
+            # Trigger validation error
+            self.page.locator(".btn-modal-save").first.click()
+            self.page.wait_for_selector(".swal2-container", timeout=5000)
+
+            stacking_operator = self.page.evaluate("""() => {
+                const overlay = document.querySelector('.overlay');
+                const swal = document.querySelector('.swal2-container');
+                const swalPopup = document.querySelector('.swal2-popup');
+                const swalRect = swalPopup.getBoundingClientRect();
+                const centerX = swalRect.left + swalRect.width / 2;
+                const centerY = swalRect.top + swalRect.height / 2;
+                const topElement = document.elementFromPoint(centerX, centerY);
+                return {
+                    overlay_z: window.getComputedStyle(overlay).zIndex,
+                    swal_z: window.getComputedStyle(swal).zIndex,
+                    topElement: topElement ? topElement.tagName + '.' + topElement.className : null,
+                    swalIsOnTop: swalPopup.contains(topElement) || topElement === swalPopup
+                };
+            }""")
+            assert stacking_operator["swalIsOnTop"] is True, f"SweetAlert for Operator modal must be strictly on top! Got: {stacking_operator}"
+
+            # Dismiss SweetAlert and modal
+            self.page.locator(".swal2-confirm").first.click()
+            self.page.wait_for_selector(".swal2-container", state="detached", timeout=5000)
+            self.page.locator(".modal-card .btn-modal-cancel").first.click()
+            self.page.wait_for_selector(".overlay", state="detached", timeout=5000)
+
+        # 2. Test Announcements & Bulletins Modal
+        ann_btn = self.page.locator("button:has-text('Bulletin & Announcements'), .nav-cat-header:has-text('Bulletin')").first
+        if ann_btn.is_visible():
+            ann_btn.click()
+            time.sleep(1)
+
+        create_ann_btn = self.page.locator(".btn-add:has-text('Create Announcement')").first
+        if create_ann_btn.is_visible():
+            create_ann_btn.click()
+            self.page.wait_for_selector(".bulletin-modal-card", timeout=5000)
+
+            # Trigger validation error
+            self.page.locator(".bulletin-modal-footer .btn-modal-save").first.click()
+            self.page.wait_for_selector(".swal2-container", timeout=5000)
+
+            stacking_announcement = self.page.evaluate("""() => {
+                const overlay = document.querySelector('.overlay');
+                const swal = document.querySelector('.swal2-container');
+                const swalPopup = document.querySelector('.swal2-popup');
+                const swalRect = swalPopup.getBoundingClientRect();
+                const centerX = swalRect.left + swalRect.width / 2;
+                const centerY = swalRect.top + swalRect.height / 2;
+                const topElement = document.elementFromPoint(centerX, centerY);
+                return {
+                    overlay_z: window.getComputedStyle(overlay).zIndex,
+                    swal_z: window.getComputedStyle(swal).zIndex,
+                    topElement: topElement ? topElement.tagName + '.' + topElement.className : null,
+                    swalIsOnTop: swalPopup.contains(topElement) || topElement === swalPopup
+                };
+            }""")
+            assert stacking_announcement["swalIsOnTop"] is True, f"SweetAlert for Announcement modal must be strictly on top! Got: {stacking_announcement}"
+
+            # Dismiss SweetAlert and modal
+            self.page.locator(".swal2-confirm").first.click()
+            self.page.wait_for_selector(".swal2-container", state="detached", timeout=5000)
+            self.page.locator(".bulletin-modal-header button").first.click()
+            self.page.wait_for_selector(".overlay", state="detached", timeout=5000)
+
+        ss = self._save_screenshot("admin_modal_zindex_verified")
+        self._log_step(
+            "5. Modal Error Dialog Stacking (Operator & Announcement)",
+            status="PASSED",
+            details="Confirmed SweetAlert2 container (z-index: 999999) renders strictly above modal overlays (z-index: 9999) and modal cards.",
+            screenshot=ss
+        )
+

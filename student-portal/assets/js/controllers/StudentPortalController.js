@@ -169,27 +169,57 @@ window.StudentPortalController = {
             rotation: 0
         });
 
-        const loadStudentDocuments = async () => {
+        const loadStudentDocuments = async (forceRefresh = false) => {
             if (!currentStudent.value) return;
             const studentId = currentStudent.value.id || currentStudent.value.studentId || currentStudent.value.temp_reference_no;
             const pin = currentStudent.value.temp_pin || currentStudent.value.personalInfo?.temp_pin || '';
-            documentsData.loading = true;
+            const cacheKey = `student:documents:${studentId}`;
+
+            const hasExisting = documentsData.requirements && documentsData.requirements.length > 0;
+            if (!hasExisting && !(window.DataCache && window.DataCache.has(cacheKey))) {
+                documentsData.loading = true;
+            }
+
+            const applyData = (data) => {
+                if (!data) return;
+                documentsData.requirements = data.requirements || [];
+                documentsData.pendingRequirements = data.pendingRequirements || [];
+                documentsData.completedRequirements = data.completedRequirements || [];
+                documentsData.stats = data.stats || {
+                    totalRequired: 0,
+                    verifiedCount: 0,
+                    pendingReviewCount: 0,
+                    undertakingCount: 0,
+                    missingCount: 0,
+                    actionableCount: 0,
+                    isFullyCompliant: false,
+                    isComplete: false
+                };
+            };
+
             try {
-                const res = await StudentApiService.fetchDocuments(studentId, pin);
-                if (res.success && res.data) {
-                    documentsData.requirements = res.data.requirements || [];
-                    documentsData.pendingRequirements = res.data.pendingRequirements || [];
-                    documentsData.completedRequirements = res.data.completedRequirements || [];
-                    documentsData.stats = res.data.stats || {
-                        totalRequired: 0,
-                        verifiedCount: 0,
-                        pendingReviewCount: 0,
-                        undertakingCount: 0,
-                        missingCount: 0,
-                        actionableCount: 0,
-                        isFullyCompliant: false,
-                        isComplete: false
-                    };
+                if (window.DataCache) {
+                    const res = await window.DataCache.fetchWithCache(
+                        cacheKey,
+                        () => StudentApiService.fetchDocuments(studentId, pin),
+                        {
+                            staleTime: 30000,
+                            forceRefresh,
+                            onBackgroundUpdate: (freshRes) => {
+                                if (freshRes && freshRes.success && freshRes.data) {
+                                    applyData(freshRes.data);
+                                }
+                            }
+                        }
+                    );
+                    if (res && res.success && res.data) {
+                        applyData(res.data);
+                    }
+                } else {
+                    const res = await StudentApiService.fetchDocuments(studentId, pin);
+                    if (res && res.success && res.data) {
+                        applyData(res.data);
+                    }
                 }
             } catch (e) {
                 console.error('[StudentPortal::Documents] Failed to load document requirements:', e);
@@ -200,7 +230,7 @@ window.StudentPortalController = {
 
         watch(activeTab, (newTab) => {
             if (newTab === 'documents') {
-                loadStudentDocuments();
+                loadStudentDocuments(false);
             }
         });
 
@@ -288,7 +318,12 @@ window.StudentPortalController = {
 
             if (res.success) {
                 uploadDocSuccess.value = res.message || 'Document uploaded successfully!';
-                await loadStudentDocuments();
+                if (window.DataCache) {
+                    const sId = currentStudent.value?.id || currentStudent.value?.studentId || currentStudent.value?.temp_reference_no;
+                    window.DataCache.invalidate(`student:documents:${sId}`);
+                    window.DataCache.invalidate(`student:dashboard:${sId}`);
+                }
+                await loadStudentDocuments(true);
                 setTimeout(() => {
                     closeUploadDocModal();
                 }, 1200);
@@ -441,49 +476,76 @@ window.StudentPortalController = {
         // Fetch Complete Dashboard Data
         const fetchDashboardData = async (isBackgroundPoll = false) => {
             if (!currentStudent.value) return;
+            const studentId = currentStudent.value.id;
+            const cacheKey = `student:dashboard:${studentId}`;
+
+            const applyDashboardData = (data) => {
+                if (!data) return;
+                if (data.profile) {
+                    StudentModel.hydrateProfileFromSession(state.profile, data.profile);
+                    avatarLoadError.value = false;
+                    syncStudentFormFromProfile();
+
+                    if (data.profile.must_change_password && (!currentStudent.value || !currentStudent.value.must_change_password)) {
+                        if (currentStudent.value) currentStudent.value.must_change_password = true;
+                        if (typeof window.PasswordChangeGuard !== 'undefined') {
+                            window.PasswordChangeGuard.checkAndPrompt(currentStudent.value || data.profile, (changed) => {
+                                if (changed) {
+                                    if (currentStudent.value) currentStudent.value.must_change_password = false;
+                                    state.profile.must_change_password = false;
+                                }
+                            });
+                        }
+                    }
+                }
+                state.roadmap = data.roadmap || [];
+                state.requirements = data.requirements || null;
+                state.medical = data.medical || null;
+                state.scholarship = data.scholarship || null;
+                state.payment = data.payment || null;
+                state.helpdesk = data.helpdesk || null;
+                state.enrollment = data.enrollment || null;
+                state.subjects = data.subjects || [];
+                state.corData = data.corData || null;
+                state.activePeriod = data.activePeriod || null;
+                if (data.milestones && Array.isArray(data.milestones)) {
+                    milestones.value = data.milestones;
+                }
+            };
+
             if (!isBackgroundPoll) {
                 isRefreshing.value = true;
-                if (!state.corData) {
+                const hasExisting = state.corData || (window.DataCache && window.DataCache.has(cacheKey));
+                if (!hasExisting) {
                     isLoadingCor.value = true;
                 }
             }
 
             try {
-                const res = await StudentApiService.fetchDashboard(currentStudent.value.id);
-                if (res.success && res.data) {
-                    if (res.data.profile) {
-                        StudentModel.hydrateProfileFromSession(state.profile, res.data.profile);
-                        avatarLoadError.value = false;
-                        syncStudentFormFromProfile();
-
-                        if (res.data.profile.must_change_password && (!currentStudent.value || !currentStudent.value.must_change_password)) {
-                            if (currentStudent.value) currentStudent.value.must_change_password = true;
-                            if (typeof window.PasswordChangeGuard !== 'undefined') {
-                                window.PasswordChangeGuard.checkAndPrompt(currentStudent.value || res.data.profile, (changed) => {
-                                    if (changed) {
-                                        if (currentStudent.value) currentStudent.value.must_change_password = false;
-                                        state.profile.must_change_password = false;
-                                    }
-                                });
+                if (window.DataCache) {
+                    const res = await window.DataCache.fetchWithCache(
+                        cacheKey,
+                        () => StudentApiService.fetchDashboard(studentId),
+                        {
+                            staleTime: 25000,
+                            forceRefresh: false,
+                            onBackgroundUpdate: (freshRes) => {
+                                if (freshRes && freshRes.success && freshRes.data) {
+                                    applyDashboardData(freshRes.data);
+                                }
                             }
                         }
+                    );
+                    if (res && res.success && res.data) {
+                        applyDashboardData(res.data);
+                        if (!isBackgroundPoll) {
+                            console.log('[StudentPortal::Dashboard] Data loaded successfully.', state);
+                        }
                     }
-                    state.roadmap = res.data.roadmap || [];
-                    state.requirements = res.data.requirements || null;
-                    state.medical = res.data.medical || null;
-                    state.scholarship = res.data.scholarship || null;
-                    state.payment = res.data.payment || null;
-                    state.helpdesk = res.data.helpdesk || null;
-                    state.enrollment = res.data.enrollment || null;
-                    state.subjects = res.data.subjects || [];
-                    state.corData = res.data.corData || null;
-                    state.activePeriod = res.data.activePeriod || null;
-                    if (res.data.milestones && Array.isArray(res.data.milestones)) {
-                        milestones.value = res.data.milestones;
-                    }
-
-                    if (!isBackgroundPoll) {
-                        console.log('[StudentPortal::Dashboard] Data loaded successfully.', state);
+                } else {
+                    const res = await StudentApiService.fetchDashboard(studentId);
+                    if (res && res.success && res.data) {
+                        applyDashboardData(res.data);
                     }
                 }
             } catch (err) {
@@ -551,6 +613,9 @@ window.StudentPortalController = {
                             currentStudent.value.photo = newPhoto;
                             sessionStorage.setItem('gncp_portal_student', JSON.stringify(currentStudent.value));
                             localStorage.setItem('gncp_portal_student', JSON.stringify(currentStudent.value));
+                        }
+                        if (window.DataCache) {
+                            window.DataCache.invalidate(`student:dashboard:${studentId}`);
                         }
 
                         updateSuccessMsg.value = 'Profile picture updated successfully!';
@@ -622,6 +687,9 @@ window.StudentPortalController = {
                     Object.assign(currentStudent.value, res.data);
                     sessionStorage.setItem('gncp_portal_student', JSON.stringify(currentStudent.value));
                     localStorage.setItem('gncp_portal_student', JSON.stringify(currentStudent.value));
+                }
+                if (window.DataCache) {
+                    window.DataCache.invalidate(`student:dashboard:${currentStudent.value?.id}`);
                 }
                 updateSuccessMsg.value = 'Personal information updated successfully!';
                 setTimeout(() => { updateSuccessMsg.value = ''; }, 3500);

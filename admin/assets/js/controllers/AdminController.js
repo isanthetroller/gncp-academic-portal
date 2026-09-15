@@ -104,7 +104,7 @@ const app = createApp({
             if (pollTimer) clearInterval(pollTimer);
             pollTimer = setInterval(() => {
                 if (currentAdmin.value) {
-                    loadAll();
+                    loadAll(true);
                 }
             }, 4000);
         };
@@ -1219,23 +1219,44 @@ const app = createApp({
         };
         const closeModal = () => { modal.value = ''; Object.keys(form).forEach(k => delete form[k]); };
         
-        const loadDashboard = (silent = false) => {
-            if (!silent) isLoadingStats.value = true;
-            get('fetch_dashboard_stats', { ...analyticsFilters }).then(r => {
-                if (!silent) isLoadingStats.value = false;
-                if (r && r.success) dashboardStats.value = r.data || r;
-            }).catch(() => { if (!silent) isLoadingStats.value = false; });
+        const loadDashboard = (silent = false, forceRefresh = false) => {
+            const hasExisting = dashboardStats.value || (window.DataCache && window.DataCache.has('admin:dashboard_stats'));
+            if (!silent && !hasExisting) isLoadingStats.value = true;
+
+            const fetchFn = () => get('fetch_dashboard_stats', { ...analyticsFilters });
+
+            if (window.DataCache) {
+                window.DataCache.fetchWithCache(
+                    'admin:dashboard_stats',
+                    fetchFn,
+                    {
+                        staleTime: 30000,
+                        forceRefresh,
+                        onBackgroundUpdate: (r) => {
+                            if (r && r.success) dashboardStats.value = r.data || r;
+                        }
+                    }
+                ).then(r => {
+                    if (r && r.success) dashboardStats.value = r.data || r;
+                }).catch(() => {}).finally(() => {
+                    if (!silent) isLoadingStats.value = false;
+                });
+            } else {
+                fetchFn().then(r => {
+                    if (!silent) isLoadingStats.value = false;
+                    if (r && r.success) dashboardStats.value = r.data || r;
+                }).catch(() => { if (!silent) isLoadingStats.value = false; });
+            }
         };
 
         const setView    = (v) => { 
             view.value = v; 
             search.value = ''; 
             closeModal(); 
-            if (v === 'dashboard') loadDashboard();
+            if (v === 'dashboard') loadDashboard(false, false);
             if (v === 'operators') {
                 filterUserStatus.value = 'ALL';
-                isLoadingOperators.value = true;
-                get('fetch_users').then(r => { if (r && r.success) users.value = r.data || []; }).finally(() => { isLoadingOperators.value = false; });
+                fetchOperators(false);
             }
         };
 
@@ -1501,28 +1522,53 @@ const app = createApp({
         };
 
         // ── Load all data ──
-        const loadAll = () => {
-            loadDashboard(true);
-            isLoadingAcademicData.value = true;
-            get('fetch_academic_data').then(r => {
-                if (r.success && r.data) {
-                    departments.value = window.GNCP_DEPARTMENTS || r.data.departments || [];
-                    programs.value    = r.data.programs       || [];
-                    subjects.value    = r.data.subjects       || [];
-                    curriculum.value  = r.data.curriculum     || [];
-                    sections.value    = r.data.sections       || [];
-                    periods.value     = r.data.periods        || [];
-                    classOfferings.value = r.data.classOfferings || [];
-                    fees.value        = r.data.fees           || [];
-                    students.value    = r.data.students       || [];
-                    if (r.data.milestones && Array.isArray(r.data.milestones)) {
-                        milestones.value = r.data.milestones;
-                    }
+        const loadAll = (isBackgroundSync = false) => {
+            loadDashboard(true, false);
+            const hasAcademic = departments.value && departments.value.length > 0;
+            if (!isBackgroundSync && !hasAcademic && !(window.DataCache && window.DataCache.has('admin:academic_data'))) {
+                isLoadingAcademicData.value = true;
+            }
+
+            const applyAcademicData = (data) => {
+                if (!data) return;
+                departments.value = window.GNCP_DEPARTMENTS || data.departments || [];
+                programs.value    = data.programs       || [];
+                subjects.value    = data.subjects       || [];
+                curriculum.value  = data.curriculum     || [];
+                sections.value    = data.sections       || [];
+                periods.value     = data.periods        || [];
+                classOfferings.value = data.classOfferings || [];
+                fees.value        = data.fees           || [];
+                students.value    = data.students       || [];
+                if (data.milestones && Array.isArray(data.milestones)) {
+                    milestones.value = data.milestones;
                 }
-            }).catch(() => {}).finally(() => {
-                isLoadingAcademicData.value = false;
-            });
-            get('fetch_users').then(r => { if (r && r.success) users.value = r.data || []; });
+            };
+
+            if (window.DataCache) {
+                window.DataCache.fetchWithCache(
+                    'admin:academic_data',
+                    () => get('fetch_academic_data'),
+                    {
+                        staleTime: 30000,
+                        onBackgroundUpdate: (r) => {
+                            if (r && r.success && r.data) applyAcademicData(r.data);
+                        }
+                    }
+                ).then(r => {
+                    if (r && r.success && r.data) applyAcademicData(r.data);
+                }).catch(() => {}).finally(() => {
+                    isLoadingAcademicData.value = false;
+                });
+            } else {
+                get('fetch_academic_data').then(r => {
+                    if (r.success && r.data) applyAcademicData(r.data);
+                }).catch(() => {}).finally(() => {
+                    isLoadingAcademicData.value = false;
+                });
+            }
+
+            fetchOperators(false);
             fetchAdminAnnouncements();
             fetchAdminMilestones();
         };
@@ -1607,6 +1653,12 @@ const app = createApp({
             // Pre-flight file size check (5MB max)
             if (file.size > 5 * 1024 * 1024) {
                 notify(false, 'Image is too large! Maximum allowed size is 5MB.');
+                Swal.fire({
+                    title: 'File Too Large',
+                    text: 'Image is too large! Maximum allowed size is 5MB.',
+                    icon: 'warning',
+                    confirmButtonColor: '#006A4E'
+                });
                 e.target.value = '';
                 return;
             }
@@ -1615,6 +1667,12 @@ const app = createApp({
             const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
             if (!allowedTypes.includes(file.type.toLowerCase())) {
                 notify(false, 'Invalid image format. Please upload a PNG, JPG, WebP, or GIF image.');
+                Swal.fire({
+                    title: 'Invalid Image Format',
+                    text: 'Please upload a PNG, JPG, WebP, or GIF image.',
+                    icon: 'warning',
+                    confirmButtonColor: '#006A4E'
+                });
                 e.target.value = '';
                 return;
             }
@@ -1638,18 +1696,42 @@ const app = createApp({
 
             if (!title) {
                 notify(false, 'Please enter an announcement title / headline.');
+                Swal.fire({
+                    title: 'Missing Headline',
+                    text: 'Please enter an announcement title / headline.',
+                    icon: 'warning',
+                    confirmButtonColor: '#006A4E'
+                });
                 return;
             }
             if (title.length < 3) {
                 notify(false, 'Announcement title must be at least 3 characters long.');
+                Swal.fire({
+                    title: 'Headline Too Short',
+                    text: 'Announcement title must be at least 3 characters long.',
+                    icon: 'warning',
+                    confirmButtonColor: '#006A4E'
+                });
                 return;
             }
             if (title.length > 150) {
                 notify(false, 'Announcement title cannot exceed 150 characters.');
+                Swal.fire({
+                    title: 'Headline Too Long',
+                    text: 'Announcement title cannot exceed 150 characters.',
+                    icon: 'warning',
+                    confirmButtonColor: '#006A4E'
+                });
                 return;
             }
             if (!textOnly && !uploadImgPreview.value && !announcementForm.image_url) {
                 notify(false, 'Please write the announcement circular body content or attach a poster banner.');
+                Swal.fire({
+                    title: 'Missing Notice Content',
+                    text: 'Please write the announcement circular body content or attach a poster banner.',
+                    icon: 'warning',
+                    confirmButtonColor: '#006A4E'
+                });
                 return;
             }
 
@@ -1669,7 +1751,14 @@ const app = createApp({
                     if (upJson && upJson.success) {
                         imageUrl = (upJson.data && (upJson.data.image_url || upJson.data.url)) || upJson.image_url || upJson.url || '';
                     } else {
-                        notify(false, (upJson && (upJson.message || upJson.error)) || 'Failed to upload announcement poster image.');
+                        const uploadErr = (upJson && (upJson.message || upJson.error)) || 'Failed to upload announcement poster image.';
+                        notify(false, uploadErr);
+                        Swal.fire({
+                            title: 'Upload Failed',
+                            text: uploadErr,
+                            icon: 'error',
+                            confirmButtonColor: '#006A4E'
+                        });
                         isSavingAnnouncement.value = false;
                         return;
                     }
@@ -1696,11 +1785,24 @@ const app = createApp({
                     closeModal();
                     fetchAdminAnnouncements();
                 } else {
-                    notify(false, r.message || r.error || 'Failed to save announcement.');
+                    const saveErr = r.message || r.error || 'Failed to save announcement.';
+                    notify(false, saveErr);
+                    Swal.fire({
+                        title: 'Save Failed',
+                        text: saveErr,
+                        icon: 'error',
+                        confirmButtonColor: '#006A4E'
+                    });
                 }
             } catch (e) {
                 console.error('[Admin::Announcements] Save error:', e);
                 notify(false, 'Unexpected error saving announcement.');
+                Swal.fire({
+                    title: 'Save Error',
+                    text: 'An unexpected error occurred while saving the announcement.',
+                    icon: 'error',
+                    confirmButtonColor: '#006A4E'
+                });
             }
             isSavingAnnouncement.value = false;
         };
@@ -1939,7 +2041,15 @@ const app = createApp({
         // ── CRUD helpers ──
         const crudSave = (action, bodyKey, dataList, payload) =>
             post(action, {[bodyKey]: {...form, ...payload}}).then(r => {
-                if (r.success) { dataList.value = r.data; closeModal(); notify(true, 'Saved successfully.'); }
+                if (r.success) {
+                    dataList.value = r.data;
+                    closeModal();
+                    notify(true, 'Saved successfully.');
+                    if (window.DataCache) {
+                        window.DataCache.invalidate('admin:academic_data');
+                        window.DataCache.invalidate('admin:dashboard_stats');
+                    }
+                }
                 else notify(false, r.error || 'Save failed.');
             });
         const crudDel = async (action, id, dataList, label) => {
@@ -1954,7 +2064,14 @@ const app = createApp({
             });
             if (!result.isConfirmed) return;
             post(action, {id}).then(r => {
-                if (r.success) { dataList.value = r.data; notify(true, `${label} deleted.`); }
+                if (r.success) {
+                    dataList.value = r.data;
+                    notify(true, `${label} deleted.`);
+                    if (window.DataCache) {
+                        window.DataCache.invalidate('admin:academic_data');
+                        window.DataCache.invalidate('admin:dashboard_stats');
+                    }
+                }
                 else Swal.fire({ title: 'Cannot Delete', html: r.error || 'Delete failed.', icon: 'error', confirmButtonColor: '#006A4E' });
             });
         };
@@ -2209,15 +2326,40 @@ const app = createApp({
         const deleteFee      = id => crudDel('delete_fee',      id,           fees,       'fee');
 
         // ── Operator Management (Isolated Methods & Tracing) ──
-        const fetchOperators = () => {
+        const fetchOperators = (forceRefresh = false) => {
             console.log('[Trace: Operators] Fetching operators list...');
-            return get('fetch_users').then(r => {
+            const hasUsers = users.value && users.value.length > 0;
+            if (!hasUsers && !(window.DataCache && window.DataCache.has('admin:users'))) {
+                isLoadingOperators.value = true;
+            }
+            const fetchFn = () => get('fetch_users');
+            if (window.DataCache) {
+                return window.DataCache.fetchWithCache('admin:users', fetchFn, {
+                    staleTime: 30000,
+                    forceRefresh,
+                    onBackgroundUpdate: (r) => {
+                        if (r && r.success) users.value = r.data || [];
+                    }
+                }).then(r => {
+                    if (r && r.success) {
+                        users.value = r.data || [];
+                        console.log(`[Trace: Operators] Loaded ${users.value.length} operators:`, users.value);
+                    }
+                }).catch(err => {
+                    console.error('[Trace: Operators] Failed to fetch operators:', err);
+                }).finally(() => {
+                    isLoadingOperators.value = false;
+                });
+            }
+            return fetchFn().then(r => {
                 if (r && r.success) {
                     users.value = r.data || [];
                     console.log(`[Trace: Operators] Loaded ${users.value.length} operators:`, users.value);
                 } else {
                     console.error('[Trace: Operators] Failed to fetch operators:', r);
                 }
+            }).finally(() => {
+                isLoadingOperators.value = false;
             });
         };
 
@@ -2258,7 +2400,8 @@ const app = createApp({
                 if (r.success) {
                     console.log('[Trace: Operators] Operator account created successfully:', r);
                     closeCreateOperatorModal();
-                    fetchOperators();
+                    if (window.DataCache) window.DataCache.invalidate('admin:users');
+                    fetchOperators(true);
 
                     const pass = (r.data && r.data.tempPassword) ? r.data.tempPassword : (operatorForm.password || '(As specified)');
                     const emailSent = r.data && r.data.emailSent;
@@ -2340,7 +2483,8 @@ const app = createApp({
                 if (r.success) {
                     console.log('[Trace: Operators] Operator updated successfully:', r);
                     closeEditOperatorModal();
-                    fetchOperators();
+                    if (window.DataCache) window.DataCache.invalidate('admin:users');
+                    fetchOperators(true);
                     Swal.fire({
                         title: 'Operator Updated!',
                         text: `Account details for ${targetName} have been updated successfully.`,
@@ -2463,7 +2607,10 @@ const app = createApp({
         const updateStatus = (userId, status) => {
             console.log(`[Trace: Operators] Updating status for user ID ${userId} -> ${status}`);
             return post('update_user_status', { userId, status }).then(r => {
-                if (r.success) fetchOperators();
+                if (r.success) {
+                    if (window.DataCache) window.DataCache.invalidate('admin:users');
+                    fetchOperators(true);
+                }
                 else notify(false, r.error || 'Failed to update status.');
             });
         };
@@ -2483,7 +2630,8 @@ const app = createApp({
             post('delete_user', { userId }).then(r => {
                 if (r.success) {
                     console.log(`[Trace: Operators] User ID ${userId} deleted`);
-                    fetchOperators();
+                    if (window.DataCache) window.DataCache.invalidate('admin:users');
+                    fetchOperators(true);
                 } else {
                     console.error('[Trace: Operators] Delete user failed:', r);
                     notify(false, r.error || 'Failed to delete.');

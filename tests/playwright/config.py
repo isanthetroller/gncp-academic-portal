@@ -1,6 +1,6 @@
 import os
 
-BASE_URL = os.environ.get("GNCP_BASE_URL", "http://127.0.0.1/systemtest")
+BASE_URL = os.environ.get("GNCP_BASE_URL", "http://127.0.0.1/systemtest").strip()
 
 # Database Configuration (for direct DB verification assertions)
 DB_CONFIG = {

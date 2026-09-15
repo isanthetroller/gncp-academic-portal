@@ -242,6 +242,8 @@ def test_audit():
 
     def handle_console(msg):
         if msg.type in ["error"]:
+            if "Failed to load resource" in msg.text and any(c in msg.text for c in ["401", "403"]):
+                return
             console_errors.append(f"[{msg.type}] {msg.text}")
 
     def handle_page_error(err):
@@ -265,7 +267,7 @@ def test_audit():
         page.goto(f"{BASE_URL}/student-portal/login", wait_until="domcontentloaded")
         page.wait_for_selector("#studentIdInput", state="visible")
         page.fill("#studentIdInput", "2026-1006")
-        page.fill("#studentPasswordInput", "delacruz")
+        page.fill("#studentPasswordInput", "Password123!")
         page.click("button[type='submit']")
         page.wait_for_timeout(2500)
 

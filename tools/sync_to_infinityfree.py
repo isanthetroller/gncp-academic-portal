@@ -32,7 +32,9 @@ FTP_HOST = _creds["FTP_HOST"]
 FTP_USER = _creds["FTP_USER"]
 FTP_PASS = _creds["FTP_PASS"]
 REMOTE_ROOT = _creds["REMOTE_ROOT"]
-LOCAL_ROOT = os.path.abspath(r"C:\xampp\htdocs\systemtest")
+_hardened_path = os.path.abspath(r"C:\xampp\htdocs\systemtest-hardened")
+LOCAL_ROOT = _hardened_path if ("--hardened" in sys.argv or os.environ.get("USE_HARDENED") == "1") else os.path.abspath(os.environ.get("GNCP_LOCAL_ROOT", r"C:\xampp\htdocs\systemtest"))
+
 
 # Excluded paths and extensions
 EXCLUDE_DIRS = {

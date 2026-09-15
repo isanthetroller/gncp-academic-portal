@@ -30,6 +30,7 @@ CATEGORY_A_FILES = [
 
 # Category B: Vue 3 Controller and View objects (Requires transform-object-keys: false to preserve Vue reactive and template property bindings)
 CATEGORY_B_FILES = [
+    r"shared\js\DataCache.js",
     r"student-portal\assets\js\controllers\StudentLoginController.js",
     r"student-portal\assets\js\controllers\StudentForgotPasswordController.js",
     r"student-portal\assets\js\controllers\StudentPortalController.js",

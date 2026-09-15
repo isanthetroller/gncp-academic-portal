@@ -235,24 +235,24 @@
                                     <p>Students who have completed cashier payment and require portal setup.</p>
                                 </div>
                             </div>
-                            <div class="table-responsive">
-                                <table class="data-table">
+                            <div class="table-responsive stable-table-container">
+                                <table class="data-table table-layout-fixed">
                                     <thead>
                                         <tr>
-                                            <th>Ref No.</th>
-                                            <th>Student Name</th>
-                                            <th>Program</th>
-                                            <th>Student Type</th>
-                                            <th>Action</th>
+                                            <th style="width: 20%;">Ref No.</th>
+                                            <th style="width: 32%;">Student Name</th>
+                                            <th style="width: 20%;">Program</th>
+                                            <th style="width: 14%;">Student Type</th>
+                                            <th style="width: 14%;">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody v-if="isLoadingQueue">
+                                    <tbody v-if="isLoadingQueue && (!studentsList || studentsList.length === 0)">
                                         <tr v-for="i in 3" :key="'it-dash-skel-' + i" class="table-skeleton-row">
-                                            <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
-                                            <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
-                                            <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
-                                            <td><div class="skeleton-shimmer skeleton-pill" style="width: 80px;"></div></td>
-                                            <td><div class="skeleton-shimmer skeleton-btn" style="width: 70px;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-btn" style="width: 80%;"></div></td>
                                         </tr>
                                     </tbody>
                                     <tbody v-else>
@@ -361,32 +361,32 @@
                                 Showing {{ filteredStudents.length }} of {{ studentsList.length }} Records
                             </span>
                         </div>
-                        <div class="table-responsive">
-                            <table class="data-table">
+                        <div class="table-responsive stable-table-container">
+                            <table class="data-table table-layout-fixed">
                                 <thead>
                                     <tr>
-                                        <th style="width:110px;">Queue Ticket</th>
-                                        <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
+                                        <th style="width: 14%;">Queue Ticket</th>
+                                        <th style="width: 16%;" class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
                                             Ref No. <i :class="getSortIcon('referenceNumber')"></i>
                                         </th>
-                                        <th class="cursor-pointer select-none" @click="toggleSort('name')">
+                                        <th style="width: 30%;" class="cursor-pointer select-none" @click="toggleSort('name')">
                                             Student Name <i :class="getSortIcon('name')"></i>
                                         </th>
-                                        <th class="cursor-pointer select-none" @click="toggleSort('program')">
+                                        <th style="width: 16%;" class="cursor-pointer select-none" @click="toggleSort('program')">
                                             Program <i :class="getSortIcon('program')"></i>
                                         </th>
-                                        <th>Status</th>
-                                        <th style="width:120px;">Action</th>
+                                        <th style="width: 12%;">Status</th>
+                                        <th style="width: 12%;">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody v-if="isLoadingQueue">
+                                <tbody v-if="isLoadingQueue && (!filteredStudents || filteredStudents.length === 0)">
                                     <tr v-for="i in 5" :key="'it-queue-skel-' + i" class="table-skeleton-row">
-                                        <td><div class="skeleton-shimmer skeleton-ticket"></div></td>
-                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 85px;"></div></td>
-                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 150px;"></div></td>
-                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 75px;"></div></td>
-                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 90px;"></div></td>
-                                        <td><div class="skeleton-shimmer skeleton-btn" style="width: 100px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-ticket" style="width: 80%;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-btn" style="width: 80%;"></div></td>
                                     </tr>
                                 </tbody>
                                 <tbody v-else>
@@ -470,28 +470,28 @@
                             </button>
                         </div>
 
-                        <div class="table-responsive">
-                            <table class="data-table">
+                        <div class="table-responsive stable-table-container">
+                            <table class="data-table table-layout-fixed">
                                 <thead>
                                     <tr>
-                                        <th>Student ID</th>
-                                        <th>Full Name</th>
-                                        <th>Institutional Email</th>
-                                        <th>Program</th>
-                                        <th>Year Level</th>
-                                        <th>Account Status</th>
-                                        <th>Activated On</th>
+                                        <th style="width: 14%;">Student ID</th>
+                                        <th style="width: 22%;">Full Name</th>
+                                        <th style="width: 22%;">Institutional Email</th>
+                                        <th style="width: 12%;">Program</th>
+                                        <th style="width: 10%;">Year Level</th>
+                                        <th style="width: 10%;">Account Status</th>
+                                        <th style="width: 10%;">Activated On</th>
                                     </tr>
                                 </thead>
-                                <tbody v-if="isLoadingAccounts">
+                                <tbody v-if="isLoadingAccounts && (!filteredAccounts || filteredAccounts.length === 0)">
                                     <tr v-for="i in 5" :key="'it-acc-skel-' + i" class="table-skeleton-row">
-                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 90px;"></div></td>
-                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 150px;"></div></td>
-                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 160px;"></div></td>
-                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
-                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 60px;"></div></td>
-                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 65px;"></div></td>
-                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
                                     </tr>
                                 </tbody>
                                 <tbody v-else>

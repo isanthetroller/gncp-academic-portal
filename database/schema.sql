@@ -694,6 +694,7 @@ CREATE TABLE IF NOT EXISTS `password_resets` (
     `email`      VARCHAR(150) NOT NULL,
     `token`      VARCHAR(255) NOT NULL,
     `code`       VARCHAR(6) NOT NULL,
+    `attempts`   INT DEFAULT 0,
     `user_type`  VARCHAR(20) DEFAULT 'STUDENT',
     `expires_at` DATETIME NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

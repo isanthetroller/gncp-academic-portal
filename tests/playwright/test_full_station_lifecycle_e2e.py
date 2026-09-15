@@ -238,7 +238,7 @@ def run_e2e_tests():
         print("  -> Completed academic advising & NSTP lock-in in Helpdesk.")
 
         # Verify student is removed from Helpdesk active queue
-        page.evaluate("() => { if (window.app && window.app.setView) window.app.setView('queue'); }")
+        page.evaluate("() => { if (window.app) { if (window.app.setView) window.app.setView('queue'); if (window.app.setFilter) window.app.setFilter('Pending'); } }")
         page.wait_for_timeout(1000)
         assert test_ref_prog not in page.inner_text(".main-panel"), f"Student {test_ref_prog} still in Helpdesk active queue!"
         print("  -> Student immediately removed from Helpdesk Active Queue.")
@@ -291,7 +291,7 @@ def run_e2e_tests():
         print("  -> Recorded FIT clearance for student in Medical Clinic.")
 
         # Verify removal from Medical active queue
-        page.evaluate("() => { if (window.app && window.app.setView) window.app.setView('queue'); }")
+        page.evaluate("() => { if (window.app) { if (window.app.setView) window.app.setView('queue'); if (window.app.setFilter) window.app.setFilter('Pending'); } }")
         page.wait_for_timeout(1000)
         assert test_ref_prog not in page.inner_text(".main-panel"), f"Student {test_ref_prog} still in Medical active queue!"
         print("  -> Student immediately removed from Medical Clinic Active Queue.")
@@ -343,7 +343,7 @@ def run_e2e_tests():
         print(f"  -> Processed tuition payment in Cashier.")
 
         # Verify removal from Cashier active queue table
-        page.evaluate("() => { if (window.app && window.app.setView) window.app.setView('queue'); }")
+        page.evaluate("() => { if (window.app) { if (window.app.setView) window.app.setView('queue'); if (window.app.setFilter) window.app.setFilter('PENDING'); } }")
         page.wait_for_timeout(1500)
         table_html = page.inner_html(".data-table tbody")
         assert test_ref_prog not in table_html, f"Student {test_ref_prog} still in Cashier active queue table!"
@@ -394,7 +394,7 @@ def run_e2e_tests():
         print(f"  -> Activated institutional account & generated Permanent ID: {perm_student_id}.")
 
         # Verify removal from IT Center active queue table
-        page.evaluate("() => { if (window.app && window.app.setView) window.app.setView('queue'); }")
+        page.evaluate("() => { if (window.app) { if (window.app.setView) window.app.setView('queue'); if (window.app.setFilter) window.app.setFilter('Pending'); } }")
         page.wait_for_timeout(1000)
         assert test_ref_prog not in page.inner_html(".data-table tbody"), f"Student {test_ref_prog} still in IT Center active queue!"
         print("  -> Student immediately removed from IT Center Activation Queue.")

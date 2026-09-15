@@ -135,13 +135,43 @@
             const isLoadingData = ref(true);
             const isLoadingHistory = ref(true);
 
-            const fetchReviewHistory = async () => {
-                try {
-                    const basePath = window.location.pathname.startsWith('/systemtest') ? '/systemtest' : '';
+            const fetchReviewHistory = async (forceRefresh = false) => {
+                const basePath = window.location.pathname.startsWith('/systemtest') ? '/systemtest' : '';
+                const fetchFn = async () => {
                     const res = await fetch(`${basePath}/api/index.php?action=stations/history&station=REGISTRAR`, {
                         credentials: 'same-origin'
                     });
-                    const json = await res.json();
+                    return await res.json();
+                };
+
+                if (typeof global.DataCache !== 'undefined') {
+                    try {
+                        const json = await DataCache.fetchWithCache('registrar:history', fetchFn, {
+                            staleTime: 4000,
+                            forceRefresh: forceRefresh,
+                            onBackgroundUpdate: (freshJson) => {
+                                if (freshJson && freshJson.success && Array.isArray(freshJson.data)) {
+                                    reviewHistory.value = freshJson.data;
+                                } else if (Array.isArray(freshJson)) {
+                                    reviewHistory.value = freshJson;
+                                }
+                            }
+                        });
+                        if (json && json.success && Array.isArray(json.data)) {
+                            reviewHistory.value = json.data;
+                        } else if (Array.isArray(json)) {
+                            reviewHistory.value = json;
+                        }
+                    } catch (e) {
+                        console.error('Failed to fetch review history:', e);
+                    } finally {
+                        isLoadingHistory.value = false;
+                    }
+                    return;
+                }
+
+                try {
+                    const json = await fetchFn();
                     if (json && json.success && Array.isArray(json.data)) {
                         reviewHistory.value = json.data;
                     }
@@ -185,8 +215,43 @@
                 ];
             });
 
+            const applyRegistrarData = (data) => {
+                if (!data) return;
+                if (data.programs) programs.value = data.programs;
+                if (data.subjects) subjects.value = data.subjects;
+                if (data.curriculum) curriculum.value = data.curriculum;
+                if (data.academicPeriods) academicPeriods.value = data.academicPeriods;
+                if (data.subjectSections) subjectSections.value = data.subjectSections;
+                if (data.feeSchedule) feeSchedule.value = data.feeSchedule;
+                if (data.students) students.value = data.students;
+                if (data.enrollments) enrollments.value = data.enrollments;
+                if (data.pendingApplications) pendingApplications.value = data.pendingApplications;
+                if (data.sections) sections.value = data.sections;
+            };
+
             let isDataRequestInFlight = false;
-            const loadData = () => {
+            const loadData = (forceRefresh = false) => {
+                if (typeof global.DataCache !== 'undefined') {
+                    DataCache.fetchWithCache('registrar:all_data', () => Api.fetchAllData(), {
+                        staleTime: 4000,
+                        forceRefresh: forceRefresh,
+                        onBackgroundUpdate: (freshRes) => {
+                            if (!freshRes || freshRes.notModified) return;
+                            applyRegistrarData(freshRes.data || {});
+                        }
+                    }).then((res) => {
+                        if (res && res.data) {
+                            applyRegistrarData(res.data);
+                            fetchReviewHistory();
+                        }
+                    }).catch(err => {
+                        console.error('Error loading registrar data:', err);
+                    }).finally(() => {
+                        isLoadingData.value = false;
+                    });
+                    return;
+                }
+
                 if (isDataRequestInFlight) return;
                 isDataRequestInFlight = true;
                 Api.fetchAllData()
@@ -195,16 +260,7 @@
                             return;
                         }
                         const data = (res && res.data) ? res.data : {};
-                        if (data.programs) programs.value = data.programs;
-                        if (data.subjects) subjects.value = data.subjects;
-                        if (data.curriculum) curriculum.value = data.curriculum;
-                        if (data.academicPeriods) academicPeriods.value = data.academicPeriods;
-                        if (data.subjectSections) subjectSections.value = data.subjectSections;
-                        if (data.feeSchedule) feeSchedule.value = data.feeSchedule;
-                        if (data.students) students.value = data.students;
-                        if (data.enrollments) enrollments.value = data.enrollments;
-                        if (data.pendingApplications) pendingApplications.value = data.pendingApplications;
-                        if (data.sections) sections.value = data.sections;
+                        applyRegistrarData(data);
                         fetchReviewHistory();
                     })
                     .catch(err => {
@@ -214,6 +270,16 @@
                         isDataRequestInFlight = false;
                         isLoadingData.value = false;
                     });
+            };
+
+            const invalidateAndReload = () => {
+                if (typeof global.DataCache !== 'undefined') {
+                    global.DataCache.invalidate('registrar:');
+                    global.DataCache.invalidate('admin:');
+                    global.DataCache.invalidate('student:');
+                    global.DataCache.invalidate('stations:');
+                }
+                loadData(true);
             };
 
             // ── Auth & Live Profile Handling ─────────────────────────────
@@ -985,8 +1051,14 @@
                                 pendingApplications.value.unshift(res.data);
                             }
                         }
-                        fetchReviewHistory();
-                        loadData();
+                        if (typeof global.DataCache !== 'undefined') {
+                            global.DataCache.invalidate('registrar:');
+                            global.DataCache.invalidate('admin:');
+                            global.DataCache.invalidate('student:');
+                            global.DataCache.invalidate('stations:');
+                        }
+                        fetchReviewHistory(true);
+                        loadData(true);
                         hideModal('applicationModal');
                         Swal.fire({
                             title: 'Success',
@@ -1026,7 +1098,7 @@
                     if (res.success) {
                         programs.value = res.data || [];
                         hideModal('programModal');
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1044,7 +1116,7 @@
                 Api.deleteProgram(id).then(res => {
                     if (res.success) {
                         programs.value = res.data || [];
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1059,7 +1131,7 @@
                     if (res.success) {
                         subjects.value = res.data || [];
                         hideModal('subjectModal');
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1077,7 +1149,7 @@
                 Api.deleteSubject(id).then(res => {
                     if (res.success) {
                         subjects.value = res.data || [];
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1092,7 +1164,7 @@
                     if (res.success) {
                         curriculum.value = res.data || [];
                         hideModal('curriculumModal');
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1110,7 +1182,7 @@
                 Api.deleteCurriculum(id).then(res => {
                     if (res.success) {
                         curriculum.value = res.data || [];
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1125,7 +1197,7 @@
                     if (res.success) {
                         academicPeriods.value = res.data || [];
                         hideModal('periodModal');
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1143,7 +1215,7 @@
                 Api.deleteAcademicPeriod(id).then(res => {
                     if (res.success) {
                         academicPeriods.value = res.data || [];
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1158,7 +1230,7 @@
                     if (res.success) {
                         subjectSections.value = res.data || [];
                         hideModal('sectionModal');
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1176,7 +1248,7 @@
                 Api.deleteSubjectSection(id).then(res => {
                     if (res.success) {
                         subjectSections.value = res.data || [];
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1191,7 +1263,7 @@
                     if (res.success) {
                         feeSchedule.value = res.data || [];
                         hideModal('feeModal');
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1209,7 +1281,7 @@
                 Api.deleteFee(id).then(res => {
                     if (res.success) {
                         feeSchedule.value = res.data || [];
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };
@@ -1217,7 +1289,7 @@
             const updateRoadmapStep = (refNum, stepId, status) => {
                 Api.updateRoadmapStep(refNum, stepId, status).then(res => {
                     if (res.success) {
-                        loadData();
+                        invalidateAndReload();
                     }
                 });
             };

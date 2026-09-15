@@ -399,10 +399,11 @@ class StudentController {
         }
 
         $isStaff = !empty($_SESSION['gncp_admin_user']) || !empty($_SESSION['gncp_station_user']);
-        $isStudent = !empty($_SESSION['gncp_portal_student']);
+        $isStudent = !empty($_SESSION['gncp_student']) || !empty($_SESSION['gncp_portal_student']);
 
         // Check optional PIN authentication for public applicant tracking view
         $hasPinAuth = false;
+        $applicant = null;
         $ref = trim($_GET['ref'] ?? '');
         $pin = trim($_GET['pin'] ?? '');
         if (!empty($ref) && !empty($pin) && preg_match('/^\d{6}$/', $pin)) {
@@ -429,6 +430,80 @@ class StudentController {
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['success' => false, 'message' => 'Invalid or missing document filename.', 'code' => 400]);
             exit;
+        }
+
+        // IDOR Authorization Safeguard: If requester is not staff, verify document ownership
+        if (!$isStaff) {
+            $isAuthorizedForFile = false;
+
+            // Check 1: Applicant tracking session (PIN verified)
+            if ($hasPinAuth && !empty($applicant)) {
+                $reqDataStr = (string)($applicant['requirements_data'] ?? '');
+                $refNo = (string)($applicant['temp_student_id'] ?? '');
+                if (str_contains($reqDataStr, $filename) || (!empty($refNo) && str_contains($filename, $refNo))) {
+                    $isAuthorizedForFile = true;
+                }
+            }
+
+            // Check 2: Enrolled student session
+            if ($isStudent && !$isAuthorizedForFile) {
+                $sessStudent = $_SESSION['gncp_student'] ?? ($_SESSION['gncp_portal_student'] ?? []);
+                $studentId = trim((string)($sessStudent['student_id'] ?? ($sessStudent['id'] ?? '')));
+                $studentEmail = trim((string)($sessStudent['email'] ?? ''));
+
+                if (!empty($studentId) || !empty($studentEmail)) {
+                    $stmtStud = $this->pdo->prepare("
+                        SELECT `id`, `temp_reference_no`, `requirements_data` 
+                        FROM `students` 
+                        WHERE `id` = :id OR `email` = :email 
+                        LIMIT 1
+                    ");
+                    $stmtStud->execute(['id' => $studentId, 'email' => $studentEmail]);
+                    $studRow = $stmtStud->fetch(PDO::FETCH_ASSOC);
+
+                    if ($studRow) {
+                        $sReqData = (string)($studRow['requirements_data'] ?? '');
+                        $sId = (string)($studRow['id'] ?? '');
+                        $sTempRef = (string)($studRow['temp_reference_no'] ?? '');
+
+                        if (str_contains($sReqData, $filename) 
+                            || (!empty($sId) && str_contains($filename, $sId)) 
+                            || (!empty($sTempRef) && str_contains($filename, $sTempRef))) {
+                            $isAuthorizedForFile = true;
+                        }
+
+                        // Also verify against pre_enrollments staging if reference is linked
+                        if (!$isAuthorizedForFile && !empty($sTempRef)) {
+                            $stmtPre = $this->pdo->prepare("
+                                SELECT `requirements_data`, `temp_student_id` 
+                                FROM `pre_enrollments` 
+                                WHERE `temp_student_id` = :ref 
+                                LIMIT 1
+                            ");
+                            $stmtPre->execute(['ref' => $sTempRef]);
+                            $preRow = $stmtPre->fetch(PDO::FETCH_ASSOC);
+                            if ($preRow) {
+                                $pReqData = (string)($preRow['requirements_data'] ?? '');
+                                $pRef = (string)($preRow['temp_student_id'] ?? '');
+                                if (str_contains($pReqData, $filename) || (!empty($pRef) && str_contains($filename, $pRef))) {
+                                    $isAuthorizedForFile = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!$isAuthorizedForFile) {
+                http_response_code(403);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => false, 
+                    'message' => 'Access denied: You do not have permission to access or download this document.', 
+                    'code' => 403
+                ]);
+                exit;
+            }
         }
 
         $uploadDir = realpath(__DIR__ . '/../../uploads/documents');

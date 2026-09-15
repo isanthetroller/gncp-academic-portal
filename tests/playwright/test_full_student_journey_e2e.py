@@ -47,8 +47,9 @@ def run_full_student_journey():
 
         # Populate form fields on Vue instance
         page.evaluate(f"""() => {{
-            const app = document.querySelector('#enrollment-app').__vue_app__;
-            const root = app._instance.proxy;
+            const appElem = document.querySelector('#enrollment-app');
+            const root = window.enrollmentVm || window.app || (appElem && appElem.__vue_app__ && appElem.__vue_app__._instance ? appElem.__vue_app__._instance.proxy : null);
+            if (!root) throw new Error("Could not find enrollment Vue instance");
             root.form.studentType = 'FRESHMAN';
             root.form.educationPathway = 'REGULAR';
             root.form.courseCode = 'BSIT';
@@ -199,7 +200,7 @@ def run_full_student_journey():
         page.wait_for_timeout(2000)
 
         # Assert removed from Helpdesk Queue
-        page.evaluate("() => { if (window.app && window.app.setView) window.app.setView('queue'); }")
+        page.evaluate("() => { if (window.app) { if (window.app.setView) window.app.setView('queue'); if (window.app.setFilter) window.app.setFilter('Pending'); } }")
         page.wait_for_timeout(1000)
         assert generated_ref not in page.inner_text(".main-panel"), "Student still in Helpdesk Active Queue!"
         db_s2 = DBHelper.get_pre_enrollment(generated_ref)
@@ -235,7 +236,7 @@ def run_full_student_journey():
         page.wait_for_timeout(2000)
 
         # Assert removed from Medical Queue
-        page.evaluate("() => { if (window.app && window.app.setView) window.app.setView('queue'); }")
+        page.evaluate("() => { if (window.app) { if (window.app.setView) window.app.setView('queue'); if (window.app.setFilter) window.app.setFilter('Pending'); } }")
         page.wait_for_timeout(1000)
         assert generated_ref not in page.inner_text(".main-panel"), "Student still in Medical Active Queue!"
         db_s3 = DBHelper.get_pre_enrollment(generated_ref)
@@ -276,7 +277,7 @@ def run_full_student_journey():
             page.wait_for_timeout(1000)
 
         # Assert removed from Cashier Queue
-        page.evaluate("() => { if (window.app && window.app.setView) window.app.setView('queue'); }")
+        page.evaluate("() => { if (window.app) { if (window.app.setView) window.app.setView('queue'); if (window.app.setFilter) window.app.setFilter('PENDING'); } }")
         page.wait_for_timeout(1500)
         assert generated_ref not in page.inner_html(".data-table tbody"), "Student still in Cashier Active Queue!"
         db_s4 = DBHelper.get_pre_enrollment(generated_ref)
@@ -313,7 +314,7 @@ def run_full_student_journey():
         page.wait_for_timeout(2500)
 
         # Assert removed from IT Center Queue
-        page.evaluate("() => { if (window.app && window.app.setView) window.app.setView('queue'); }")
+        page.evaluate("() => { if (window.app) { if (window.app.setView) window.app.setView('queue'); if (window.app.setFilter) window.app.setFilter('Pending'); } }")
         page.wait_for_timeout(1000)
         assert generated_ref not in page.inner_html(".data-table tbody"), "Student still in IT Center Activation Queue!"
         

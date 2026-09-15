@@ -173,36 +173,36 @@
                             Showing {{ filteredStudents.length }} of {{ students.length }} Records
                         </span>
                     </div>
-                    <div class="table-responsive">
-                        <table class="data-table">
+                    <div class="table-responsive stable-table-container">
+                        <table class="data-table table-layout-fixed">
                             <thead>
                                 <tr>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('id')">
+                                    <th style="width: 14%;" class="cursor-pointer select-none" @click="toggleSort('id')">
                                         Student ID <i :class="getSortIcon('id')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('name')">
+                                    <th style="width: 22%;" class="cursor-pointer select-none" @click="toggleSort('name')">
                                         Full Name <i :class="getSortIcon('name')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('program')">
+                                    <th style="width: 16%;" class="cursor-pointer select-none" @click="toggleSort('program')">
                                         Mapped Program <i :class="getSortIcon('program')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('year_level')">
+                                    <th style="width: 12%;" class="cursor-pointer select-none" @click="toggleSort('year_level')">
                                         Year Level <i :class="getSortIcon('year_level')"></i>
                                     </th>
-                                    <th>Section</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
+                                    <th style="width: 12%;">Section</th>
+                                    <th style="width: 10%;">Status</th>
+                                    <th style="width: 14%;">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody v-if="isLoading">
+                            <tbody v-if="isLoading && (!students || students.length === 0)">
                                 <tr v-for="i in 5" :key="'reg-stud-skel-' + i" class="table-skeleton-row">
-                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 90px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 65px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 75px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-btn" style="width: 90px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-btn" style="width: 80%;"></div></td>
                                 </tr>
                             </tbody>
                             <tbody v-else>
@@ -613,42 +613,42 @@
                         </span>
                     </div>
 
-                    <div class="table-responsive">
-                        <table class="data-table">
+                    <div class="table-responsive stable-table-container">
+                        <table class="data-table table-layout-fixed">
                             <thead>
                                 <tr>
-                                    <th style="width:110px;">Queue Ticket</th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')" style="white-space:nowrap;">
+                                    <th style="width: 10%;">Queue Ticket</th>
+                                    <th style="width: 14%;" class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
                                         Reference ID <i :class="getSortIcon('referenceNumber')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('applicantName')" style="white-space:nowrap;">
+                                    <th style="width: 22%;" class="cursor-pointer select-none" @click="toggleSort('applicantName')">
                                         Applicant Name <i :class="getSortIcon('applicantName')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('program')" style="white-space:nowrap;">
+                                    <th style="width: 14%;" class="cursor-pointer select-none" @click="toggleSort('program')">
                                         Program <i :class="getSortIcon('program')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('studentType')" style="white-space:nowrap;">
+                                    <th style="width: 10%;" class="cursor-pointer select-none" @click="toggleSort('studentType')">
                                         Type <i :class="getSortIcon('studentType')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('dateSubmitted')" style="white-space:nowrap;">
+                                    <th style="width: 11%;" class="cursor-pointer select-none" @click="toggleSort('dateSubmitted')">
                                         Arrival / Date <i :class="getSortIcon('dateSubmitted')"></i>
                                     </th>
-                                    <th class="cursor-pointer select-none" @click="toggleSort('status')" style="white-space:nowrap;">
+                                    <th style="width: 9%;" class="cursor-pointer select-none" @click="toggleSort('status')">
                                         Status <i :class="getSortIcon('status')"></i>
                                     </th>
-                                    <th style="width:120px;">Actions</th>
+                                    <th style="width: 10%;">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody v-if="isLoading">
+                            <tbody v-if="isLoading && (!pendingApplications || pendingApplications.length === 0)">
                                 <tr v-for="i in 5" :key="'reg-queue-skel-' + i" class="table-skeleton-row">
-                                    <td><div class="skeleton-shimmer skeleton-ticket"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 85px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 75px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 90px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-btn" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-ticket" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-btn" style="width: 80%;"></div></td>
                                 </tr>
                             </tbody>
                             <tbody v-else>
@@ -875,32 +875,32 @@
                         </span>
                     </div>
 
-                    <div class="table-responsive">
-                        <table class="data-table">
+                    <div class="table-responsive stable-table-container">
+                        <table class="data-table table-layout-fixed">
                             <thead>
                                 <tr>
-                                    <th>Reference No.</th>
-                                    <th>Applicant Name</th>
-                                    <th>Course &amp; Level</th>
-                                    <th>Assigned Section</th>
-                                    <th>Action / Result</th>
-                                    <th>Reviewed By</th>
-                                    <th>Completed Date &amp; Time</th>
-                                    <th>Notes / Remarks</th>
-                                    <th>Action</th>
+                                    <th style="width: 13%;">Reference No.</th>
+                                    <th style="width: 18%;">Applicant Name</th>
+                                    <th style="width: 13%;">Course &amp; Level</th>
+                                    <th style="width: 10%;">Assigned Section</th>
+                                    <th style="width: 11%;">Action / Result</th>
+                                    <th style="width: 11%;">Reviewed By</th>
+                                    <th style="width: 12%;">Completed Date &amp; Time</th>
+                                    <th style="width: 6%;">Notes / Remarks</th>
+                                    <th style="width: 6%;">Action</th>
                                 </tr>
                             </thead>
-                            <tbody v-if="isLoading">
+                            <tbody v-if="isLoading && (!reviewHistory || reviewHistory.length === 0)">
                                 <tr v-for="i in 5" :key="'reg-hist-skel-' + i" class="table-skeleton-row">
-                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 85px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 130px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 75px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 85px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 90px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 100px;"></div></td>
-                                    <td><div class="skeleton-shimmer skeleton-btn" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-pill" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-shimmer skeleton-btn" style="width: 80%;"></div></td>
                                 </tr>
                             </tbody>
                             <tbody v-else>

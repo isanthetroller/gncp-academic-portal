@@ -16,6 +16,7 @@
     <script src="../shared/libs/vue.global.js"></script>
     <script src="../shared/libs/sweetalert2.all.min.js"></script>
     <script src="../shared/js/PasswordChangeGuard.js"></script>
+    <script src="../shared/js/DataCache.js"></script>
     <style>
         [v-cloak] {
             display: none !important;
@@ -2511,7 +2512,7 @@
 
                             <!-- Schedule Table -->
                             <div class="table-responsive mb-3">
-                                <table class="cor-schedule-table" style="min-width: 750px;">
+                                <table class="cor-schedule-table table-layout-fixed" style="min-width: 750px;">
                                     <thead>
                                         <tr>
                                             <th style="width: 10%;">Code</th>
@@ -2651,19 +2652,19 @@
 
                                 <div class="cor-col-6">
                                     <div class="cor-sec-title">Schedule of Payment(s)</div>
-                                    <table class="cor-pay-table">
+                                    <table class="cor-pay-table table-layout-fixed">
                                         <thead>
                                             <tr>
-                                                <th>Milestone</th>
-                                                <th>Due Date</th>
-                                                <th>Amount Due</th>
+                                                <th style="width: 45%;">Milestone</th>
+                                                <th style="width: 25%;">Due Date</th>
+                                                <th style="width: 30%;">Amount Due</th>
                                             </tr>
                                         </thead>
                                         <tbody v-if="isLoadingCor">
                                             <tr v-for="n in 5" :key="'pay-skel-' + n" class="table-skeleton-row">
-                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 90px;"></div></td>
-                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 75px;"></div></td>
-                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 65px;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 80%;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 80%;"></div></td>
+                                                <td><div class="skeleton-bar skeleton-bar-sm" style="width: 80%;"></div></td>
                                             </tr>
                                         </tbody>
                                         <tbody v-else-if="corData && corData.paymentSchedule && corData.paymentSchedule.items">
@@ -2800,8 +2801,8 @@
                                 </div>
                             </div>
 
-                            <!-- Loading State -->
-                            <div v-if="documentsData.loading" class="card border-0 shadow-sm rounded-4 p-5 text-center mb-4">
+                            <!-- Loading State (Initial Cold Load Only) -->
+                            <div v-if="documentsData.loading && (!documentsData.requirements || documentsData.requirements.length === 0)" class="card border-0 shadow-sm rounded-4 p-5 text-center mb-4">
                                 <div class="spinner-border text-success mb-3" role="status">
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
@@ -2809,7 +2810,7 @@
                             </div>
 
                             <!-- Loaded Content Area -->
-                            <div v-else>
+                            <div v-else class="stable-table-container">
                                 <!-- SCENARIO D: COMPLETE REQUIREMENTS HERO STATE -->
                                 <div v-if="documentsData.stats && documentsData.stats.isComplete"
                                     class="card border-0 shadow-sm rounded-4 p-5 text-center mb-4"
