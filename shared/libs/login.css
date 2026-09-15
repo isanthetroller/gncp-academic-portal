@@ -1,0 +1,179 @@
+/* =========================================================================
+   GNCP Unified Light Login Stylesheet
+   Ensures 100% consistent, premium light-card look across all school portals.
+   ========================================================================= */
+
+.unified-login-bg {
+    min-height: 100vh;
+    width: 100vw;
+    background: radial-gradient(circle at 50% 50%, #003D2B 0%, #001A12 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    padding: 20px;
+    box-sizing: border-box;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 99999;
+}
+
+.unified-login-card {
+    width: 100%;
+    max-width: 420px;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+    padding: 40px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.unified-login-logo {
+    width: 65px;
+    height: auto;
+    display: block;
+    margin: 0 auto 16px;
+}
+
+.unified-login-title {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 1.45rem;
+    text-align: center;
+    color: #003D2B;
+    margin: 0 0 6px;
+}
+
+.unified-login-sub {
+    text-align: center;
+    color: #6B7280;
+    font-size: 0.8rem;
+    margin: 0 0 24px;
+}
+
+.unified-login-group {
+    margin-bottom: 18px;
+    text-align: left;
+}
+
+.unified-login-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #4B5563;
+    margin-bottom: 6px;
+}
+
+.unified-login-input {
+    width: 100%;
+    background: #F9FAFB;
+    border: 1.5px solid #E5E7EB;
+    border-radius: 10px;
+    color: #1F2937;
+    padding: 11px 14px;
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+
+.unified-login-input:focus {
+    border-color: #006A4E;
+    box-shadow: 0 0 0 3px rgba(0, 106, 78, 0.12);
+    background: #ffffff;
+}
+
+.unified-login-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #006A4E, #00533C);
+    border: none;
+    border-radius: 10px;
+    color: #ffffff;
+    font-weight: 800;
+    padding: 12px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: opacity 0.15s ease, box-shadow 0.15s ease;
+    letter-spacing: 0.5px;
+}
+
+.unified-login-btn:hover {
+    opacity: 0.95;
+    box-shadow: 0 4px 12px rgba(0, 106, 78, 0.2);
+}
+
+.unified-login-btn:active {
+    opacity: 0.9;
+}
+
+.unified-login-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.unified-login-err {
+    background: #FEE2E2;
+    border: 1px solid #FCA5A5;
+    border-radius: 9px;
+    padding: 10px 14px;
+    color: #B91C1C;
+    font-size: 0.82rem;
+    margin-bottom: 14px;
+    text-align: left;
+}
+
+/* Custom Webkit Autofill Override to match light-themed inputs */
+.unified-login-input:-webkit-autofill,
+.unified-login-input:-webkit-autofill:hover, 
+.unified-login-input:-webkit-autofill:focus, 
+.unified-login-input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #F9FAFB inset !important;
+    -webkit-text-fill-color: #1F2937 !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Input Icon and Password Toggle Helpers */
+.input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.input-wrapper .unified-login-input,
+.input-wrapper .form-input {
+    padding-left: 40px;
+}
+
+.input-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9CA3AF;
+    font-size: 0.9rem;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #9CA3AF;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 0.9rem;
+    z-index: 2;
+}
+.password-toggle-btn:hover {
+    color: #006A4E;
+}
+

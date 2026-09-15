@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>Go-on National College of the Philippines - Learn more. Be more.</title>
+    <meta name="description" content="Welcome to Go-on National College of the Philippines. Official responsive collegiate portal.">
+    
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="../shared/libs/fonts/fonts.css">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="../shared/libs/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="../shared/libs/font-awesome/css/all.min.css">
+    
+    <!-- Custom Theme CSS -->
+    <link rel="stylesheet" href="assets/css/style.css?v=1789204778">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <!-- Top Utility Bar Component -->
+        <top-bar :navigation="navigation"></top-bar>
+
+        <!-- Navbar Component -->
+        <nav-bar :navigation="navigation" :current-page="currentPage" :enroll-now-url="enrollNowUrl" @navigate="navigate"></nav-bar>
+
+        <!-- Home Page View (Conditional) -->
+        <template v-if="currentPage === 'home'">
+            <!-- Hero Carousel Component -->
+            <hero-slider 
+                :slides="slides" 
+                :current-slide-index="currentSlideIndex" 
+                :enroll-now-url="enrollNowUrl"
+                @change-slide="changeSlide">
+            </hero-slider>
+
+            <!-- Feature Grid Cards Component -->
+            <feature-grid :cards="cards"></feature-grid>
+
+            <!-- About Section (Collage and Tagline) -->
+            <about-section :enroll-now-url="enrollNowUrl"></about-section>
+
+            <!-- Campus Feed Section (News/Events/Features with Tabs) -->
+            <campus-feed 
+                :items="filteredCampusItems" 
+                :categories="categories" 
+                :active-category="activeCategory" 
+                @select-category="selectCategory">
+            </campus-feed>
+
+            <!-- Live Countdown Timer Component -->
+            <countdown-timer :time-left="timeLeft" :config="countdownConfig"></countdown-timer>
+        </template>
+
+        <!-- Sub-page Dynamic Views -->
+        <about-page v-else-if="currentPage.startsWith('about-')" :sub-page="currentPage" :data="aboutData"></about-page>
+        <academics-page v-else-if="currentPage.startsWith('acad-')" :sub-page="currentPage" :data="academicsData[currentPage]"></academics-page>
+        <admissions-page v-else-if="currentPage.startsWith('admission-')" :sub-page="currentPage" :enroll-now-url="enrollNowUrl" :data="admissionsData"></admissions-page>
+        <campus-life-page v-else-if="currentPage.startsWith('life-') || currentPage.startsWith('campus-')" :sub-page="currentPage" :data="campusLifeData"></campus-life-page>
+        <payments-page v-else-if="currentPage.startsWith('payments-')" :sub-page="currentPage" :data="paymentsData"></payments-page>
+        <portals-page v-else-if="currentPage.startsWith('portal-')" :sub-page="currentPage"></portals-page>
+
+        <!-- Footer Component -->
+        <main-footer :navigation="navigation" @navigate="navigate"></main-footer>
+    </div>
+
+    <!-- Vue 3 Global Build from CDN -->
+    <script src="../shared/libs/vue.global.js"></script>
+    
+    <!-- Bootstrap 5 Bundle JS (includes Popper) -->
+    <script src="../shared/libs/bootstrap.bundle.min.js"></script>
+    
+    <!-- Application MVC Scripts -->
+    <script src="../shared/academic_constants.js?v=1789204778"></script>
+    <script src="assets/js/models/DataModel.js?v=1789204778"></script>
+    <script src="assets/js/views/MainView.js?v=1789204778"></script>
+    <script src="assets/js/views/PagesView.js?v=1789204778"></script>
+    <script src="assets/js/controllers/AppController.js?v=1789204778"></script>
+</body>
+</html>

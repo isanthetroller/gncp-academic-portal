@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Universal Document Viewer SPA</title>
+  
+  <!-- CSS CDNs -->
+  <!-- Bootstrap 5 -->
+  <link href="shared/libs/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="shared/libs/font-awesome/css/all.min.css">
+  <!-- Google Font: Outfit -->
+    <link rel="stylesheet" href="shared/libs/fonts/fonts.css">
+
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --accent-color: #0ea5e9;
+      --accent-hover: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #475569;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Layout */
+    .app-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background-color: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-primary);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .navbar-top {
+      height: 70px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      background-color: var(--bg-secondary);
+    }
+
+    /* Navigation list */
+    .nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 1.5rem 0;
+    }
+
+    .nav-item-btn {
+      width: 100%;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      text-align: left;
+    }
+
+    .nav-item-btn:hover {
+      background-color: var(--bg-tertiary);
+      color: var(--text-main);
+    }
+
+    .nav-item-btn.active {
+      background-color: var(--accent-color);
+      color: white;
+    }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      background-color: var(--bg-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--accent-color);
+      background-color: #1e293b80;
+      box-shadow: 0 0 15px rgba(14, 165, 233, 0.1);
+    }
+
+    .upload-icon {
+      font-size: 3.5rem;
+      color: var(--accent-color);
+      margin-bottom: 1rem;
+    }
+
+    /* Viewer Area */
+    .viewer-area {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .viewer-card {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Target specific document render areas */
+    .render-container {
+      flex: 1;
+      background-color: #f8fafc;
+      color: #0f172a;
+      border-radius: 8px;
+      overflow: auto;
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    .render-container-dark {
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+
+    /* Excel grid preview */
+    .excel-table {
+      font-size: 0.85rem;
+      color: #334155;
+    }
+    .excel-table th {
+      background-color: #f1f5f9;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    /* Word preview override */
+    .docx-wrapper {
+      background: transparent !important;
+      padding: 0 !important;
+    }
+    .docx {
+      box-shadow: none !important;
+      margin-bottom: 0 !important;
+    }
+
+    /* Slides container for PPTX */
+    .pptx-slide {
+      background-color: white;
+      aspect-ratio: 16/9;
+      border: 1px solid #cbd5e0;
+      border-radius: 6px;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      color: #2d3748;
+    }
+    .pptx-slide-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #1a365d;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .pptx-slide-content {
+      font-size: 1rem;
+      flex: 1;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+
+    /* History list item */
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .history-item:hover {
+      background-color: var(--bg-tertiary);
+      color: var(--text-main);
+    }
+
+    .history-item.active {
+      background-color: #334155b3;
+      color: var(--accent-color);
+      font-weight: bold;
+    }
+
+    /* Code View Pre block styling */
+    pre.code-view-block {
+      margin: 0;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+<div id="viewer-app" class="app-container">
+  
+  <!-- Sidebar Panel -->
+  <div class="sidebar">
+    <div class="d-flex align-items-center mb-4">
+      <i class="fa-solid fa-file-invoice text-info fs-3 me-2"></i>
+      <span class="fs-5 fw-bold text-white">DocViewer SPA</span>
+    </div>
+
+    <!-- Main Navigation Tab Buttons -->
+    <ul class="nav-list">
+      <li>
+        <button class="nav-item-btn" :class="{ active: activeTab === 'upload' }" @click="setTab('upload')">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Upload Document
+        </button>
+      </li>
+      <li>
+        <button class="nav-item-btn" :class="{ active: activeTab === 'viewer' }" :disabled="!currentFile" @click="setTab('viewer')">
+          <i class="fa-solid fa-eye"></i> View Document
+        </button>
+      </li>
+    </ul>
+
+    <hr class="border-secondary mt-2 mb-3">
+
+    <!-- Recent Files History List -->
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <span class="small text-uppercase text-secondary fw-bold">Recent History</span>
+      <button class="btn btn-sm btn-link text-decoration-none text-danger small p-0" v-if="history.length > 0" @click="clearHistory">Clear</button>
+    </div>
+    
+    <div class="flex-grow-1 overflow-y-auto">
+      <div v-for="(hist, index) in history" :key="index" 
+           class="history-item mb-1" 
+           :class="{ active: currentFile && currentFile.id === hist.id }"
+           @click="loadHistoryFile(hist)">
+        <span class="text-truncate me-2" style="max-width: 170px;">
+          <i :class="getFileIcon(hist.name) + ' me-1'"></i> {{ hist.name }}
+        </span>
+        <button class="btn btn-sm text-secondary hover-text-danger p-0" @click.stop="removeFromHistory(index)">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div v-if="history.length === 0" class="small text-muted text-center py-3">No documents viewed yet.</div>
+    </div>
+  </div>
+
+  <!-- Main Display Screen -->
+  <div class="main-content">
+    
+    <!-- Top Header Navigation Bar -->
+    <div class="navbar-top">
+      <div class="d-flex align-items-center">
+        <h4 class="mb-0 fw-semibold text-white" v-if="currentFile">{{ currentFile.name }}</h4>
+        <h4 class="mb-0 fw-semibold text-white" v-else>Welcome to DocViewer</h4>
+        <span class="badge bg-secondary ms-3" v-if="currentFile">{{ formatSize(currentFile.size) }}</span>
+      </div>
+      <div v-if="currentFile">
+        <button class="btn btn-outline-light btn-sm me-2" @click="closeFile">
+          <i class="fa-solid fa-times me-1"></i> Close File
+        </button>
+        <button class="btn btn-info btn-sm text-white" @click="triggerDownload">
+          <i class="fa-solid fa-download me-1"></i> Download
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Tab Pane Area -->
+    
+    <!-- Tab A: Drop Upload File Screen -->
+    <div class="viewer-area justify-content-center align-items-center" v-if="activeTab === 'upload'">
+      <div class="upload-zone w-100" 
+           @dragover.prevent="dragOver" 
+           @dragleave="dragLeave" 
+           @drop.prevent="dropFile"
+           @click="triggerFileInput">
+        <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+        <h5 class="fw-semibold mb-2">Drag and drop your document here</h5>
+        <p class="text-muted small mb-4">Supports PDF, Word (.docx), Excel (.xlsx, .csv), PowerPoint (.pptx), Images, Audio, Video, and plain Text files.</p>
+        <button class="btn btn-info text-white px-4">Browse Files</button>
+        <input type="file" id="file-input" class="d-none" @change="fileSelected" accept=".pdf,.docx,.xlsx,.xls,.pptx,.csv,.txt,.html,.css,.js,.json,.md,.png,.jpg,.jpeg,.gif,.webp,.svg,.mp3,.wav,.mp4,.webm">
+      </div>
+    </div>
+
+    <!-- Tab B: Core Document Preview Render Screen -->
+    <div class="viewer-area" v-if="activeTab === 'viewer' && currentFile">
+      <div class="viewer-card">
+        
+        <!-- Viewer Panel Top Headers -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <i :class="getFileIcon(currentFile.name) + ' text-info fs-5'"></i>
+            <span class="fw-medium text-white">{{ getFileCategory(currentFile.name) }} Preview</span>
+          </div>
+          
+          <!-- Zoom controllers for images or pages if applicable -->
+          <div class="d-flex gap-2" v-if="fileCategory === 'image' || fileCategory === 'text'">
+            <button class="btn btn-sm btn-dark border border-secondary" @click="zoomOut" :disabled="zoomLevel <= 50"><i class="fa-solid fa-minus"></i></button>
+            <span class="small text-muted align-self-center px-1">{{ zoomLevel }}%</span>
+            <button class="btn btn-sm btn-dark border border-secondary" @click="zoomIn" :disabled="zoomLevel >= 200"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+
+        <!-- Render Container mapping file formats -->
+        <div class="render-container" :class="{ 'render-container-dark': fileCategory === 'text' || fileCategory === 'code' }" id="render-target">
+          
+          <!-- RENDER A: PDF Preview (Embed via object URL) -->
+          <object v-if="fileCategory === 'pdf'" :data="currentFile.url" type="application/pdf" class="w-100 h-100 border-0">
+            <iframe :src="currentFile.url" class="w-100 h-100 border-0"></iframe>
+          </object>
+
+          <!-- RENDER B: Word Document (.docx rendered via docx-preview) -->
+          <div v-if="fileCategory === 'word'" id="word-render-node"></div>
+
+          <!-- RENDER C: Excel Sheet (.xlsx / .csv rendered via SheetJS to tables) -->
+          <div v-if="fileCategory === 'excel'">
+            <!-- Tab switches for multi-sheet workbooks -->
+            <ul class="nav nav-pills mb-3" v-if="excelData.sheetNames.length > 1">
+              <li class="nav-item" v-for="sheet in excelData.sheetNames" :key="sheet">
+                <button class="nav-link btn-sm py-1 px-3 me-2" :class="{ active: excelData.activeSheet === sheet }" @click="switchExcelSheet(sheet)">
+                  {{ sheet }}
+                </button>
+              </li>
+            </ul>
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover excel-table bg-white">
+                <thead>
+                  <tr v-if="excelData.rows.length > 0">
+                    <th v-for="(val, idx) in excelData.rows[0]" :key="idx">{{ getExcelColHeader(idx) }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, rIdx) in excelData.rows" :key="rIdx">
+                    <td v-for="(val, cIdx) in row" :key="cIdx" class="text-truncate" style="max-width: 150px;">{{ val }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-if="excelData.rows.length === 0" class="text-center text-muted py-4">No spreadsheet rows found.</div>
+          </div>
+
+          <!-- RENDER D: PowerPoint (.pptx parsed client-side via JSZip) -->
+          <div v-if="fileCategory === 'powerpoint'">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <span class="small text-muted fw-bold">Slides Deck ({{ pptxData.slides.length }} slides)</span>
+              <div>
+                <button class="btn btn-sm btn-dark me-2" @click="prevSlide" :disabled="pptxData.currentIdx === 0"><i class="fa-solid fa-chevron-left me-1"></i> Prev</button>
+                <span class="small text-dark fw-bold">{{ pptxData.currentIdx + 1 }} / {{ pptxData.slides.length }}</span>
+                <button class="btn btn-sm btn-dark ms-2" @click="nextSlide" :disabled="pptxData.currentIdx === pptxData.slides.length - 1">Next <i class="fa-solid fa-chevron-right ms-1"></i></button>
+              </div>
+            </div>
+            
+            <div class="pptx-slide" v-if="pptxData.slides.length > 0">
+              <div class="pptx-slide-title">{{ pptxData.slides[pptxData.currentIdx].title || 'Slide ' + (pptxData.currentIdx + 1) }}</div>
+              <div class="pptx-slide-content">
+                <ul>
+                  <li v-for="(bullet, bIdx) in pptxData.slides[pptxData.currentIdx].bullets" :key="bIdx" class="mb-2">
+                    {{ bullet }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div v-if="pptxData.slides.length === 0" class="text-center text-muted py-5">
+              <i class="fa-solid fa-spinner fa-spin fs-4 mb-2"></i>
+              <p>Extracting slide texts...</p>
+            </div>
+          </div>
+
+          <!-- RENDER E: Images -->
+          <div v-if="fileCategory === 'image'" class="text-center">
+            <img :src="currentFile.url" alt="Image File Preview" class="img-fluid rounded" :style="{ width: zoomLevel + '%', maxHeight: '75vh', objectFit: 'contain' }">
+          </div>
+
+          <!-- RENDER F: Text / Plain Source Codes -->
+          <div v-if="fileCategory === 'text' || fileCategory === 'code'">
+            <pre class="code-view-block" :style="{ fontSize: (zoomLevel / 100) * 0.9 + 'rem' }"><code>{{ textContent }}</code></pre>
+          </div>
+
+          <!-- RENDER G: Media (Audio / Video players) -->
+          <div v-if="fileCategory === 'media'" class="d-flex justify-content-center align-items-center h-100 p-4">
+            <video v-if="currentFile.name.match(/\.(mp4|webm)$/i)" :src="currentFile.url" controls class="w-100 rounded" style="max-height: 70vh;"></video>
+            <audio v-else :src="currentFile.url" controls class="w-75"></audio>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- JS CDNs (CDNs required for client-side document processing) -->
+<!-- Vue 3 -->
+<script src="shared/libs/vue.global.js"></script>
+<script src="shared/libs/sweetalert2.all.min.js"></script>
+<!-- JSZip (for reading docx/pptx zip structures client-side) -->
+<script src="shared/libs/vendor/jszip.min.js"></script>
+<!-- docx-preview -->
+<script src="shared/libs/vendor/docx-preview.min.js"></script>
+<!-- SheetJS Sheet processor -->
+<script src="shared/libs/vendor/xlsx.full.min.js"></script>
+
+<script src="assets/js/doc-viewer-app.js?v=1789204778"></script>
+
+</body>
+</html>

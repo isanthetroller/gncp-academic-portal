@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>Employee Portal Gateway — Go-on National College of the Philippines</title>
+    <meta name="description" content="Official administrative and operator login portal for Go-on National College of the Philippines.">
+
+    <script src="assets/js/gateway-session.js?v=1789204778"></script>
+
+    <link rel="stylesheet" href="shared/libs/fonts/fonts.css">
+    <link rel="stylesheet" href="shared/libs/bootstrap.min.css">
+    <link rel="stylesheet" href="shared/libs/font-awesome/css/all.min.css">
+    <script src="shared/libs/sweetalert2.all.min.js"></script>
+    <script src="shared/js/PasswordChangeGuard.js"></script>
+    
+    <style>
+        :root {
+            /* Branding colors */
+            --primary-green: #006A4E;
+            --dark-green: #003D2B;
+            --accent-green: #3E9B6C;
+            --light-accent-green: #e6f4ed;
+            --gold: #D4AF37;
+            --gold-light: #FCD34D;
+            --light-bg: #F8FAFC;
+            --white: #FFFFFF;
+            
+            /* Text & UI Gray Colors (WCAG AA Compliant contrast) */
+            --charcoal: #1F2937;
+            --muted-grey: #4B5563;
+            --zinc-200: #E4E4E7;
+            --zinc-300: #D4D4D8;
+            --zinc-400: #A1A1AA;
+            
+            /* Grid Radius */
+            --radius-lg: 16px;
+            --radius-md: 8px;
+            
+            /* Transition Curve */
+            --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* Layered Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 106, 78, 0.04), 0 8px 10px -6px rgba(0, 106, 78, 0.02);
+        }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: var(--light-bg);
+            background-image: radial-gradient(circle at 100% 0%, rgba(0, 106, 78, 0.04) 0%, transparent 50%),
+                              radial-gradient(circle at 0% 100%, rgba(212, 175, 55, 0.03) 0%, transparent 50%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 32px 24px;
+            color: var(--charcoal);
+            box-sizing: border-box;
+        }
+
+        [v-cloak] {
+            display: none !important;
+        }
+
+        .portal-container {
+            width: 100%;
+            max-width: 1080px;
+            background: var(--white);
+            border: 1px solid var(--zinc-200);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-xl);
+            display: grid;
+            grid-template-columns: 1fr 1.15fr;
+            min-height: 640px;
+        }
+
+        @media (max-width: 992px) {
+            .portal-container {
+                grid-template-columns: 1fr;
+                max-width: 520px;
+                min-height: auto;
+            }
+            .info-pane {
+                display: none;
+            }
+        }
+
+        /* --- Info Pane Layout (Left Banner) --- */
+        .info-pane {
+            background: linear-gradient(135deg, var(--dark-green) 0%, var(--primary-green) 100%);
+            padding: 48px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            color: var(--white);
+        }
+
+        .info-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .school-logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background-color: var(--white);
+            padding: 2px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+
+        .school-title {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.25rem;
+            line-height: 1.2;
+            color: var(--white);
+            margin: 0;
+        }
+
+        .school-sub {
+            color: var(--gold-light);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .info-body {
+            margin: 48px 0;
+        }
+
+        .welcome-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--white);
+            line-height: 1.25;
+            margin-bottom: 16px;
+        }
+
+        .welcome-title span {
+            color: var(--gold-light);
+        }
+
+        .welcome-text {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.875rem;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .info-features-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .info-feature-icon {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gold-light);
+            flex-shrink: 0;
+            font-size: 0.9rem;
+        }
+
+        .info-feature-text h4 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin: 0 0 4px 0;
+            letter-spacing: 0.3px;
+        }
+
+        .info-feature-text p {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.75);
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .info-footer {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            padding-top: 24px;
+        }
+
+        /* --- Right Content Pane --- */
+        .right-pane {
+            padding: 48px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: var(--white);
+        }
+
+        /* --- Login State Layout --- */
+        .login-header {
+            margin-bottom: 32px;
+        }
+
+        .login-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-green);
+            margin: 0 0 8px 0;
+        }
+
+        .login-subtitle {
+            color: var(--muted-grey);
+            font-size: 0.875rem;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--charcoal);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted-grey);
+            font-size: 0.95rem;
+            pointer-events: none;
+            transition: color 0.15s ease;
+        }
+
+        .form-input {
+            width: 100%;
+            background: #F9FAFB;
+            border: 1px solid var(--zinc-300);
+            border-radius: var(--radius-md);
+            color: var(--charcoal);
+            padding: 14px 16px 14px 44px;
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary-green);
+            box-shadow: 0 0 0 3px rgba(0, 106, 78, 0.12);
+            background: var(--white);
+        }
+
+        .form-input:focus + .input-icon {
+            color: var(--primary-green);
+        }
+
+        .login-btn {
+            width: 100%;
+            background: var(--primary-green);
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--white);
+            font-weight: 700;
+            padding: 14px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            letter-spacing: 0.5px;
+            font-family: 'Montserrat', sans-serif;
+            text-transform: uppercase;
+        }
+
+        .login-btn:hover {
+            background: var(--dark-green);
+        }
+
+        .login-btn:active {
+            opacity: 0.9;
+        }
+
+        .login-btn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .session-expired-banner {
+            background: #FEF3C7;
+            border: 1px solid #FCD34D;
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            color: #92400E;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .btn-close-notice {
+            background: none;
+            border: none;
+            color: #92400E;
+            font-size: 1.1rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 4px;
+            opacity: 0.7;
+            transition: opacity 0.15s ease;
+        }
+
+        .btn-close-notice:hover {
+            opacity: 1;
+        }
+
+        .error-banner {
+            background: #FEE2E2;
+            border: 1px solid #FCA5A5;
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            color: #B91C1C;
+            font-size: 0.8125rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            animation: errorShake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+
+        @keyframes errorShake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* Smooth Vue Fade & Slide Transition */
+        .fade-slide-enter-active, .fade-slide-leave-active {
+            transition: all 0.25s ease-out;
+            max-height: 100px;
+            opacity: 1;
+            overflow: hidden;
+        }
+        .fade-slide-enter-from, .fade-slide-leave-to {
+            max-height: 0;
+            opacity: 0;
+            margin-bottom: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            transform: translateY(-6px);
+        }
+
+        /* --- Launchpad State Layout --- */
+        .session-header {
+            background: #F1F5F9;
+            border: 1px solid #E2E8F0;
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .session-info h3 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--primary-green);
+            margin: 0 0 2px 0;
+        }
+
+        .session-info p {
+            font-size: 0.75rem;
+            color: var(--muted-grey);
+            margin: 0;
+        }
+
+        .btn-signout {
+            background: transparent;
+            border: 1px solid var(--zinc-300);
+            color: var(--muted-grey);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .btn-signout:hover {
+            background: #FEE2E2;
+            border-color: #FCA5A5;
+            color: #B91C1C;
+        }
+
+        .launchpad-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 390px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .launchpad-grid::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .launchpad-grid::-webkit-scrollbar-thumb {
+            background-color: var(--zinc-300);
+            border-radius: 4px;
+        }
+
+        .launchpad-card {
+            background: #F9FAFB;
+            border: 1px solid var(--zinc-200);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        /* Authorized State */
+        .launchpad-card.authorized {
+            background: var(--white);
+            border-color: #CBD5E1;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .launchpad-card.authorized:hover {
+            border-color: var(--accent-green);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Unauthorized State */
+        .launchpad-card.unauthorized {
+            opacity: 0.5;
+            background: #F1F5F9;
+        }
+
+        .station-details {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .station-icon-wrapper {
+            width: 38px;
+            height: 38px;
+            border-radius: var(--radius-md);
+            background: #E2E8F0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748B;
+            font-size: 1rem;
+            transition: var(--transition-smooth);
+        }
+
+        .launchpad-card.authorized .station-icon-wrapper {
+            background: var(--light-accent-green);
+            color: var(--primary-green);
+        }
+
+        .station-meta h4 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--charcoal);
+            margin: 0 0 2px 0;
+        }
+
+        .launchpad-card.authorized .station-meta h4 {
+            color: var(--dark-green);
+        }
+
+        .station-meta p {
+            font-size: 0.75rem;
+            color: var(--muted-grey);
+            margin: 0;
+        }
+
+        .btn-launch {
+            background: var(--accent-green);
+            color: var(--white);
+            border: none;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 8px 16px;
+            border-radius: 30px;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            transition: var(--transition-smooth);
+        }
+
+        .btn-launch:hover {
+            background: var(--primary-green);
+            color: var(--white);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .access-restricted {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--muted-grey);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* --- Student Portal escape hatch --- */
+        .password-toggle-btn {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: #64748B;
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.15s ease;
+            z-index: 5;
+        }
+        .password-toggle-btn:hover {
+            color: var(--primary-green, #006A4E);
+        }
+
+        .student-escape-hatch {
+            text-align: center;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid var(--zinc-200);
+        }
+
+        .student-escape-hatch p {
+            font-size: 0.8125rem;
+            color: var(--muted-grey);
+            margin: 0;
+        }
+
+        .student-escape-hatch a {
+            color: var(--primary-green);
+            font-weight: 600;
+            text-decoration: none;
+            margin-left: 4px;
+            transition: var(--transition-smooth);
+        }
+
+        .student-escape-hatch a:hover {
+            color: var(--dark-green);
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="portal-container" v-cloak>
+
+        <div class="info-pane">
+            <div class="info-header">
+                <img src="school-website/assets/images/logo-removebg-preview.png" alt="GNCP Seal" class="school-logo">
+                <div>
+                    <h1 class="school-title">Go-on National College</h1>
+                    <div class="school-sub">of the Philippines</div>
+                </div>
+            </div>
+
+            <div class="info-body">
+                <h2 class="welcome-title">Employee Portal<br><span>Gateway</span></h2>
+                <p class="welcome-text">
+                    Sign in to access your administrative workstation kiosk, manage enrollment queues, and view student records.
+                </p>
+            </div>
+
+            <div class="info-footer">
+                <span>GNCP Faculty & Staff Portal</span>
+                <span>Authorized Personnel Only</span>
+            </div>
+        </div>
+
+        <div class="right-pane">
+
+            <div v-if="currentUser" class="d-flex flex-column align-items-center justify-content-center py-5 text-center" style="min-height: 400px;">
+                <div class="spinner-border text-success mb-4" role="status" style="width: 3rem; height: 3rem; border-width: 0.25em; border-color: var(--primary-green) transparent var(--primary-green) transparent;"></div>
+                <h3 class="fw-bold" style="color: var(--primary-green); font-family: var(--font-heading);">Redirecting to Workstation</h3>
+                <p class="text-muted" style="max-width: 300px;">Please wait while we establish your workstation session and load your dashboard...</p>
+            </div>
+
+            <div v-else>
+                <div class="login-header">
+                    <h2 class="login-title">Employee Sign In</h2>
+                    <p class="login-subtitle">Please enter your staff or operator credentials</p>
+                </div>
+
+                <transition name="fade-slide">
+                    <div v-if="sessionExpiredNotice" class="session-expired-banner">
+                        <i class="fa-solid fa-clock-rotate-left" style="font-size: 1.1rem; color: #D97706;"></i>
+                        <div class="flex-grow-1">Your previous session has timed out or expired. Please sign in again with your credentials to continue.</div>
+                        <button type="button" class="btn-close-notice" @click="sessionExpiredNotice = false" aria-label="Dismiss">&times;</button>
+                    </div>
+                </transition>
+
+                <transition name="fade-slide">
+                    <div v-if="loginError" :key="errorKey" class="error-banner">
+                        <i class="fas fa-triangle-exclamation" style="margin-top:2px;"></i>
+                        <div>{{ loginError }}</div>
+                    </div>
+                </transition>
+
+                <form @submit.prevent="handleLogin">
+                    <div class="form-group">
+                        <label class="form-label" for="username">Username</label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="username" 
+                                class="form-input" 
+                                v-model="loginForm.username" 
+                                required 
+                                placeholder="Enter username"
+                                autocomplete="username"
+                                @input="loginError = ''"
+                            >
+                            <i class="fas fa-user input-icon"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <div class="input-wrapper">
+                            <input 
+                                :type="showPassword ? 'text' : 'password'" 
+                                id="password" 
+                                class="form-input" 
+                                v-model="loginForm.password" 
+                                required 
+                                placeholder="••••••••"
+                                autocomplete="current-password"
+                                style="padding-right: 44px;"
+                                @input="loginError = ''"
+                            >
+                            <i class="fas fa-lock input-icon"></i>
+                            <button 
+                                type="button" 
+                                class="password-toggle-btn" 
+                                @click="showPassword = !showPassword" 
+                                tabindex="-1"
+                                :title="showPassword ? 'Hide password' : 'Show password'"
+                            >
+                                <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="login-btn" :disabled="isLoggingIn" style="min-height:48px;">
+                        <span v-if="isLoggingIn" class="d-inline-flex align-items-center justify-content-center">
+                            <i class="fas fa-circle-notch fa-spin me-2"></i> {{ loginStatusText }}
+                        </span>
+                        <span v-else class="d-inline-flex align-items-center justify-content-center">
+                            <i class="fas fa-right-to-bracket me-2"></i> Login Operator
+                        </span>
+                    </button>
+                </form>
+
+                <div class="student-escape-hatch">
+                    <p>Not an employee? <a href="student-portal/login">Student? Access the Student Portal →</a></p>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="shared/libs/vue.global.js"></script>
+    <script src="assets/js/gateway-app.js?v=1789204778"></script>
+</body>
+</html>

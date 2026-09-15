@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Online Payment — Go-on National College of the Philippines</title>
+    <link rel="icon" type="image/png" href="../../school-website/assets/images/logo-removebg-preview.png">
+    <!-- Local Fonts -->
+    <link rel="stylesheet" href="../libs/fonts/fonts.css">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="../libs/font-awesome/css/all.min.css">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="../libs/bootstrap.min.css">
+    
+    <style>
+        :root {
+            --pm-primary: #007dfe;
+            --pm-primary-dark: #0062cc;
+            --pm-success: #10b981;
+            --pm-dark: #111827;
+            --pm-gray-50: #f9fafb;
+            --pm-gray-100: #f3f4f6;
+            --pm-gray-200: #e5e7eb;
+            --pm-gray-400: #9ca3af;
+            --pm-gray-600: #4b5563;
+            --pm-gray-800: #1f2937;
+            --gcash-blue: #0070e0;
+            --maya-green: #00d632;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f4f6f9;
+            color: var(--pm-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+            padding: 0;
+        }
+
+        .checkout-navbar {
+            background: #ffffff;
+            border-bottom: 1px solid var(--pm-gray-200);
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .checkout-container {
+            max-width: 1000px;
+            width: 100%;
+            margin: 30px auto;
+            padding: 0 16px;
+            flex: 1;
+        }
+
+        .checkout-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 28px;
+            align-items: start;
+        }
+
+        @media (max-width: 850px) {
+            .checkout-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Order Summary Card (Left Column) */
+        .summary-card {
+            background: #ffffff;
+            border: 1px solid var(--pm-gray-200);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+
+        .merchant-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid var(--pm-gray-200);
+            margin-bottom: 18px;
+        }
+
+        .merchant-logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            object-fit: contain;
+            background: #f8fafc;
+            border: 1px solid var(--pm-gray-200);
+            padding: 4px;
+        }
+
+        .merchant-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--pm-gray-800);
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .merchant-sub {
+            font-size: 0.75rem;
+            color: var(--pm-gray-600);
+            margin-top: 3px;
+        }
+
+        .fee-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 0.88rem;
+            color: var(--pm-gray-600);
+        }
+
+        .fee-item.total-item {
+            border-top: 1px dashed var(--pm-gray-200);
+            margin-top: 12px;
+            padding-top: 16px;
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--pm-dark);
+        }
+
+        /* Payment Area (Right Column) */
+        .payment-card {
+            background: #ffffff;
+            border: 1px solid var(--pm-gray-200);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            position: relative;
+        }
+
+        .pm-tab-pills {
+            display: flex;
+            gap: 8px;
+            background: var(--pm-gray-100);
+            padding: 6px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .pm-tab-btn {
+            flex: 1;
+            padding: 10px 14px;
+            border: none;
+            background: transparent;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--pm-gray-600);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pm-tab-btn.active {
+            background: #ffffff;
+            color: var(--pm-primary);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        /* GCash Simulated Flow */
+        .gcash-box {
+            background: #f8fbff;
+            border: 1.5px solid #d0e5ff;
+            border-radius: 14px;
+            padding: 24px;
+        }
+
+        .gcash-badge {
+            background: var(--gcash-blue);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 0.78rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .pm-input-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--pm-gray-600);
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .pm-input-field {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid var(--pm-gray-200);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .pm-input-field:focus {
+            border-color: var(--pm-primary);
+            box-shadow: 0 0 0 3px rgba(0, 125, 254, 0.15);
+        }
+
+        .pm-btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: var(--gcash-blue);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .pm-btn-primary:hover {
+            background: #005bb8;
+        }
+
+        .pm-btn-primary:active {
+            transform: scale(0.99);
+        }
+
+        /* OTP Code Box */
+        .otp-inputs {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 16px 0;
+        }
+
+        .otp-digit {
+            width: 44px;
+            height: 52px;
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            border: 1.5px solid var(--pm-gray-200);
+            border-radius: 8px;
+            outline: none;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .otp-digit:focus {
+            border-color: var(--gcash-blue);
+            box-shadow: 0 0 0 3px rgba(0, 112, 224, 0.15);
+        }
+
+        /* Success State */
+        .success-hero {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .success-icon-wrap {
+            width: 72px;
+            height: 72px;
+            background: #ecfdf5;
+            color: #10b981;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-size: 2.2rem;
+            margin: 0 auto 20px;
+        }
+
+        .checkout-footer {
+            text-align: center;
+            padding: 24px;
+            font-size: 0.78rem;
+            color: var(--pm-gray-400);
+            border-top: 1px solid var(--pm-gray-200);
+            background: #ffffff;
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <nav class="checkout-navbar">
+        <div class="d-flex align-items-center gap-2">
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="#007DFE"/>
+                <path d="M10 16L14 20L22 12" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="fw-bold" style="font-size: 1.15rem; color: #111827; letter-spacing: -0.02em;">PayMongo</span>
+            <span class="badge bg-secondary-subtle text-secondary font-monospace px-2 py-1 ms-1" style="font-size: 0.65rem;">CHECKOUT</span>
+        </div>
+        <div class="d-flex align-items-center gap-2 text-muted small font-monospace">
+            <i class="fa-solid fa-lock text-success"></i>
+            <span>256-Bit SSL Encrypted</span>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="checkout-container" id="app">
+        
+        <!-- Loading State -->
+        <div class="text-center py-5" v-if="loading">
+            <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+            <h5 class="fw-bold text-dark">Initializing PayMongo Checkout Session...</h5>
+            <p class="text-muted small">Securing institutional payment rails with GNCP Billing...</p>
+        </div>
+
+        <!-- Success Complete Screen -->
+        <div class="payment-card success-hero" v-else-if="paymentComplete">
+            <div class="success-icon-wrap">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <h3 class="fw-bold text-dark mb-1" style="font-family: 'Outfit', sans-serif;">Payment Successful!</h3>
+            <p class="text-muted small mb-4">Your transaction has been approved and settled via PayMongo.</p>
+            
+            <div class="bg-light p-3 rounded-3 border text-start mx-auto mb-4" style="max-width: 480px; font-size: 0.85rem;">
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                    <span class="text-muted">Transaction Reference:</span>
+                    <strong class="font-monospace text-dark">{{ settlementData.transactionRef }}</strong>
+                </div>
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                    <span class="text-muted">Student Reference:</span>
+                    <strong class="font-monospace text-dark">{{ session.referenceNumber }}</strong>
+                </div>
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                    <span class="text-muted">Amount Settled:</span>
+                    <strong class="text-success fs-6">₱{{ formatCurrency(session.amount) }}</strong>
+                </div>
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                    <span class="text-muted">Payment Channel:</span>
+                    <strong class="text-dark">{{ selectedTab.toUpperCase() }}</strong>
+                </div>
+                <div class="d-flex justify-content-between py-1">
+                    <span class="text-muted">New Remaining Balance:</span>
+                    <strong class="text-dark">₱{{ formatCurrency(settlementData.balance) }}</strong>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-center gap-2">
+                <button type="button" class="btn btn-primary px-4 py-2.5 rounded-3 fw-bold" @click="returnToMerchant">
+                    <i class="fa-solid fa-arrow-left me-2"></i>Return to Merchant
+                </button>
+            </div>
+            <p class="text-muted mt-3" style="font-size: 0.75rem;">Redirecting automatically in {{ countdown }}s...</p>
+        </div>
+
+        <!-- Checkout View -->
+        <div class="checkout-grid" v-else>
+            
+            <!-- Left: Order Summary -->
+            <div class="summary-card">
+                <div class="merchant-header">
+                    <img src="../../school-website/assets/images/logo-removebg-preview.png" alt="GNCP Logo" class="merchant-logo">
+                    <div>
+                        <h6 class="merchant-title">Go-on National College</h6>
+                        <div class="merchant-sub">Official Tuition & Academic Fees</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="text-muted small uppercase fw-bold" style="font-size: 0.7rem;">Applicant Reference</div>
+                    <code class="fs-6 fw-bold text-dark font-monospace">{{ session.referenceNumber }}</code>
+                </div>
+
+                <div class="mb-3">
+                    <div class="text-muted small uppercase fw-bold" style="font-size: 0.7rem;">Description</div>
+                    <div class="text-dark fw-semibold small">{{ session.description }}</div>
+                </div>
+
+                <div class="fee-item">
+                    <span>Assessed Assessment</span>
+                    <span>₱{{ formatCurrency(session.amount) }}</span>
+                </div>
+                <div class="fee-item">
+                    <span>Gateway Processing Fee</span>
+                    <span class="text-success fw-semibold">FREE (Institutional)</span>
+                </div>
+
+                <div class="fee-item total-item">
+                    <span>Total Amount Due</span>
+                    <span class="text-primary">₱{{ formatCurrency(session.amount) }}</span>
+                </div>
+                
+                <div class="mt-4 pt-3 border-top text-muted" style="font-size: 0.72rem;">
+                    <i class="fa-solid fa-shield-halved text-success me-1"></i>
+                    PayMongo Philippines Inc. is a registered Electronic Money Issuer regulated by the Bangko Sentral ng Pilipinas (BSP).
+                </div>
+            </div>
+
+            <!-- Right: Payment Rails -->
+            <div class="payment-card">
+                <h5 class="fw-bold text-dark mb-3" style="font-family: 'Outfit', sans-serif;">Select Payment Method</h5>
+
+                <!-- Tabs -->
+                <div class="pm-tab-pills">
+                    <button type="button" class="pm-tab-btn" :class="{ active: selectedTab === 'gcash' }" @click="selectedTab = 'gcash'">
+                        <i class="fa-solid fa-wallet text-primary"></i> GCash
+                    </button>
+                    <button type="button" class="pm-tab-btn" :class="{ active: selectedTab === 'maya' }" @click="selectedTab = 'maya'">
+                        <i class="fa-solid fa-mobile-screen text-success"></i> Maya
+                    </button>
+                    <button type="button" class="pm-tab-btn" :class="{ active: selectedTab === 'card' }" @click="selectedTab = 'card'">
+                        <i class="fa-solid fa-credit-card text-dark"></i> Card
+                    </button>
+                    <button type="button" class="pm-tab-btn" :class="{ active: selectedTab === 'qrph' }" @click="selectedTab = 'qrph'">
+                        <i class="fa-solid fa-qrcode text-info"></i> QR Ph
+                    </button>
+                </div>
+
+                <!-- 1. GCash Rail -->
+                <div v-if="selectedTab === 'gcash'">
+                    <div class="gcash-box mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="gcash-badge"><i class="fa-solid fa-bolt"></i> GCASH DIRECT</span>
+                            <span class="text-muted small">Total: <strong>₱{{ formatCurrency(session.amount) }}</strong></span>
+                        </div>
+
+                        <!-- Step 1: Mobile Input -->
+                        <div v-if="gcashStep === 1">
+                            <label class="pm-input-label">Enter GCash Registered Mobile Number</label>
+                            <div class="input-group mb-3">
+                                <span class="input-group-text bg-white border-end-0 fw-bold text-secondary" style="border-radius: 10px 0 0 10px;">+63</span>
+                                <input type="tel" class="pm-input-field" style="border-radius: 0 10px 10px 0;" v-model="gcashNumber" placeholder="917 123 4567" maxlength="11">
+                            </div>
+                            <button type="button" class="pm-btn-primary" @click="proceedGcashOtp" :disabled="!gcashNumber || gcashNumber.length < 9">
+                                Next <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+
+                        <!-- Step 2: 6-Digit OTP -->
+                        <div v-else-if="gcashStep === 2" class="text-center">
+                            <div class="text-muted small mb-2">We sent a 6-digit authentication code to <strong class="text-dark">+63 {{ gcashNumber }}</strong></div>
+                            <div class="otp-inputs">
+                                <input v-for="(digit, idx) in 6" :key="idx" type="text" maxlength="1" class="otp-digit" :id="'otp-' + idx" @input="onOtpInput(idx, $event)">
+                            </div>
+                            <div class="text-muted small mb-3">Demo Code: <span class="badge bg-primary font-monospace">123456</span></div>
+                            <button type="button" class="pm-btn-primary" @click="proceedGcashMpin" :disabled="otpCode.length < 6">
+                                Verify Code <i class="fa-solid fa-shield-check"></i>
+                            </button>
+                        </div>
+
+                        <!-- Step 3: MPIN & Authorize -->
+                        <div v-else-if="gcashStep === 3" class="text-center">
+                            <div class="text-muted small mb-2">Enter your 4-Digit GCash MPIN</div>
+                            <div class="d-flex justify-content-center gap-2 mb-3">
+                                <input type="password" maxlength="4" class="form-control text-center fs-4 font-monospace py-2" style="max-width: 160px; letter-spacing: 0.4em;" v-model="mpin" placeholder="••••">
+                            </div>
+                            <button type="button" class="pm-btn-primary" @click="completePayment('GCash')" :disabled="mpin.length < 4 || processingPayment">
+                                <i v-if="processingPayment" class="fa-solid fa-circle-notch fa-spin"></i>
+                                <i v-else class="fa-solid fa-lock"></i>
+                                {{ processingPayment ? 'Authorizing Payment...' : `Pay ₱${formatCurrency(session.amount)}` }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Maya Rail -->
+                <div v-else-if="selectedTab === 'maya'">
+                    <div class="p-3 border rounded-3 text-center mb-3">
+                        <span class="badge" style="background: var(--maya-green); color: #000; font-weight: 800;">MAYA WALLET</span>
+                        <p class="text-muted small mt-2 mb-3">Scan with your Maya App or log in with your registered mobile number.</p>
+                        <div class="mb-3">
+                            <input type="tel" class="pm-input-field text-center mx-auto" style="max-width: 280px;" placeholder="09XX XXX XXXX" v-model="mayaNumber">
+                        </div>
+                        <button type="button" class="btn btn-dark w-100 py-3 fw-bold rounded-3" style="background: #000000;" @click="completePayment('Maya')" :disabled="processingPayment">
+                            <i v-if="processingPayment" class="fa-solid fa-circle-notch fa-spin me-1"></i>
+                            {{ processingPayment ? 'Connecting Maya...' : `Pay ₱${formatCurrency(session.amount)} with Maya` }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. Credit / Debit Card Rail -->
+                <div v-else-if="selectedTab === 'card'">
+                    <div class="p-3 border rounded-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="fw-bold small text-dark"><i class="fa-regular fa-credit-card me-1"></i> Card Information</span>
+                            <div class="d-flex gap-1 text-muted fs-6">
+                                <i class="fa-brands fa-cc-visa text-primary"></i>
+                                <i class="fa-brands fa-cc-mastercard text-danger"></i>
+                                <i class="fa-brands fa-cc-jcb text-info"></i>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="pm-input-label">Card Number</label>
+                            <input type="text" class="pm-input-field font-monospace" placeholder="4111 2222 3333 4444" maxlength="19" v-model="cardNumber">
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="pm-input-label">MM / YY</label>
+                                <input type="text" class="pm-input-field text-center font-monospace" placeholder="12/28" maxlength="5">
+                            </div>
+                            <div class="col-6">
+                                <label class="pm-input-label">CVV</label>
+                                <input type="password" class="pm-input-field text-center font-monospace" placeholder="123" maxlength="4">
+                            </div>
+                        </div>
+                        <button type="button" class="pm-btn-primary" @click="completePayment('Card')" :disabled="processingPayment">
+                            <i v-if="processingPayment" class="fa-solid fa-circle-notch fa-spin"></i>
+                            <i v-else class="fa-solid fa-shield-check"></i>
+                            {{ processingPayment ? 'Processing 3D Secure...' : `Authorize ₱${formatCurrency(session.amount)}` }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. QR Ph Rail -->
+                <div v-else-if="selectedTab === 'qrph'" class="text-center p-3 border rounded-3">
+                    <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
+                        <span class="badge bg-danger text-white fw-bold">QR Ph</span>
+                        <span class="text-muted small">National QR Code Standard</span>
+                    </div>
+                    <p class="text-muted small mb-3">Open any participating banking or e-wallet app (BPI, BDO, UnionBank, GCash, Maya) to scan.</p>
+                    <div class="p-3 bg-white d-inline-block border rounded-3 shadow-sm mb-3">
+                        <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(session.qrPhPayload || 'GNCP_PAYMONGO_SESSION')" 
+                             alt="QR Ph Barcode" 
+                             style="width: 180px; height: 180px; display: block;"
+                             onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'180\' height=\'180\' viewBox=\'0 0 180 180\'><rect width=\'180\' height=\'180\' fill=\'%23f3f4f6\'/><text x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' fill=\'%239ca3af\' font-family=\'sans-serif\' font-size=\'14\'>QR Ph Ready</text></svg>';">
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-outline-primary px-4 py-2 rounded-pill fw-bold small" @click="completePayment('QR Ph')" :disabled="processingPayment">
+                            <i class="fa-solid fa-mobile-screen-button me-1"></i> Simulate App Scan & Payment
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="checkout-footer">
+        <div>Powered by <strong>PayMongo</strong> · Level 1 PCI-DSS Certified Gateway</div>
+        <div class="mt-1">Go-on National College of the Philippines · Secure Academic Portal</div>
+    </footer>
+
+    <!-- Vue 3 & Scripts -->
+    <script src="../libs/vue.global.js"></script>
+    <script src="checkout-app.js?v=1789204778"></script>
+</body>
+</html>

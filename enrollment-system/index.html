@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GNCP — Online Enrollment Portal</title>
+
+    <link rel="stylesheet" href="../shared/libs/fonts/fonts.css">
+
+    <link href="../shared/libs/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="../shared/libs/font-awesome/css/all.min.css">
+
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="../shared/libs/sweetalert2.all.min.js"></script>
+</head>
+<body>
+    <div id="enrollment-app" v-cloak>
+
+        <nav class="navbar navbar-expand-lg portal-navbar shadow-sm sticky-top">
+            <div class="container">
+                <a class="navbar-brand d-flex align-items-center" href="../school-website/">
+                    <img src="../school-website/assets/images/logo-removebg-preview.png" alt="GNCP Seal" class="portal-logo me-3">
+                    <div class="portal-brand-text">
+                        <span class="portal-brand-main">GO-ON NATIONAL</span>
+                        <span class="portal-brand-sub">COLLEGE OF THE PHILIPPINES</span>
+                    </div>
+                </a>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="badge badge-academic-year px-3 py-2">A.Y. 2026-2027 (1st Semester)</span>
+                    <a href="tracker" class="btn btn-outline-warning btn-exit-portal d-none d-md-inline-block">
+                        <i class="fas fa-route me-2"></i>Track Enrollment
+                    </a>
+                    <a href="../school-website/" class="btn btn-outline-light btn-exit-portal d-none d-md-inline-block">
+                        <i class="fas fa-arrow-left me-2"></i>Exit Portal
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <div v-if="isLocalFile" class="alert alert-warning border-warning shadow-sm mx-auto my-3 p-3 rounded-3 container" style="max-width: 900px; z-index: 9999;">
+            <h5 class="alert-heading text-warning-emphasis mb-2">
+                <i class="fas fa-exclamation-triangle me-2"></i>Running directly via File Protocol (file://)
+            </h5>
+            <p class="mb-0 small text-dark">
+                You opened this system using <code>file://</code>. The system's PHP backend and database connection <strong>will not work</strong> unless accessed through a local web server (like Apache).
+            </p>
+            <hr class="my-2 text-warning-emphasis opacity-25">
+            <p class="mb-0 small font-monospace text-muted">
+                Please start Apache and MySQL in XAMPP, and navigate to: <br>
+                <a href="http://localhost/systemtest/enrollment-system/" class="text-decoration-none fw-bold text-primary">http://localhost/systemtest/enrollment-system/</a>
+            </p>
+        </div>
+
+        <main class="container my-5">
+
+            <div v-if="programsLoadError" class="alert alert-danger border-danger shadow-sm mx-auto mb-4 p-3 rounded-3" style="max-width: 900px;">
+                <h5 class="alert-heading text-danger-emphasis mb-2">
+                    <i class="fas fa-exclamation-circle me-2"></i>Enrollment Closed
+                </h5>
+                <p class="mb-0 small text-dark">
+                    {{ programsLoadError }}
+                </p>
+            </div>
+
+            <div v-else>
+                
+                <div class="wizard-progress-wrapper mb-5" v-if="currentStep <= 6">
+                <div class="wizard-stepper">
+                    <template v-for="(step, index) in steps" :key="step.number">
+                        <div class="stepper-node"
+                             :class="{
+                                 'is-active':    currentStep === step.number,
+                                 'is-completed': currentStep > step.number,
+                                 'is-upcoming':  currentStep < step.number
+                             }">
+                            <div class="stepper-circle">
+                                <i class="fas fa-check" v-if="currentStep > step.number"></i>
+                                <i :class="step.icon" v-else></i>
+                            </div>
+                            <span class="stepper-label d-none d-lg-block">{{ step.title }}</span>
+                        </div>
+                        <div v-if="index < steps.length - 1"
+                             class="stepper-connector"
+                             :class="{ 'is-done': currentStep > step.number }">
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div class="row justify-content-center">
+                <div class="col-xl-9 col-lg-10">
+                    <div class="card wizard-card border-0">
+                        <div class="card-body p-4 p-md-5">
+
+                            <div v-if="currentStep === 1">
+                                <h3 class="step-title mb-2">Program &amp; NSTP Selection</h3>
+                                <p class="step-description mb-4 text-muted">Select your admission type, academic program, and NSTP component for this semester.</p>
+
+                                <div class="row g-4 mb-4">
+                                    
+                                    <div class="col-md-6">
+                                        <label class="form-label-custom">Admission Type</label>
+                                        <div class="d-flex flex-column gap-3">
+                                            <div v-for="type in admissionTypes" :key="type.value"
+                                                 class="option-card"
+                                                 :class="{ selected: form.studentType === type.value }"
+                                                 @click="form.studentType = type.value">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="option-check-circle me-3">
+                                                        <i class="fas fa-check" v-if="form.studentType === type.value"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div class="option-title">{{ type.label }}</div>
+                                                        <div class="option-desc text-muted">{{ type.desc }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="mb-4">
+                                            <label class="form-label-custom" for="collegeSelect">{{ collegeSelectLabel }}</label>
+                                            <select id="collegeSelect" class="form-select portal-select" v-model="selectedCollege" @change="onCollegeChange">
+                                                <option value="" disabled>{{ collegeSelectPlaceholder }}</option>
+                                                <option v-for="college in colleges" :key="college.code" :value="college.code">
+                                                    {{ college.name }}
+                                                </option>
+                                            </select>
+                                        </div>
+
+                                        <div v-if="selectedCollege">
+                                            <label class="form-label-custom">Select Course / Major</label>
+                                            <div class="d-flex flex-column gap-3">
+                                                <div v-for="course in filteredCourses" :key="course.code"
+                                                     class="option-card px-4 py-3"
+                                                     :class="{ selected: form.courseCode === course.code }"
+                                                     @click="form.courseCode = course.code">
+                                                    <div class="d-flex justify-content-between align-items-center w-100">
+                                                        <div>
+                                                            <div class="option-title">{{ course.name }}</div>
+                                                            <div class="option-desc text-muted">{{ course.code }} | {{ course.duration }}</div>
+                                                        </div>
+                                                        <div class="option-check-circle">
+                                                            <i class="fas fa-check" v-if="form.courseCode === course.code"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="text-danger mt-2 small" v-if="errors.courseCode">
+                                                <i class="fas fa-exclamation-circle me-1"></i>{{ errors.courseCode }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                 </div>
+
+                                <div v-if="form.studentType === 'RETURNING'" class="col-12 mt-4 pt-3 border-top">
+                                    <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                                        <i class="fas fa-user-clock text-success fs-5"></i>
+                                        <span>Verify Existing Student Record</span>
+                                    </h5>
+                                    <p class="text-muted small mb-3">
+                                        Enter your <strong>institutional school email</strong> (e.g. <code>juan.delacruz24@gncp.edu.ph</code>) or the <strong>personal email</strong> you used when you first enrolled.
+                                    </p>
+
+                                    <div class="d-flex gap-2 flex-wrap mb-2">
+                                        <div class="flex-grow-1">
+                                            <input
+                                                type="email"
+                                                id="existingStudentIdInput"
+                                                class="form-control portal-input"
+                                                :class="{ 'is-invalid': errors.existingStudentId, 'is-valid': lookupSuccess }"
+                                                v-model="form.existingStudentIdentifier"
+                                                placeholder="e.g. juan.delacruz24@gncp.edu.ph"
+                                                :disabled="isLookingUp"
+                                                @keyup.enter="lookupReturningStudent"
+                                            >
+                                            <div class="invalid-feedback" v-if="errors.existingStudentId">
+                                                <i class="fas fa-exclamation-circle me-1"></i>{{ errors.existingStudentId }}
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="btn btn-pill-green px-4"
+                                            style="height: fit-content;"
+                                            @click="lookupReturningStudent"
+                                            :disabled="isLookingUp || !form.existingStudentIdentifier.trim()"
+                                        >
+                                            <span v-if="isLookingUp">
+                                                <i class="fas fa-spinner fa-spin me-2"></i>Verifying...
+                                            </span>
+                                            <span v-else>
+                                                <i class="fas fa-magnifying-glass me-2"></i>Verify Account
+                                            </span>
+                                        </button>
+                                    </div>
+
+                                    <div v-if="lookupError" class="alert alert-danger border-0 mt-3 mb-0 small d-flex align-items-center rounded-3">
+                                        <i class="fas fa-circle-xmark me-2 fs-5"></i>
+                                        <span>{{ lookupError }}</span>
+                                    </div>
+
+                                    <div v-if="lookupSuccess && form.returningStudentData" class="alert alert-success border-0 mt-3 mb-0 d-flex align-items-start rounded-3">
+                                        <i class="fas fa-circle-check me-3 fs-4 text-success mt-1"></i>
+                                        <div>
+                                            <strong>Student record confirmed!</strong>
+                                            <div class="small text-muted mt-1">
+                                                <span class="fw-bold text-dark">{{ form.returningStudentData.name }}</span>
+                                                &nbsp;&middot;&nbsp;{{ form.returningStudentData.program }}
+                                                &nbsp;&middot;&nbsp;{{ form.returningStudentData.year_level }}
+                                                &nbsp;&middot;&nbsp;ID: <code>{{ form.returningStudentData.id }}</code>
+                                            </div>
+                                            <div class="text-success small mt-1">
+                                                <i class="fas fa-check-circle me-1"></i>
+                                                Your personal details have been pre-filled in the next steps. Please review them.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="lookupSuccess" class="mt-3">
+                                        <label class="form-label-custom">
+                                            Year Level You Are Re-Enrolling At
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <select
+                                            class="form-select portal-select"
+                                            :class="{ 'is-invalid': errors.yearLevelApplied }"
+                                            v-model="form.yearLevelApplied"
+                                        >
+                                            <option value="">Select year level...</option>
+                                            <option value="1st Year">1st Year</option>
+                                            <option value="2nd Year">2nd Year</option>
+                                            <option value="3rd Year">3rd Year</option>
+                                            <option value="4th Year">4th Year</option>
+                                        </select>
+                                        <div class="invalid-feedback" v-if="errors.yearLevelApplied">
+                                            <i class="fas fa-exclamation-circle me-1"></i>{{ errors.yearLevelApplied }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 mt-4 pt-3 border-top">
+                                    <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                                        <i class="fas fa-flag text-success fs-5"></i>
+                                        <span>NSTP Program Component</span>
+                                    </h5>
+                                    <p class="text-muted small mb-3">
+                                        The <strong>National Service Training Program (NSTP)</strong> is mandatory for all incoming college students under R.A. 9163. Choose one component below.
+                                    </p>
+
+                                    <div class="row g-3">
+                                        <div v-for="opt in nstpOptions" :key="opt.value" class="col-md-4">
+                                            <div class="option-card h-100"
+                                                 :class="{ selected: form.nstp === opt.value }"
+                                                 @click="form.nstp = opt.value">
+                                                <div class="d-flex align-items-start">
+                                                    <div class="option-check-circle me-3 mt-1">
+                                                        <i class="fas fa-check" v-if="form.nstp === opt.value"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div class="option-title d-flex align-items-center gap-2">
+                                                            <i :class="[opt.icon, 'text-success']"></i>
+                                                            <span>{{ opt.label }}</span>
+                                                        </div>
+                                                        <div class="option-desc text-muted fw-semibold">{{ opt.fullName }}</div>
+                                                        <div class="option-desc text-muted mt-1" style="font-size:0.78rem;">{{ opt.desc }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-danger mt-2 small" v-if="errors.nstp">
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ errors.nstp }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="currentStep === 2">
+                                <h3 class="step-title mb-2">Personal Information</h3>
+                                <p class="step-description mb-4 text-muted">Provide your primary contact and demographic information.</p>
+
+                                <div v-if="form.studentType === 'RETURNING' && lookupSuccess"
+                                     class="alert alert-info border-0 mb-3 small d-flex align-items-center">
+                                    <i class="fas fa-magic-wand-sparkles me-2 fs-5 text-info"></i>
+                                    <span>
+                                        Details below have been <strong>pre-filled</strong> from your student record.
+                                        Please review and update any information that has changed since your last enrollment.
+                                    </span>
+                                </div>
+
+                                <div class="row g-4 mb-4">
+                                    <div class="col-md-4">
+                                        <label class="form-label-custom">First Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control portal-input" :class="{ 'is-invalid': errors.firstName }" v-model="form.firstName" placeholder="Enter first name">
+                                        <div class="invalid-feedback" v-if="errors.firstName">{{ errors.firstName }}</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label-custom">Middle Name</label>
+                                        <input type="text" class="form-control portal-input" v-model="form.middleName" placeholder="Enter middle name (optional)">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label-custom">Last Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control portal-input" :class="{ 'is-invalid': errors.lastName }" v-model="form.lastName" placeholder="Enter last name">
+                                        <div class="invalid-feedback" v-if="errors.lastName">{{ errors.lastName }}</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label-custom">Email Address <span class="text-danger">*</span></label>
+                                        <input type="email" class="form-control portal-input" :class="{ 'is-invalid': errors.email }" v-model="form.email" placeholder="example@email.com">
+                                        <div class="invalid-feedback" v-if="errors.email">{{ errors.email }}</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label-custom">Mobile Number <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light text-muted border-end-0" style="border-radius: 10px 0 0 10px; border: 1px solid var(--border-color); font-weight: 500;">09</span>
+                                            <input type="tel" class="form-control portal-input border-start-0" style="border-radius: 0 10px 10px 0;" :class="{ 'is-invalid': errors.phone }" v-model="form.phone" placeholder="xxxxxxxxx" maxlength="9">
+                                            <div class="invalid-feedback" v-if="errors.phone">{{ errors.phone }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label-custom">Birth Date <span class="text-danger">*</span></label>
+                                        <input type="date" class="form-control portal-input" :class="{ 'is-invalid': errors.birthDate }" v-model="form.birthDate" min="1920-01-01" :max="maxBirthDate">
+                                        <div class="invalid-feedback" v-if="errors.birthDate">{{ errors.birthDate }}</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label-custom">Gender <span class="text-danger">*</span></label>
+                                        <select class="form-select portal-select" :class="{ 'is-invalid': errors.gender }" v-model="form.gender">
+                                            <option value="">Select gender...</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </select>
+                                        <div class="invalid-feedback" v-if="errors.gender">{{ errors.gender }}</div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label-custom">Permanent Residential Address <span class="text-danger">*</span></label>
+                                        <textarea class="form-control portal-textarea" :class="{ 'is-invalid': errors.address }" rows="3" v-model="form.address" placeholder="Unit/Street, Barangay, City, Province, Zip Code"></textarea>
+                                        <div class="invalid-feedback" v-if="errors.address">{{ errors.address }}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="currentStep === 3">
+                                <h3 class="step-title mb-2">Academic Background</h3>
+                                <p class="step-description mb-4 text-muted">Please provide details regarding your previous educational background.</p>
+
+                                <div class="row g-4 mb-4">
+                                    
+                                    <div class="col-md-12" v-if="form.studentType !== 'RETURNING'">
+                                        <label class="form-label-custom">High School Pathway / Curriculum <span class="text-danger">*</span></label>
+                                        <select class="form-select portal-select" v-model="form.educationPathway" @change="onPathwayChange">
+                                            <option value="REGULAR">Regular K-12 Graduate</option>
+                                            <option value="ALS">Alternative Learning System (ALS) Graduate</option>
+                                            <option value="OLD_CURRICULUM">Old Curriculum Graduate (Pre-K-12)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-12" v-else>
+                                        <div class="alert alert-info border-0 small d-flex align-items-center">
+                                            <i class="fas fa-circle-info me-2 fs-5 text-info"></i>
+                                            <span>
+                                                Education pathway is already on record for returning students.
+                                                The Registrar will review your academic history during the on-campus evaluation.
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label-custom">
+                                            {{ form.educationPathway === 'ALS' ? 'ALS Learning Center / CLC' : 'Elementary School' }} <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control portal-input" :class="{ 'is-invalid': errors.elementarySchool }" v-model="form.elementarySchool" :placeholder="form.educationPathway === 'ALS' ? 'Enter ALS Center name' : 'Enter Elementary School'">
+                                        <div class="invalid-feedback" v-if="errors.elementarySchool">{{ errors.elementarySchool }}</div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label-custom">
+                                            {{ form.educationPathway === 'REGULAR' ? 'Junior High School' : (form.educationPathway === 'OLD_CURRICULUM' ? 'High School (Old 4-Year)' : 'Junior High School') }}
+                                            <span class="text-danger" v-if="form.educationPathway !== 'ALS'">*</span>
+                                            <span class="text-muted small" v-else> (Optional)</span>
+                                        </label>
+                                        <input type="text" class="form-control portal-input" :class="{ 'is-invalid': errors.juniorHighSchool }" v-model="form.juniorHighSchool" :placeholder="form.educationPathway === 'ALS' ? 'Optional for ALS' : 'Enter High School / JHS name'">
+                                        <div class="invalid-feedback" v-if="errors.juniorHighSchool">{{ errors.juniorHighSchool }}</div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label-custom">
+                                            Senior High School
+                                            <span class="text-danger" v-if="form.educationPathway === 'REGULAR'">*</span>
+                                            <span class="text-muted small" v-else> (Optional)</span>
+                                        </label>
+                                        <input type="text" class="form-control portal-input" :class="{ 'is-invalid': errors.seniorHighSchool }" v-model="form.seniorHighSchool" :placeholder="form.educationPathway === 'REGULAR' ? 'Enter Senior High School' : 'Optional / Not Applicable'">
+                                        <div class="invalid-feedback" v-if="errors.seniorHighSchool">{{ errors.seniorHighSchool }}</div>
+                                    </div>
+
+                                    <div class="col-md-12" v-if="form.studentType === 'TRANSFEREE'">
+                                        <label class="form-label-custom">
+                                            Previous College / University Attended <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control portal-input" :class="{ 'is-invalid': errors.previousCollege }" v-model="form.previousCollege" placeholder="e.g. De La Salle University, Technological University of the Philippines">
+                                        <div class="invalid-feedback" v-if="errors.previousCollege">{{ errors.previousCollege }}</div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label-custom">
+                                            High School Track Taken
+                                            <span class="text-muted small" v-if="form.educationPathway !== 'REGULAR'"> (Optional)</span>
+                                        </label>
+                                        <select class="form-select portal-select" v-model="form.shsTrack">
+                                            <option value="">{{ form.educationPathway === 'REGULAR' ? 'Select track...' : 'Optional / Not Applicable' }}</option>
+                                            <option value="STEM">STEM (Science, Tech, Engineering, Math)</option>
+                                            <option value="ABM">ABM (Accountancy, Business, Mgmt)</option>
+                                            <option value="HUMSS">HUMSS (Humanities, Social Sciences)</option>
+                                            <option value="GAS">GAS (General Academic Strand)</option>
+                                            <option value="TVL">TVL (Technical-Vocational-Livelihood)</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label-custom">Academic Honors / Awards</label>
+                                        <input type="text" class="form-control portal-input" v-model="form.honors" placeholder="e.g. With Honors, Valedictorian">
+                                    </div>
+
+                                    <div class="col-md-12 mt-4 pt-3 border-top">
+                                        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                                            <div>
+                                                <h6 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                                                    <i class="fas fa-file-arrow-up text-success fs-5"></i>
+                                                    <span>Upload Document Soft Copies</span>
+                                                    <span v-if="Object.keys(documentFiles).length === 0" class="badge bg-light text-muted border fw-normal">Optional</span>
+                                                    <span v-else class="badge bg-warning-subtle text-warning-emphasis border border-warning fw-semibold">All Files Required (In Progress)</span>
+                                                </h6>
+                                                <p class="text-muted small mb-0">
+                                                    You may upload digital soft copies now for online verification, or bring physical paper copies to the Registrar's Office.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div v-if="errors.softCopyDocs" class="alert alert-danger border-0 mb-3 small d-flex align-items-center rounded-3">
+                                            <i class="fas fa-exclamation-circle me-2 fs-5"></i>
+                                            <span>{{ errors.softCopyDocs }}</span>
+                                        </div>
+
+                                        <div class="vstack gap-2.5">
+                                            <div v-for="doc in requiredDocList" :key="doc.key" 
+                                                 class="card border rounded-3 p-3 bg-white shadow-sm hover-shadow transition-all"
+                                                 :class="{ 'border-danger bg-danger-subtle bg-opacity-10': errors.softCopyDocs && !documentFiles[doc.key] }">
+                                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                                    
+                                                    <div class="d-flex align-items-center me-3" style="min-width: 260px;">
+                                                        <div class="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0" 
+                                                             :class="documentFiles[doc.key] ? 'bg-success bg-opacity-10 text-success' : (errors.softCopyDocs ? 'bg-danger bg-opacity-10 text-danger' : 'bg-light text-secondary')" 
+                                                             style="width: 40px; height: 40px;">
+                                                            <i class="fas fs-6" :class="documentFiles[doc.key] ? getFileIcon(documentFiles[doc.key].name) : 'fa-file-lines'"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="fw-bold text-dark small mb-0.5">{{ doc.label }}</div>
+                                                            <div class="fs-7">
+                                                                <span v-if="documentFiles[doc.key]" class="text-success fw-semibold">
+                                                                    <i class="fas fa-circle-check me-1"></i>Attached: {{ documentFiles[doc.key].name }} ({{ formatFileSize(documentFiles[doc.key].size) }})
+                                                                </span>
+                                                                <span v-else-if="errors.softCopyDocs" class="text-danger fw-semibold">
+                                                                    <i class="fas fa-circle-exclamation me-1"></i>Upload required since other files attached
+                                                                </span>
+                                                                <span v-else class="text-muted opacity-75">
+                                                                    Pending soft copy submission
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="ms-auto">
+                                                        
+                                                        <input type="file" class="d-none" :id="'file_' + doc.key" @change="onFileChange(doc.key, $event)" accept=".pdf,.jpg,.jpeg,.png">
+
+                                                        <button v-if="!documentFiles[doc.key]" type="button" 
+                                                                class="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold fs-7"
+                                                                :class="errors.softCopyDocs ? 'btn-danger' : 'btn-outline-success'"
+                                                                @click="triggerFileInput('file_' + doc.key)">
+                                                            <i class="fas fa-paperclip me-1.5"></i>Upload File
+                                                        </button>
+
+                                                        <div v-else class="d-flex align-items-center gap-1.5">
+                                                            <button type="button" class="btn btn-sm btn-light text-primary border rounded-pill px-2.5 py-1 fs-7" @click="triggerFileInput('file_' + doc.key)" title="Replace file">
+                                                                <i class="fas fa-rotate me-1"></i>Replace
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-light text-danger border rounded-pill px-2.5 py-1 fs-7" @click="removeDocFile(doc.key)" title="Remove file">
+                                                                <i class="fas fa-trash-can me-1"></i>Remove
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="currentStep === 4">
+                                <h3 class="step-title mb-2">Medical Pre-Screening</h3>
+                                <p class="step-description mb-4 text-muted">
+                                    Provide basic health information for the school clinic. An official physical examination will be conducted on campus at Station 3 (School Clinic).
+                                </p>
+
+                                <div class="row g-4 mb-4">
+
+                                    <div class="col-12">
+                                        <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                                            <i class="fas fa-heart-pulse text-success fs-5"></i>
+                                            <span>1. Health Status &amp; Medical History</span>
+                                        </h5>
+                                        <p class="text-muted small mb-3">Assess your current physical health and declare any pre-existing conditions.</p>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label-custom">General Health Status <span class="text-danger">*</span></label>
+                                        <div class="row g-3">
+                                            <div v-for="status in [
+                                                    { value: 'GOOD', label: 'Good Health', desc: 'No active physical symptoms', icon: 'fas fa-smile', color: 'text-success' },
+                                                    { value: 'FAIR', label: 'Fair Health', desc: 'Manageable ongoing symptoms', icon: 'fas fa-meh', color: 'text-warning' },
+                                                    { value: 'POOR', label: 'Needs Attention', desc: 'Requires medical assistance', icon: 'fas fa-frown', color: 'text-danger' }
+                                                ]" :key="status.value" class="col-md-4">
+                                                <div class="option-card h-100"
+                                                     :class="{ selected: form.healthStatus === status.value }"
+                                                     @click="form.healthStatus = status.value">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="option-check-circle me-3">
+                                                            <i class="fas fa-check" v-if="form.healthStatus === status.value"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="option-title d-flex align-items-center gap-2">
+                                                                <i :class="[status.icon, status.color]"></i>
+                                                                <span>{{ status.label }}</span>
+                                                            </div>
+                                                            <div class="option-desc text-muted">{{ status.desc }}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label-custom">
+                                            Pre-Existing Medical Conditions
+                                            <span class="text-muted small fw-normal ms-1">(Select all that apply, or leave blank if none)</span>
+                                        </label>
+                                        <div class="condition-chips-wrap p-3 rounded-3 bg-white border">
+                                            <div v-for="cond in medicalConditionOptions" :key="cond"
+                                                 class="condition-chip"
+                                                 :class="{ selected: form.medicalConditions.includes(cond) }"
+                                                 @click="toggleCondition(cond)">
+                                                <i class="fas fa-check me-1" v-if="form.medicalConditions.includes(cond)"></i>
+                                                {{ cond }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label-custom">Known Allergies / Food &amp; Drug Sensitivities</label>
+                                        <input type="text" class="form-control portal-input" v-model="form.allergies" placeholder="e.g. Penicillin, Aspirin, Shellfish — or None">
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label-custom">Currently taking prescription medication?</label>
+                                        <div class="row g-3">
+                                            <div class="col-6">
+                                                <div class="option-card py-2 px-3 text-center"
+                                                     :class="{ selected: form.currentMedication === true }"
+                                                     @click="form.currentMedication = true">
+                                                    <div class="option-title">Yes</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="option-card py-2 px-3 text-center"
+                                                     :class="{ selected: form.currentMedication === false }"
+                                                     @click="form.currentMedication = false; form.medicationDetails = ''">
+                                                    <div class="option-title">No</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12" v-if="form.currentMedication">
+                                        <label class="form-label-custom">Prescription Medication Details</label>
+                                        <input type="text" class="form-control portal-input" v-model="form.medicationDetails" placeholder="List current medications and dosages (e.g. Metformin 500mg once daily)">
+                                    </div>
+
+                                    <div class="col-12 mt-4 pt-3 border-top">
+                                        <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                                            <i class="fas fa-person-running text-success fs-5"></i>
+                                            <span>2. Physical Fitness &amp; PE Clearance</span>
+                                        </h5>
+                                        <p class="text-muted small mb-3">Indicate your capability to undergo physical education classes and sports.</p>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="option-card h-100"
+                                             :class="{ selected: form.fitnessParticipation === true }"
+                                             @click="form.fitnessParticipation = true">
+                                            <div class="d-flex align-items-start">
+                                                <div class="option-check-circle me-3 mt-1">
+                                                    <i class="fas fa-check" v-if="form.fitnessParticipation === true"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="option-title text-success">Fit to Participate</div>
+                                                    <div class="option-desc text-muted">I am fully able to undergo regular physical education (PE) activities and sports.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="option-card h-100"
+                                             :class="{ selected: form.fitnessParticipation === false }"
+                                             @click="form.fitnessParticipation = false">
+                                            <div class="d-flex align-items-start">
+                                                <div class="option-check-circle me-3 mt-1">
+                                                    <i class="fas fa-check" v-if="form.fitnessParticipation === false"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="option-title text-warning">Requires Accommodations</div>
+                                                    <div class="option-desc text-muted">I have a physical limitation or condition requiring modified PE activities.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 mt-4 pt-3 border-top">
+                                        <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                                            <i class="fas fa-phone text-success fs-5"></i>
+                                            <span>3. Emergency Contact Details</span>
+                                        </h5>
+                                        <p class="text-muted small mb-3">Designated contact person to notify in case of medical emergencies on campus.</p>
+                                    </div>
+
+                                    <div class="col-sm-6">
+                                        <label class="form-label-custom">Contact Person's Full Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control portal-input"
+                                               :class="{ 'is-invalid': errors.emergencyContactName }"
+                                               v-model="form.emergencyContactName"
+                                               placeholder="Parent / Guardian / Spouse / Sibling">
+                                        <div class="invalid-feedback" v-if="errors.emergencyContactName">{{ errors.emergencyContactName }}</div>
+                                    </div>
+
+                                    <div class="col-sm-6">
+                                        <label class="form-label-custom">Contact Person's Mobile Number <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light text-muted border-end-0" style="border-radius: 10px 0 0 10px; border: 2px solid var(--gray-border); border-right: none; font-weight: 500;">09</span>
+                                            <input type="tel" class="form-control portal-input border-start-0" style="border-radius: 0 10px 10px 0;"
+                                                   :class="{ 'is-invalid': errors.emergencyContactPhone }"
+                                                   v-model="form.emergencyContactPhone"
+                                                   placeholder="xxxxxxxxx" maxlength="9">
+                                            <div class="invalid-feedback" v-if="errors.emergencyContactPhone">{{ errors.emergencyContactPhone }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 mt-3">
+                                        <div class="alert border-0 py-3 px-4 small rounded-3 d-flex align-items-center gap-3" style="background-color: var(--primary-green-light); color: var(--dark-green);">
+                                            <i class="fas fa-stethoscope fs-4 text-primary-green"></i>
+                                            <div>
+                                                <strong>Notice for Incoming Enrollees:</strong> This pre-screening questionnaire provides the School Clinic with your initial health history. An official physical examination will be completed on-campus at Station 3 (School Clinic).
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <div v-if="currentStep === 5">
+                                <h3 class="step-title mb-2">Tuition &amp; Payment Setup</h3>
+                                <p class="step-description mb-4 text-muted">Configure your payment term and view your calculated collegiate fees.</p>
+
+                                <div class="row g-4 mb-4">
+                                    
+                                    <div class="col-lg-6">
+                                        <div class="mb-4">
+                                            <label class="form-label-custom">Choose Payment Scheme</label>
+                                            <div class="d-flex flex-column gap-3">
+                                                <div v-for="mode in paymentModes" :key="mode.value"
+                                                     class="option-card px-4 py-3"
+                                                     :class="{ selected: form.paymentMode === mode.value }"
+                                                     @click="form.paymentMode = mode.value">
+                                                    <div class="d-flex justify-content-between align-items-center w-100">
+                                                        <div>
+                                                            <div class="option-title">{{ mode.label }}</div>
+                                                            <div class="option-desc text-muted">{{ mode.desc }}</div>
+                                                        </div>
+                                                        <div class="option-check-circle">
+                                                            <i class="fas fa-check" v-if="form.paymentMode === mode.value"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-lg-6">
+                                        <div class="invoice-container shadow-sm p-4 rounded-4">
+                                            <div class="invoice-header d-flex justify-content-between align-items-center mb-3">
+                                                <span class="invoice-title"><i class="fas fa-receipt me-2"></i>Assessment of Fees</span>
+                                                <span class="invoice-meta">Undergraduate</span>
+                                            </div>
+                                            <div class="invoice-body">
+                                                <div class="invoice-row d-flex justify-content-between mb-2">
+                                                    <span>Tuition Fee (21 Units)</span>
+                                                    <span>₱ {{ formatPrice(calcTuition) }}</span>
+                                                </div>
+                                                <div class="invoice-row d-flex justify-content-between mb-2">
+                                                    <span>Miscellaneous &amp; Lab Fees</span>
+                                                    <span>₱ {{ formatPrice(calcMisc) }}</span>
+                                                </div>
+                                                <div class="invoice-row d-flex justify-content-between text-success mb-2" v-if="calcDiscount > 0">
+                                                    <span>Scholarship Discount</span>
+                                                    <span>- ₱ {{ formatPrice(calcDiscount) }}</span>
+                                                </div>
+                                                <div class="invoice-row d-flex justify-content-between text-success mb-2" v-if="form.paymentMode === 'CASH'">
+                                                    <span>Full Cash discount (5%)</span>
+                                                    <span>- ₱ {{ formatPrice(calcCashDiscount) }}</span>
+                                                </div>
+                                                <hr class="invoice-divider my-3">
+                                                <div class="invoice-row d-flex justify-content-between total-row mb-3">
+                                                    <span>TOTAL FEES:</span>
+                                                    <span class="text-primary-green">₱ {{ formatPrice(calcTotal) }}</span>
+                                                </div>
+                                                <div class="payment-schedule-box rounded-3 p-3 bg-light" v-if="calcInstallmentAmount > 0">
+                                                    <div class="schedule-title mb-2 text-uppercase font-monospace text-muted small fw-bold">Installment Schedule</div>
+                                                    <div class="d-flex justify-content-between mb-1 small text-dark">
+                                                        <span>Upon Registration (Downpayment):</span>
+                                                        <span class="fw-bold">₱ {{ formatPrice(calcDownpayment) }}</span>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between small text-dark">
+                                                        <span>Remaining ({{ form.paymentMode === 'SEMI' ? '2x' : '3x' }}):</span>
+                                                        <span class="fw-bold">₱ {{ formatPrice(calcInstallmentAmount) }} / term</span>
+                                                    </div>
+                                                </div>
+                                                <div class="payment-schedule-box rounded-3 p-3 bg-light text-center text-success" v-else>
+                                                    <i class="fas fa-check-circle me-1"></i> Full Cash Payment Plan Selected. No installments due.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="currentStep === 6">
+                                <h3 class="step-title mb-2">Review Enrollment Details</h3>
+                                <p class="step-description mb-4 text-muted">Confirm that all details are correct before finalizing your enrollment.</p>
+
+                                <div v-if="submitError" class="alert alert-danger mb-4 d-flex align-items-center">
+                                    <i class="fas fa-exclamation-triangle me-3 fs-4"></i>
+                                    <div>{{ submitError }}</div>
+                                </div>
+
+                                <div class="row g-4 mb-4">
+                                    
+                                    <div class="col-lg-6 d-flex flex-column gap-4">
+                                        
+                                        <div class="summary-section">
+                                            <h5 class="summary-section-title"><i class="fas fa-university me-2 text-primary-gold"></i>Academic Program</h5>
+                                            <p class="summary-item mb-2"><strong>Degree Major:</strong> {{ getCourseName(form.courseCode) }}</p>
+                                            <p class="summary-item mb-2"><strong>Course Code:</strong> {{ form.courseCode }}</p>
+                                            <p class="summary-item mb-2"><strong>Student Type:</strong> {{ getStudentTypeLabel(form.studentType) }}</p>
+                                            <p class="summary-item mb-0">
+                                                <strong>NSTP Program:</strong>
+                                                <span class="badge ms-1 fw-semibold" style="background-color:var(--primary-green-light);color:var(--dark-green);">{{ form.nstp }}</span>
+                                            </p>
+                                        </div>
+
+                                        <div class="summary-section flex-grow-1">
+                                            <h5 class="summary-section-title"><i class="fas fa-user me-2 text-primary-gold"></i>Student &amp; Contact Details</h5>
+                                            <p class="summary-item mb-2"><strong>Full Name:</strong> {{ form.lastName }}, {{ form.firstName }} {{ form.middleName }}</p>
+                                            <p class="summary-item mb-2"><strong>Contact Phone:</strong> 09{{ form.phone }}</p>
+                                            <p class="summary-item mb-2"><strong>Email Address:</strong> {{ form.email }}</p>
+                                            <p class="summary-item mb-2"><strong>Residential Address:</strong> {{ form.address }}</p>
+                                            <p class="summary-item mb-0"><strong>Emergency Contact:</strong> {{ form.emergencyContactName }} (09{{ form.emergencyContactPhone }})</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-lg-6 d-flex flex-column gap-4">
+                                        
+                                        <div class="summary-section">
+                                            <h5 class="summary-section-title"><i class="fas fa-graduation-cap me-2 text-primary-gold"></i>Academic History</h5>
+                                            <p class="summary-item mb-2" v-if="form.educationPathway !== 'ALS'"><strong>Elementary:</strong> {{ form.elementarySchool }}</p>
+                                            <p class="summary-item mb-2" v-if="form.educationPathway === 'ALS'"><strong>ALS Learning Center:</strong> {{ form.elementarySchool }}</p>
+                                            <p class="summary-item mb-2" v-if="form.educationPathway !== 'ALS'"><strong>Junior High School:</strong> {{ form.juniorHighSchool }}</p>
+                                            <p class="summary-item mb-2" v-if="form.educationPathway === 'REGULAR'"><strong>Senior High School:</strong> {{ form.seniorHighSchool }}</p>
+                                            <p class="summary-item mb-2" v-if="form.educationPathway === 'REGULAR'"><strong>SHS Track:</strong> {{ form.shsTrack || 'N/A' }}</p>
+                                            <p class="summary-item mb-0" v-if="form.studentType === 'TRANSFEREE' && form.previousCollege"><strong>Previous College:</strong> {{ form.previousCollege }}</p>
+                                        </div>
+
+                                        <div class="summary-section">
+                                            <h5 class="summary-section-title"><i class="fas fa-heartbeat me-2 text-primary-gold"></i>Medical Profile</h5>
+                                            <p class="summary-item mb-2"><strong>Health Status:</strong> {{ form.healthStatus }}</p>
+                                            <p class="summary-item mb-2"><strong>Conditions:</strong> {{ form.medicalConditions.length > 0 ? form.medicalConditions.join(', ') : 'None declared' }}</p>
+                                            <p class="summary-item mb-0"><strong>PE Participation:</strong> {{ form.fitnessParticipation ? 'Fit to participate' : 'Requires accommodation' }}</p>
+                                        </div>
+
+                                        <div class="summary-section">
+                                            <h5 class="summary-section-title"><i class="fas fa-coins me-2 text-primary-gold"></i>Financial Summary</h5>
+                                            <p class="summary-item mb-2"><strong>Payment Scheme:</strong> {{ getPaymentModeLabel(form.paymentMode) }}</p>
+                                            <p class="summary-item mb-0"><strong>Total Assessed Fees:</strong> <span class="fw-bold text-primary-green fs-6">₱ {{ formatPrice(calcTotal) }}</span></p>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <div class="summary-section">
+                                            <h5 class="summary-section-title">
+                                                <i class="fas fa-file-invoice me-2 text-primary-gold"></i>Required Admission Documents to Submit on Campus
+                                            </h5>
+                                            <p class="text-muted small mb-3">Bring originals and photocopies of these documents to the Registrar's Office to complete your on-campus admission:</p>
+                                            <ul class="list-group list-group-flush rounded-3 border">
+                                                <li v-for="req in getRequirements" :key="req" class="list-group-item d-flex align-items-center">
+                                                    <i class="fas fa-file-lines text-primary-green me-3"></i>
+                                                    <span>{{ req }}</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="currentStep === 7" class="text-center py-4">
+                                <div class="confirmation-success-badge mb-4">
+                                    <i class="fas fa-check-double animate__animated animate__zoomIn"></i>
+                                </div>
+                                <h3 class="step-title fw-bold mb-2"
+                                    :class="form.studentType === 'RETURNING' ? 'text-primary' : 'text-success'">
+                                    <span v-if="form.studentType === 'RETURNING'">Re-Enrollment Application Submitted!</span>
+                                    <span v-else>Enrollment Pre-Registered!</span>
+                                </h3>
+                                <p class="step-description text-muted px-md-5 mb-4">
+                                    Your online pre-enrollment has been successfully recorded in our system. Below are your temporary tracking credentials.
+                                </p>
+
+                                <div class="temp-account-card mx-auto p-4 mb-5 shadow-sm rounded-4" style="max-width: 620px;">
+                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom border-secondary border-opacity-10">
+                                        <div class="text-start">
+                                            <span class="badge bg-success-subtle text-success fw-bold px-3 py-2 rounded-pill text-uppercase" style="letter-spacing:0.5px;">
+                                                <i class="fas fa-id-card me-2"></i>Temporary Student Portal Credentials
+                                            </span>
+                                        </div>
+                                        <span class="text-muted small"><i class="fas fa-shield-halved me-1"></i>Active</span>
+                                    </div>
+
+                                    <div class="row g-3" v-if="tempAccount">
+                                        <div class="col-sm-6 text-start">
+                                            <label class="form-label-custom mb-1 text-muted">Temporary Student ID</label>
+                                            <div class="credential-block d-flex align-items-center justify-content-between p-3 rounded-3 border">
+                                                <span class="fw-bold font-monospace fs-5 text-dark">{{ tempAccount.tempStudentId }}</span>
+                                                <button class="btn btn-sm btn-light copy-btn" @click="copyToClipboard(tempAccount.tempStudentId, 'id')" title="Copy ID">
+                                                    <i class="fas fa-check text-success" v-if="copiedField === 'id'"></i>
+                                                    <i class="fas fa-copy text-muted" v-else></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6 text-start">
+                                            <label class="form-label-custom mb-1 text-muted">Access PIN Code</label>
+                                            <div class="credential-block d-flex align-items-center justify-content-between p-3 rounded-3 border">
+                                                <span class="fw-bold font-monospace fs-5 text-dark">
+                                                    {{ showPin ? tempAccount.tempPin : '••••••' }}
+                                                </span>
+                                                <div class="d-flex gap-1">
+                                                    <button class="btn btn-sm btn-light copy-btn me-1" @click="showPin = !showPin" :title="showPin ? 'Hide PIN' : 'Show PIN'">
+                                                        <i :class="showPin ? 'fas fa-eye-slash text-muted' : 'fas fa-eye text-muted'"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-light copy-btn" @click="copyToClipboard(tempAccount.tempPin, 'pin')" title="Copy PIN">
+                                                        <i class="fas fa-check text-success" v-if="copiedField === 'pin'"></i>
+                                                        <i class="fas fa-copy text-muted" v-else></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="alert alert-warning border-0 mt-3 mb-0 text-start small d-flex align-items-center">
+                                        <i class="fas fa-key me-3 fs-4 text-warning"></i>
+                                        <div>
+                                            <strong>Important:</strong> Save your Temporary Student ID and PIN! You will need these to log into the <strong>Student Tracking Portal</strong> at any time to check real-time campus verification updates.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="receipt-card text-start mx-auto p-4 mb-4 shadow-sm border border-secondary border-opacity-10 rounded-4" style="max-width: 620px;">
+                                    <div class="receipt-header text-center mb-4 pb-3 border-bottom border-secondary border-opacity-10">
+                                        <h5 class="fw-bold mb-1 text-primary-green">GO-ON NATIONAL COLLEGE OF THE PHILIPPINES</h5>
+                                        <p class="text-muted small mb-0">Emilio Aguinaldo Highway, Dasmariñas, Cavite</p>
+                                        <p class="text-muted font-monospace small mb-0 mt-1" v-if="tempAccount">STUDENT ID: {{ tempAccount.tempStudentId }}</p>
+                                    </div>
+
+                                    <div class="receipt-details mb-4">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">Enrollee Name:</span>
+                                            <span class="fw-bold">{{ form.lastName }}, {{ form.firstName }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">Target Program:</span>
+                                            <span class="fw-bold text-end" style="max-width:55%">{{ getCourseName(form.courseCode) }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">Course Code:</span>
+                                            <span class="fw-bold">{{ form.courseCode }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">NSTP Component:</span>
+                                            <span class="fw-bold">{{ form.nstp }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">Payment Term:</span>
+                                            <span class="fw-bold">{{ getPaymentModeLabel(form.paymentMode) }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="receipt-pricing border-top border-secondary border-opacity-10 pt-3 mb-4">
+                                        <div class="d-flex justify-content-between fw-bold text-dark fs-5">
+                                            <span>TOTAL ASSESSED FEES:</span>
+                                            <span class="text-primary-green">₱ {{ formatPrice(calcTotal) }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="receipt-requirements pt-3 border-top border-secondary border-opacity-10">
+                                        <h6 class="fw-bold mb-2 text-dark"><i class="fas fa-clipboard-list me-2 text-primary-green"></i>Documents to Submit on Campus:</h6>
+                                        <ul class="ps-3 mb-0 small text-muted text-start">
+                                            <li v-for="req in getRequirements" :key="req" class="mb-1">{{ req }}</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="campus-guide text-start mx-auto mb-5 no-print" style="max-width: 620px;" v-if="tempAccount">
+                                    <div class="campus-guide-header mb-4">
+                                        <h5 class="campus-guide-title mb-1">
+                                            <i class="fas fa-map-location-dot me-2"></i>Your Campus Enrollment Roadmap
+                                        </h5>
+                                        <p class="text-muted small mb-0">After printing your receipt above, proceed to the following stations <strong>in order</strong> to complete your enrollment.</p>
+                                    </div>
+
+                                    <div class="campus-station-timeline">
+                                        <div v-for="(step, idx) in tempAccount.roadmap" :key="step.stepId" 
+                                             class="campus-station" 
+                                             :class="{ 
+                                                 'station-done': step.status === 'COMPLETED',
+                                                 'station-active': step.status === 'IN_PROGRESS'
+                                             }">
+                                            <div class="station-marker" :class="{
+                                                'marker-done': step.status === 'COMPLETED',
+                                                'bg-warning text-dark border-warning': step.status === 'IN_PROGRESS'
+                                            }">
+                                                <i class="fas fa-check" v-if="step.status === 'COMPLETED'"></i>
+                                                <i class="fas fa-flag-checkered" v-else-if="step.stepId === 'id_email_final'"></i>
+                                                <span v-else>{{ idx }}</span>
+                                            </div>
+                                            <div class="station-content">
+                                                <div class="station-badge" :class="{ 'badge-done': step.status === 'COMPLETED' }">
+                                                    <span v-if="step.status === 'COMPLETED'">✓ Completed</span>
+                                                    <span v-else>{{ step.station }} · {{ step.location }}</span>
+                                                </div>
+                                                <h6 class="station-name">{{ step.title }}</h6>
+                                                <p class="station-desc text-muted small mb-0">{{ step.description }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-center gap-3 no-print">
+                                    <a href="tracker" class="btn btn-pill btn-pill-green px-4 py-3">
+                                        <i class="fas fa-route me-2"></i>Open Tracker Portal
+                                    </a>
+                                    <button class="btn btn-pill btn-pill-outline px-4 py-3" onclick="window.print()">
+                                        <i class="fas fa-print me-2"></i>Print Statement
+                                    </button>
+                                    <a href="../school-website/" class="btn btn-pill btn-pill-outline px-4 py-3">
+                                        <i class="fas fa-home me-2"></i>Return Home
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between border-top pt-4 mt-4" v-if="currentStep <= 6">
+                                <button class="btn btn-pill btn-pill-outline px-4"
+                                        @click="prevStep"
+                                        :disabled="currentStep === 1 || isSubmitting">
+                                    <i class="fas fa-arrow-left me-2"></i>Back
+                                </button>
+                                <button class="btn btn-pill btn-pill-green px-4 py-3"
+                                        @click="nextStep"
+                                        :disabled="isSubmitting">
+                                    <span v-if="isSubmitting"><i class="fas fa-spinner fa-spin me-2"></i>Creating Account...</span>
+                                    <span v-else-if="currentStep === 6"><i class="fas fa-check-double me-2"></i>Submit Enrollment</span>
+                                    <span v-else>Next Step<i class="fas fa-arrow-right ms-2"></i></span>
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../shared/libs/vue.global.js"></script>
+    <script src="../shared/academic_constants.js"></script>
+
+    <script src="assets/js/services/ApiService.js?v=1789204778"></script>
+
+    <script src="assets/js/models/EnrollmentModel.js?v=1789204778"></script>
+
+    <script src="assets/js/App.js?v=1789204778"></script>
+</body>
+</html>

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>Student Portal Gateway — Go-on National College of the Philippines</title>
+    <meta name="description" content="Official student and applicant portal gateway for Go-on National College of the Philippines.">
+
+    <script src="assets/js/login-init.js?v=1789204778"></script>
+
+    <link rel="stylesheet" href="../shared/libs/fonts/fonts.css">
+    <link rel="stylesheet" href="../shared/libs/bootstrap.min.css">
+    <link rel="stylesheet" href="../shared/libs/font-awesome/css/all.min.css">
+    <link rel="stylesheet" href="../shared/css/admin_workstation_theme.css">
+
+    <script src="../shared/libs/vue.global.js"></script>
+
+    <style>
+        :root {
+            color-scheme: light;
+            --primary-green: #006A4E;
+            --dark-green: #003D2B;
+            --accent-green: #3E9B6C;
+            --gold: #D4AF37;
+            --gold-light: #FCD34D;
+            --light-bg: #F8FAFC;
+            --white: #FFFFFF;
+            --charcoal: #1F2937;
+            --muted-grey: #64748B;
+            --zinc-200: #E2E8F0;
+            --zinc-300: #CBD5E1;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 61, 43, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+        }
+
+        html, body {
+            color-scheme: light !important;
+            max-width: 100%;
+            overflow-x: hidden;
+            touch-action: pan-y;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: var(--light-bg);
+            background-image: radial-gradient(circle at 100% 0%, rgba(0, 106, 78, 0.04) 0%, transparent 50%),
+                              radial-gradient(circle at 0% 100%, rgba(212, 175, 55, 0.03) 0%, transparent 50%);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 32px 20px;
+            color: var(--charcoal);
+            box-sizing: border-box;
+        }
+
+        [v-cloak] {
+            display: none !important;
+        }
+
+        .portal-container {
+            width: 100%;
+            max-width: 1040px;
+            background: var(--white);
+            border: 1px solid var(--zinc-200);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-xl);
+            display: grid;
+            grid-template-columns: 1fr 1.15fr;
+            min-height: 580px;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                padding: 20px 14px;
+            }
+            .portal-container {
+                grid-template-columns: 1fr;
+                max-width: 480px;
+                min-height: auto;
+                border-radius: 14px;
+            }
+            .info-pane {
+                display: none;
+            }
+        }
+
+        @media (max-width: 576px) {
+            body {
+                padding: 12px 10px;
+            }
+            .portal-container {
+                border-radius: 12px;
+                box-shadow: 0 8px 24px rgba(0, 61, 43, 0.08);
+            }
+        }
+
+        /* ── Left Info Pane ── */
+        .info-pane {
+            background: linear-gradient(135deg, var(--dark-green) 0%, var(--primary-green) 100%);
+            padding: 44px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            color: var(--white);
+        }
+
+        .info-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .school-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background-color: var(--white);
+            padding: 2px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .school-title {
+            font-family: 'Outfit', 'Montserrat', sans-serif;
+            font-weight: 800;
+            font-size: 1.25rem;
+            line-height: 1.2;
+            color: var(--white);
+            margin: 0;
+        }
+
+        .school-sub {
+            color: var(--gold-light);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .info-body {
+            margin: 40px 0;
+        }
+
+        .welcome-title {
+            font-family: 'Outfit', 'Montserrat', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--white);
+            line-height: 1.2;
+            margin-bottom: 14px;
+        }
+
+        .welcome-title span {
+            color: var(--gold-light);
+        }
+
+        .welcome-text {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.88rem;
+            line-height: 1.55;
+            margin-bottom: 28px;
+        }
+
+        .info-features-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .info-feature-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.84rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .info-feature-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gold-light);
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .info-footer {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            padding-top: 20px;
+        }
+
+        /* ── Right Content Pane ── */
+        .right-pane {
+            padding: 44px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: var(--white);
+        }
+
+        /* ── Mobile Brand Header ── */
+        .mobile-brand-header {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 22px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--zinc-200);
+        }
+
+        .mobile-school-logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 2px solid var(--primary-green);
+            background: #ffffff;
+            padding: 2px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            object-fit: contain;
+        }
+
+        .mobile-school-title {
+            font-family: 'Outfit', 'Montserrat', sans-serif;
+            font-weight: 800;
+            font-size: 1.05rem;
+            color: var(--primary-green);
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .mobile-school-sub {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--accent-green);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        @media (max-width: 900px) {
+            .mobile-brand-header {
+                display: flex;
+            }
+            .right-pane {
+                padding: 36px 30px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .right-pane {
+                padding: 24px 18px 20px 18px;
+            }
+            .login-header {
+                margin-bottom: 20px;
+            }
+            .login-title {
+                font-size: 1.35rem;
+            }
+            .login-subtitle {
+                font-size: 0.8rem;
+            }
+            .form-group {
+                margin-bottom: 16px;
+            }
+            .form-input {
+                font-size: 16px !important; /* Prevents auto-zoom on iOS */
+                padding: 12px 14px 12px 40px;
+                min-height: 48px;
+            }
+            .login-btn {
+                min-height: 48px;
+                font-size: 0.92rem;
+                padding: 12px 16px;
+            }
+            .password-toggle-btn {
+                width: 44px;
+                height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                right: 2px;
+            }
+            .remember-forgot-row {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 10px;
+            }
+        }
+
+        .login-header {
+            margin-bottom: 28px;
+        }
+
+        .login-title {
+            font-family: 'Outfit', 'Montserrat', sans-serif;
+            font-size: 1.55rem;
+            font-weight: 800;
+            color: var(--primary-green);
+            margin: 0 0 6px 0;
+            letter-spacing: -0.3px;
+        }
+
+        .login-subtitle {
+            color: var(--muted-grey);
+            font-size: 0.86rem;
+            margin: 0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #475569;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94A3B8;
+            font-size: 0.92rem;
+            pointer-events: none;
+            transition: var(--transition-smooth);
+        }
+
+        .form-input {
+            width: 100%;
+            background: #FFFFFF;
+            border: 1.5px solid var(--zinc-300);
+            border-radius: var(--radius-md);
+            color: var(--charcoal);
+            padding: 12px 16px 12px 42px;
+            font-size: 0.88rem;
+            outline: none;
+            transition: var(--transition-smooth);
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary-green);
+            box-shadow: 0 0 0 3px rgba(0, 106, 78, 0.1);
+        }
+
+        .form-input:focus + .input-icon {
+            color: var(--primary-green);
+        }
+
+        .password-toggle-btn {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #94A3B8;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 0.9rem;
+        }
+
+        .password-toggle-btn:hover {
+            color: var(--primary-green);
+        }
+
+        .login-btn {
+            width: 100%;
+            background: var(--primary-green);
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--white);
+            font-weight: 700;
+            padding: 13px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            box-shadow: 0 4px 10px rgba(0, 106, 78, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: 0.3px;
+        }
+
+        .login-btn:hover:not(:disabled) {
+            background: var(--dark-green);
+            box-shadow: 0 6px 14px rgba(0, 106, 78, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .alert-custom-err {
+            background: #FEF2F2;
+            border: 1px solid #FECACA;
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            color: #B91C1C;
+            font-size: 0.82rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .alert-custom-ok {
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            color: #15803D;
+            font-size: 0.82rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak style="width: 100%; display: flex; justify-content: center;">
+        
+        <div class="portal-container">
+
+            <div class="info-pane">
+                <div class="info-header">
+                    <img src="../school-website/assets/images/logo-removebg-preview.png" alt="GNCP Logo" class="school-logo">
+                    <div>
+                        <h2 class="school-title">Go-on National College</h2>
+                        <div class="school-sub">OF THE PHILIPPINES</div>
+                    </div>
+                </div>
+
+                <div class="info-body">
+                    <h1 class="welcome-title">Student &amp; <span>Applicant Portal</span></h1>
+                    <p class="welcome-text">
+                        Access your academic roadmap, enrollment clearance status, official class schedule, and tuition assessments in one centralized dashboard.
+                    </p>
+
+                    <div class="info-features-list">
+                        <div class="info-feature-item">
+                            <div class="info-feature-icon"><i class="fa-solid fa-check"></i></div>
+                            <span>Real-time enrollment station clearance tracking</span>
+                        </div>
+                        <div class="info-feature-item">
+                            <div class="info-feature-icon"><i class="fa-solid fa-check"></i></div>
+                            <span>Digital Certificate of Registration (COR) download</span>
+                        </div>
+                        <div class="info-feature-item">
+                            <div class="info-feature-icon"><i class="fa-solid fa-check"></i></div>
+                            <span>Campus announcements &amp; academic milestones</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-footer">
+                    <span>Go-on National College of the Philippines</span>
+                    <span>Student Gateway</span>
+                </div>
+            </div>
+
+            <div class="right-pane">
+                
+                <div class="mobile-brand-header">
+                    <img src="../school-website/assets/images/logo-removebg-preview.png" alt="GNCP Logo" class="mobile-school-logo">
+                    <div>
+                        <h2 class="mobile-school-title">Go-on National College</h2>
+                        <div class="mobile-school-sub">STUDENT PORTAL GATEWAY</div>
+                    </div>
+                </div>
+
+                <div class="login-header">
+                    <h2 class="login-title">Student Sign In</h2>
+                    <p class="login-subtitle">Please enter your Student ID or Reference Code</p>
+                </div>
+
+                <div v-if="resetSuccessMsg" class="alert-custom-ok">
+                    <i class="fa-solid fa-circle-check mt-1"></i>
+                    <div>{{ resetSuccessMsg }}</div>
+                </div>
+
+                <div v-if="loginError" class="alert-custom-err">
+                    <i class="fa-solid fa-triangle-exclamation mt-1"></i>
+                    <div>{{ loginError }}</div>
+                </div>
+
+                <form @submit.prevent="handleLogin">
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="studentIdInput">Student ID / Reference Code</label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="studentIdInput" 
+                                class="form-input" 
+                                v-model="loginForm.studentId" 
+                                required 
+                                placeholder="e.g. GNCP-2026-1011 or REF-2026-XXXX"
+                                :disabled="isLoggingIn"
+                                autocomplete="username"
+                            >
+                            <i class="fa-solid fa-user-graduate input-icon"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="studentPasswordInput">Account Password</label>
+                        <div class="input-wrapper">
+                            <input 
+                                :type="showPassword ? 'text' : 'password'" 
+                                id="studentPasswordInput" 
+                                class="form-input" 
+                                v-model="loginForm.password" 
+                                required 
+                                placeholder="••••••••"
+                                :disabled="isLoggingIn"
+                                style="padding-right: 44px;"
+                                autocomplete="current-password"
+                            >
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <button 
+                                type="button" 
+                                class="password-toggle-btn" 
+                                @click="showPassword = !showPassword" 
+                                tabindex="-1"
+                                :title="showPassword ? 'Hide password' : 'Show password'"
+                            >
+                                <i :class="showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="remember-forgot-row d-flex align-items-center justify-content-between mb-4 fs-7 text-muted">
+                        <label class="d-flex align-items-center gap-2 cursor-pointer mb-0">
+                            <input type="checkbox" v-model="rememberMe" class="form-check-input mt-0">
+                            <span style="font-size:0.83rem; font-weight:600; color:var(--charcoal);">Remember login</span>
+                        </label>
+                        <div class="d-flex align-items-center gap-3">
+                            <span v-if="hasSavedCredentials" @click="clearSavedCredentials" class="text-secondary cursor-pointer fw-medium" style="font-size:0.81rem;">
+                                <i class="fa-solid fa-eraser me-1"></i>Clear
+                            </span>
+                            <a href="forgot-password" class="fw-bold text-decoration-none" style="font-size:0.82rem; color:var(--primary-green);">
+                                <i class="fa-solid fa-key me-1"></i>Forgot Password?
+                            </a>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="login-btn" :disabled="isLoggingIn">
+                        <span v-if="isLoggingIn">
+                            <i class="fa-solid fa-spinner fa-spin me-2"></i> Authenticating...
+                        </span>
+                        <span v-else>
+                            <i class="fa-solid fa-right-to-bracket me-2"></i> Sign In to Student Portal
+                        </span>
+                    </button>
+                </form>
+
+                <div class="mt-4 pt-3 text-center border-top border-light">
+                    <a href="../school-website/" class="text-secondary text-decoration-none" style="font-size: 0.82rem;">
+                        <i class="fa-solid fa-house me-1"></i> Return to GNCP Main Website
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="assets/js/services/StudentApiService.js?v=1789204778"></script>
+    <script src="assets/js/controllers/StudentLoginController.js?v=1789204778"></script>
+    <script>
+        Vue.createApp(StudentLoginController).mount('#app');
+    </script>
+</body>
+</html>

@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>GNCP Station — Student Portal Account Activation</title>
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="../../shared/libs/fonts/fonts.css">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="../../shared/libs/font-awesome/css/all.min.css">
+    <!-- Bootstrap CSS Grid/Utilities only -->
+    <link href="../../shared/libs/bootstrap.min.css" rel="stylesheet">
+    <!-- Shared Station Styling -->
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=1789204778">
+    <link rel="stylesheet" href="../../shared/css/sidebar.css?v=1789204778">
+    <script src="../../shared/libs/sweetalert2.all.min.js"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js"></script>
+    <style>
+         [v-cloak] { display: none !important; }
+         
+         .unified-login-input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: #fff; padding: 10px 14px; font-size: 0.88rem; box-sizing: border-box; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+         .unified-login-input:focus { border-color: rgba(212,175,55,0.6); box-shadow: 0 0 0 3px rgba(212,175,55,0.1); }
+         .unified-login-btn { width: 100%; background: linear-gradient(135deg, #D4AF37, #b8961e); border: none; border-radius: 10px; color: #0b1511; font-weight: 800; padding: 12px; font-size: 0.9rem; cursor: pointer; letter-spacing: 0.5px; margin-top: 6px; transition: background 0.2s, opacity 0.2s; }
+         .unified-login-btn:hover { background: linear-gradient(135deg, #e0bc3e, #c9a622); }
+         .unified-login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+         .unified-login-error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 10px 14px; color: #fca5a5; font-size: 0.82rem; margin-bottom: 16px; text-align: left; }
+
+         /* ── Vertical Timeline Stepper ── */
+         .vertical-stepper { display: flex; flex-direction: column; gap: 14px; padding: 6px 0; position: relative; }
+         .vertical-step-node { display: flex; align-items: center; gap: 12px; position: relative; }
+         .vertical-step-node:not(:last-child)::after {
+             content: ''; position: absolute; left: 17px; top: 34px; bottom: -20px; width: 2px; background: #E5E8EC; z-index: 0;
+         }
+         .vertical-step-node.is-completed:not(:last-child)::after { background: var(--primary-green); }
+         .vertical-step-marker {
+             width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: #FFF; border: 2px solid #E5E8EC; color: #9CA3AF; z-index: 1; transition: all 0.2s ease;
+         }
+         .is-completed .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; }
+         .is-active .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; box-shadow: none !important; }
+         .vertical-step-content { display: flex; flex-direction: column; text-align: left; }
+         .vertical-step-title { font-size: 0.78rem; font-weight: 700; margin: 0; color: var(--text-dark); line-height: 1.2; }
+         .is-completed .vertical-step-title { color: var(--dark-green); }
+         .is-active .vertical-step-title { color: var(--primary-green); }
+         .vertical-step-status { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #9CA3AF; margin-top: 1px; }
+         .is-completed .vertical-step-status { color: var(--primary-green); }
+         .is-active .vertical-step-status { color: var(--primary-green); }
+         
+         /* Webcam styles */
+         .webcam-container {
+             position: relative;
+             width: 100%;
+             max-width: 320px;
+             margin: 0 auto;
+         }
+         .webcam-view {
+             width: 100%;
+             height: 240px;
+             border-radius: var(--radius-md);
+             object-fit: cover;
+             background-color: #000;
+             border: 2px solid var(--gray-border);
+             transform: scaleX(-1);
+         }
+         .photo-view {
+             width: 100%;
+             height: 240px;
+             border-radius: var(--radius-md);
+             object-fit: cover;
+             background-color: #F3F4F6;
+             border: 2px solid var(--gray-border);
+         }
+    </style>
+</head>
+<body>
+    <div id="app" class="dashboard-shell" v-cloak>
+        <template v-if="currentUser">
+            <!-- Sidebar Panel -->
+            <employee-sidebar 
+                station-name="Go-on National College" 
+                station-tag="IT CENTER STATION"
+                :nav-groups="[
+                    {
+                        title: 'IT & Account Provisioning',
+                        items: [
+                            { id: 'dashboard', label: 'Dashboard Overview', icon: 'fa-gauge' },
+                            { id: 'queue', label: 'Activation Queue', icon: 'fa-users-line', badge: totalInQueue > 0 ? totalInQueue : null },
+                            { id: 'accounts', label: 'Student Portal Accounts', icon: 'fa-id-card' }
+                        ]
+                    }
+                ]"
+                :current-view="currentView"
+                :current-user="currentUser"
+                base-path="../../"
+                @set-view="setView"
+                @logout="handleLogout">
+            </employee-sidebar>
+
+            <!-- Main Panel -->
+            <main class="main-panel">
+                <div class="top-bar">
+                    <div class="top-bar-left">
+                        <span class="eyebrow">STUDENT PORTAL ACCOUNT ACTIVATION</span>
+                        <span class="top-bar-divider">|</span>
+                        <h2>{{ currentView === 'dashboard' ? 'Dashboard' : currentView === 'queue' ? 'Portal Activation Queue' : 'Student Accounts' }}</h2>
+                    </div>
+                    <div class="top-bar-actions">
+                        <template v-if="currentView === 'queue'">
+                            <input class="search-pill" type="text" v-model="searchQuery" placeholder="Search queue...">
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Profile View -->
+                <div v-if="currentView === 'profile'" class="profile-view-wrap p-3">
+                    <div class="profile-hero">
+                        <div class="avatar-wrap" @click="triggerFileInput" title="Click to change profile picture">
+                            <img v-if="formattedAvatar" :src="formattedAvatar" alt="Profile Picture">
+                            <div v-else class="avatar-initials">{{ initials }}</div>
+                            <div class="avatar-overlay">
+                                <i class="fa-solid fa-camera mb-1" style="font-size:1.1rem"></i>
+                                <span>Change Photo</span>
+                            </div>
+                        </div>
+                        <input type="file" ref="fileInput" @change="onFileSelected" accept="image/*" style="display:none">
+                        <div class="profile-hero-info">
+                            <h3>{{ user.name || (currentUser ? currentUser.name : 'IT Center Staff') }}<span class="profile-hero-badge">{{ user.role || (currentUser ? currentUser.role : 'IT_CENTER') }}</span></h3>
+                            <p><i class="fa-solid fa-envelope me-2"></i>{{ user.email || (currentUser ? currentUser.email : 'itcenter@gncp.edu.ph') }}</p>
+                            <p style="margin-top:4px"><i class="fa-solid fa-at me-2"></i>{{ user.username || (currentUser ? currentUser.username : 'itcenter') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-grid">
+                        <div class="card p-4">
+                            <div class="card-title mb-3" style="font-weight:800; font-size:1.05rem; color:var(--primary, #006A4E);"><i class="fa-solid fa-user-edit me-2"></i> Personal Details</div>
+                            <form @submit.prevent="saveStaffProfile">
+                                <div style="margin-bottom:14px"><label class="f-label">Full Name</label><input class="f-input" type="text" v-model="user.name" required></div>
+                                <div style="margin-bottom:14px"><label class="f-label">Email Address</label><input class="f-input" type="email" v-model="user.email" required></div>
+                                <div style="margin-bottom:14px"><label class="f-label">Username / Identity Code</label><input class="f-input" type="text" :value="user.username" disabled></div>
+                                <div style="margin-bottom:14px"><label class="f-label">System Role</label><input class="f-input" type="text" :value="user.role" disabled></div>
+                                <div class="text-end" style="margin-top:12px">
+                                    <button type="submit" class="btn-primary-save" :disabled="saving">
+                                        <i class="fa-solid fa-save"></i> {{ saving ? 'Saving...' : 'Save Personal Details' }}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="card p-4">
+                            <div class="card-title mb-3" style="font-weight:800; font-size:1.05rem; color:var(--primary, #006A4E);"><i class="fa-solid fa-shield-alt me-2"></i> Account Security &amp; Password</div>
+                            <form @submit.prevent="updatePassword">
+                                <div style="margin-bottom:14px">
+                                    <label class="f-label">Current Password</label>
+                                    <div style="position:relative">
+                                        <input :type="showCurrentPass ? 'text' : 'password'" class="f-input" v-model="pass.current" placeholder="Enter your current password" required style="padding-right:42px">
+                                        <button type="button" @click="showCurrentPass = !showCurrentPass" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;">
+                                            <i :class="showCurrentPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div style="margin-bottom:14px">
+                                    <label class="f-label">New Password</label>
+                                    <div style="position:relative">
+                                        <input :type="showNewPass ? 'text' : 'password'" class="f-input" v-model="pass.newPass" @input="checkPassStrength" placeholder="At least 6 characters" required style="padding-right:42px">
+                                        <button type="button" @click="showNewPass = !showNewPass" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;">
+                                            <i :class="showNewPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                                        </button>
+                                    </div>
+                                    <div v-if="pass.newPass" class="pass-strength-bar" :style="{ background: passStrengthColor, width: passStrengthWidth }"></div>
+                                    <div v-if="pass.newPass" class="pass-strength-text" :style="{ color: passStrengthColor }">{{ passStrengthLabel }}</div>
+                                </div>
+                                <div style="margin-bottom:14px">
+                                    <label class="f-label">Confirm New Password</label>
+                                    <input type="password" class="f-input" v-model="pass.confirm" placeholder="Re-enter new password" :class="{ 'is-invalid': pass.confirm && pass.confirm !== pass.newPass }" required>
+                                    <div v-if="pass.confirm && pass.confirm !== pass.newPass" style="font-size:0.72rem;color:#dc2626;margin-top:4px;font-weight:600">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>Passwords do not match.
+                                    </div>
+                                </div>
+                                <div class="text-end" style="margin-top:12px">
+                                    <button type="submit" class="btn-primary-save" style="background:#003D2B" :disabled="updatingPass || (pass.confirm && pass.confirm !== pass.newPass)">
+                                        <i class="fa-solid fa-key"></i> {{ updatingPass ? 'Updating...' : 'Update Password' }}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="currentView === 'dashboard'" class="view-section">
+                    <div class="greeting-banner mb-3 p-3 rounded text-white" style="background: linear-gradient(135deg, #00553e 0%, #003d2b 100%); border-left: 4px solid var(--gold, #d4af37);">
+                        <h3 class="m-0 font-weight-bold" style="color: #ffffff; font-size: 1.15rem;">
+                            Hello {{ currentUser ? (currentUser.name || currentUser.username) : 'IT Center Staff' }}! {{ timeGreeting }}
+                        </h3>
+                        <p class="m-0 small text-white-50" style="font-size: 0.82rem; margin-top: 2px;">Welcome to IT Center Account Activation Workstation.</p>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total in Queue</div>
+                            <div class="stat-value">{{ totalInQueue }}</div>
+                            <div class="stat-meta">Pending Account Activation</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Ready for IT</div>
+                            <div class="stat-value" style="color: var(--primary-gold);">{{ dashboardStats.readyForIt || totalInQueue }}</div>
+                            <div class="stat-meta" style="color: var(--primary-gold);">Cleared by Cashier — Awaiting Setup</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Activated Today</div>
+                            <div class="stat-value">{{ dashboardStats.activatedToday || completedToday }}</div>
+                            <div class="stat-meta" style="color: var(--primary-green);">Accounts Activated Today</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Date &amp; Time (PST)</div>
+                            <div class="stat-value" style="font-size: 1.05rem; line-height: 1.25; margin-top: 8px; font-weight: 700; color: var(--primary-green);">{{ currentDateTime }}</div>
+                            <div class="stat-meta" style="color: var(--primary-gold)">Philippine Standard Time</div>
+                        </div>
+                    </div>
+
+                    <div class="context-bar">
+                        <div class="context-bar-left">
+                             <h3>Student Portal Account Activation</h3>
+                             <p>Activate official student tracking accounts and student credentials to allow portal access.</p>
+                        </div>
+                        <div class="context-bar-right">
+                            <button class="btn-pill btn-pill-outline" @click="setView('queue')"><i class="fa-solid fa-users-line"></i> Open Activation Queue</button>
+                        </div>
+                    </div>
+
+                    <div class="content-grid">
+                        <section class="panel">
+                            <div class="panel-header">
+                                <div>
+                                    <h3>Ready for Activation</h3>
+                                    <p>Students who have completed cashier payment and require portal setup.</p>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ref No.</th>
+                                            <th>Student Name</th>
+                                            <th>Program</th>
+                                            <th>Student Type</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody v-if="isLoadingQueue">
+                                        <tr v-for="i in 3" :key="'it-dash-skel-' + i" class="table-skeleton-row">
+                                            <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-bar" style="width: 140px;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-pill" style="width: 80px;"></div></td>
+                                            <td><div class="skeleton-shimmer skeleton-btn" style="width: 70px;"></div></td>
+                                        </tr>
+                                    </tbody>
+                                    <tbody v-else>
+                                        <tr v-for="student in studentsList.slice(0, 5)" :key="student.referenceNumber" class="table-row-enter">
+                                            <td><code>{{ student.referenceNumber }}</code></td>
+                                            <td><strong>{{ student.name }}</strong></td>
+                                            <td><span class="badge bg-secondary-subtle text-secondary">{{ student.program }}</span></td>
+                                            <td><span class="badge bg-light text-dark border">{{ student.studentType }}</span></td>
+                                            <td>
+                                                <button class="btn-pill btn-pill-green btn-pill-sm" @click="openReview(student)">Process</button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="studentsList.length === 0">
+                                            <td colspan="5" class="text-center text-muted py-4">No students ready in the activation queue.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Queue View -->
+                <div v-if="currentView === 'queue'" class="view-section">
+                    <!-- Quick-Stat Cards matching Registrar style -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-6 col-md-4">
+                            <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #f59e0b !important;">
+                                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Pending Queue</div>
+                                <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#d97706;line-height:1.1;">{{ totalInQueue }}</div>
+                                <div style="font-size:0.7rem;color:#9ca3af;">pending portal setup</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #22c55e !important;">
+                                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Activated Today</div>
+                                <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#16a34a;line-height:1.1;">{{ completedToday }}</div>
+                                <div style="font-size:0.7rem;color:#9ca3af;">accounts issued today</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #3b82f6 !important;">
+                                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Total Queue</div>
+                                <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#3b82f6;line-height:1.1;">{{ studentsList.length }}</div>
+                                <div style="font-size:0.7rem;color:#9ca3af;">all active accounts</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters & Sorting Toolbar Card matching Registrar style -->
+                    <div class="card border border-light-subtle rounded-3 shadow-sm mb-3 p-3" style="background:#fafafa;">
+                        <!-- Status pills row -->
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
+                                <i class="fa-solid fa-layer-group text-success me-1"></i>Status Filter:
+                            </span>
+                            <button class="btn-pill btn-pill-sm py-1"
+                                    :class="activeFilter === 'All' ? 'btn-pill-green' : 'btn-pill-outline'"
+                                    @click="setFilter('All')">
+                                All <span class="ms-1 badge rounded-pill" style="background:rgba(0,0,0,0.07);color:#555;font-size:0.65rem;">{{ studentsList.length }}</span>
+                            </button>
+                            <button class="btn-pill btn-pill-sm py-1"
+                                    :class="activeFilter === 'Pending' ? 'btn-pill-green' : 'btn-pill-outline'"
+                                    @click="setFilter('Pending')">
+                                Pending Activation <span class="ms-1 badge rounded-pill" style="background:rgba(0,0,0,0.07);color:#555;font-size:0.65rem;">{{ totalInQueue }}</span>
+                            </button>
+                            <button class="btn-pill btn-pill-sm py-1"
+                                    :class="activeFilter === 'Completed' ? 'btn-pill-green' : 'btn-pill-outline'"
+                                    @click="setFilter('Completed')">
+                                Activated / Done <span class="ms-1 badge rounded-pill" style="background:rgba(0,0,0,0.07);color:#555;font-size:0.65rem;">{{ completedToday }}</span>
+                            </button>
+                        </div>
+
+                        <!-- Sort Controls Sub-Bar -->
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-2 pt-2 border-top border-light-subtle">
+                            <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
+                                <i class="fa-solid fa-arrow-down-a-z text-success me-1"></i>Sort By:
+                            </span>
+                            <div class="d-flex align-items-center gap-2">
+                                <select class="form-select form-select-sm py-1" style="max-width:180px;font-size:0.8rem;border-radius:6px;" v-model="sortBy">
+                                    <option value="arrivedAt">Arrival Time</option>
+                                    <option value="referenceNumber">Reference ID</option>
+                                    <option value="name">Student Name</option>
+                                    <option value="program">Program Choice</option>
+                                    <option value="studentType">Student Type</option>
+                                </select>
+                                <button class="btn-pill btn-pill-sm py-1 px-2.5"
+                                        :class="sortDesc ? 'btn-pill-green' : 'btn-pill-outline'"
+                                        @click="sortDesc = !sortDesc"
+                                        title="Toggle Sort Order">
+                                    <i :class="sortDesc ? 'fa-solid fa-sort-down' : 'fa-solid fa-sort-up'"></i>
+                                    {{ sortDesc ? 'Descending' : 'Ascending' }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <section class="panel">
+                        <div class="panel-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <h3>Full Student Activation Queue</h3>
+                                <p>First-Come, First-Served permanent student ID generation and credentials provisioning — click headers to sort</p>
+                            </div>
+                            <span class="badge rounded-pill fw-bold font-monospace px-3 py-2"
+                                  :class="filteredStudents.length > 0 ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'">
+                                Showing {{ filteredStudents.length }} of {{ studentsList.length }} Records
+                            </span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:110px;">Queue Ticket</th>
+                                        <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
+                                            Ref No. <i :class="getSortIcon('referenceNumber')"></i>
+                                        </th>
+                                        <th class="cursor-pointer select-none" @click="toggleSort('name')">
+                                            Student Name <i :class="getSortIcon('name')"></i>
+                                        </th>
+                                        <th class="cursor-pointer select-none" @click="toggleSort('program')">
+                                            Program <i :class="getSortIcon('program')"></i>
+                                        </th>
+                                        <th>Status</th>
+                                        <th style="width:120px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody v-if="isLoadingQueue">
+                                    <tr v-for="i in 5" :key="'it-queue-skel-' + i" class="table-skeleton-row">
+                                        <td><div class="skeleton-shimmer skeleton-ticket"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 85px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 150px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 75px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 90px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-btn" style="width: 100px;"></div></td>
+                                    </tr>
+                                </tbody>
+                                <tbody v-else>
+                                    <tr v-for="student in filteredStudents" :key="student.referenceNumber" class="table-row-enter">
+                                        <!-- Queue Ticket -->
+                                        <td>
+                                            <span class="queue-ticket-badge" :class="getQueueRank(student) === 1 ? 'ticket-next' : 'ticket-default'">
+                                                <span v-if="getQueueRank(student) === 1" class="ticket-indicator"></span>
+                                                {{ student.queueTicket || ('ITC-' + student.id) }}
+                                            </span>
+                                        </td>
+                                        <td><code>{{ student.referenceNumber }}</code></td>
+                                        <td><strong>{{ student.name }}</strong></td>
+                                        <td><span class="badge bg-secondary-subtle text-secondary">{{ student.program }}</span></td>
+                                        <td>
+                                            <span class="status-badge" :class="getStatusBadgeClass(getItStepStatus(student))">
+                                                <i class="fa-solid fa-circle-check me-1" v-if="getItStepStatus(student) === 'COMPLETED'"></i>
+                                                <i class="fa-solid fa-clock me-1" v-else-if="getItStepStatus(student) === 'PENDING'"></i>
+                                                <i class="fa-solid fa-spinner fa-spin me-1" v-else-if="getItStepStatus(student) === 'IN_PROGRESS'"></i>
+                                                <i class="fa-solid fa-flag me-1" v-else-if="getItStepStatus(student) === 'FLAGGED'"></i>
+                                                {{ formatStatus(getItStepStatus(student)) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button class="btn-pill btn-pill-green btn-pill-sm w-100" @click="openReview(student)">
+                                                <i class="fa-solid fa-id-card me-1"></i>{{ getItStepStatus(student) === 'COMPLETED' ? 'View Details' : 'Process Setup' }}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="filteredStudents.length === 0">
+                                        <td colspan="6" class="text-center text-muted py-4">No matching records found.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Student Accounts View -->
+                <div v-if="currentView === 'accounts'" class="view-section">
+                    <section class="panel">
+                        <div class="panel-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                            <div>
+                                <h3><i class="fa-solid fa-id-card me-2"></i>Student Accounts</h3>
+                                <p>Existing institutional accounts issued to enrolled students.</p>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:700; padding:6px 14px; border-radius:999px; font-size:0.82rem;">
+                                    {{ filteredAccounts.length }} Account(s)
+                                </span>
+                                <button class="btn-pill btn-pill-outline btn-pill-sm" @click="loadAccounts()">
+                                    <i class="fa-solid fa-rotate-right me-1"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filter Bar -->
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 20px; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.07);">
+                            <span style="font-size:0.78rem; color:rgba(255,255,255,0.45); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Filter:</span>
+                            <input class="search-pill" type="text" v-model="searchQuery" placeholder="Search by name, ID, email..." style="min-width:220px;">
+                            <select class="search-pill" style="min-width:140px; cursor:pointer;" v-model="filterAccountProgram">
+                                <option value="">All Programs</option>
+                                <option v-for="prog in uniqueAccountPrograms" :key="prog" :value="prog">{{ prog }}</option>
+                            </select>
+                            <select class="search-pill" style="min-width:140px; cursor:pointer;" v-model="filterAccountYear">
+                                <option value="">All Year Levels</option>
+                                <option>1st Year</option>
+                                <option>2nd Year</option>
+                                <option>3rd Year</option>
+                                <option>4th Year</option>
+                            </select>
+                            <select class="search-pill" style="min-width:130px; cursor:pointer;" v-model="filterAccountStatus">
+                                <option value="">All Statuses</option>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                            <button v-if="filterAccountProgram || filterAccountYear || filterAccountStatus || searchQuery"
+                                    @click="filterAccountProgram=''; filterAccountYear=''; filterAccountStatus=''; searchQuery='';"
+                                    class="btn-pill btn-pill-danger btn-pill-sm" style="padding:6px 12px;">
+                                <i class="fa-solid fa-xmark me-1"></i> Clear
+                            </button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Full Name</th>
+                                        <th>Institutional Email</th>
+                                        <th>Program</th>
+                                        <th>Year Level</th>
+                                        <th>Account Status</th>
+                                        <th>Activated On</th>
+                                    </tr>
+                                </thead>
+                                <tbody v-if="isLoadingAccounts">
+                                    <tr v-for="i in 5" :key="'it-acc-skel-' + i" class="table-skeleton-row">
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 90px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 150px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 160px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 70px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 60px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-pill" style="width: 65px;"></div></td>
+                                        <td><div class="skeleton-shimmer skeleton-bar" style="width: 80px;"></div></td>
+                                    </tr>
+                                </tbody>
+                                <tbody v-else>
+                                    <tr v-for="acc in filteredAccounts" :key="acc.id" class="table-row-enter">
+                                        <td><code style="color:var(--primary-green); font-weight:700; font-size:0.82rem;">{{ acc.id }}</code></td>
+                                        <td style="font-weight:600;">{{ acc.name }}</td>
+                                        <td>
+                                            <span v-if="acc.email" style="color:#38bdf8; font-family:monospace; font-size:0.8rem;">{{ acc.email }}</span>
+                                            <span v-else style="color:rgba(255,255,255,0.3); font-style:italic; font-size:0.78rem;">Not yet assigned</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge" style="background:rgba(16,185,129,0.1); color:#6ee7b7; font-size:0.72rem; padding:4px 9px; border-radius:6px;">{{ acc.program }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge" style="background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.65); font-size:0.7rem; padding:3px 8px;">{{ acc.yearLevel || acc.year_level || '—' }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge" :style="acc.status === 'Active' ? 'background:rgba(16,185,129,0.15); color:#10b981;' : 'background:rgba(239,68,68,0.12); color:#f87171;'" style="font-size:0.72rem; padding:4px 9px; border-radius:6px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">
+                                                {{ acc.status }}
+                                            </span>
+                                        </td>
+                                        <td style="font-size:0.78rem; color:rgba(255,255,255,0.45);">
+                                            {{ acc.createdAt ? new Date(acc.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '—' }}
+                                        </td>
+                                    </tr>
+                                    <tr v-if="filteredAccounts.length === 0">
+                                        <td colspan="7" class="text-center" style="padding:40px; color:rgba(255,255,255,0.3); font-style:italic;">
+                                            <i class="fa-solid fa-id-card" style="font-size:2rem; display:block; margin-bottom:10px; opacity:0.3;"></i>
+                                            No student accounts found.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </main>
+
+            <!-- Review and Setup Modal -->
+            <div class="modal fade" id="itReviewModal" tabindex="-1" aria-labelledby="itReviewModalLabel">
+                <div class="modal-dialog modal-dialog-centered modal-xl">
+                    <div class="modal-content" v-if="selectedStudent">
+                        <div class="modal-header">
+                             <h5 class="modal-title font-heading fw-bold" id="itReviewModalLabel"><i class="fa-solid fa-key me-2 text-success"></i>Student Portal Account Activation</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-4">
+                                <!-- Left Column: Enrollee Profile & Official Institutional Credentials -->
+                                <div class="col-md-6">
+                                    <div class="panel p-3 mb-3 bg-light border border-light-subtle rounded-3">
+                                        <h6 class="text-uppercase fw-bold text-muted small mb-3">Enrollee Profile</h6>
+                                        <div class="row g-3">
+                                            <div class="col-6">
+                                                <div class="form-label text-muted small uppercase mb-1">Full Name</div>
+                                                <div class="fw-bold text-dark fs-6">{{ selectedStudent.name }}</div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="form-label text-muted small uppercase mb-1">Reference ID</div>
+                                                <div class="font-monospace text-secondary fw-semibold fs-6">{{ selectedStudent.referenceNumber }}</div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="form-label text-muted small uppercase mb-1">Degree Program</div>
+                                                <div class="fw-bold text-dark">{{ selectedStudent.program }}</div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="form-label text-muted small uppercase mb-1">Admission Type</div>
+                                                <div><span class="badge bg-success-subtle text-success">{{ selectedStudent.studentType }}</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Institutional Account details -->
+                                    <div class="panel p-3" style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--radius-md);">
+                                        <h6 class="mb-3 fw-bold" style="color: #92400E;"><i class="fa-solid fa-key me-2"></i>Official Institutional Credentials</h6>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small uppercase fw-bold mb-1">Permanent Student ID Number</label>
+                                            <div class="bg-white border border-warning-subtle p-2 rounded text-dark font-monospace fw-bold fs-5 shadow-sm text-center">
+                                                {{ generatedStudentId }}
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small uppercase fw-bold mb-1">Official Student Email Address</label>
+                                            <div class="bg-white border border-warning-subtle p-2 rounded text-dark font-monospace text-lowercase shadow-sm text-center small">
+                                                {{ generatedEmail }}
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-1">
+                                            <label class="form-label text-muted small uppercase fw-bold mb-1">Default Account Password (Student's Last Name)</label>
+                                            <div class="bg-white border border-warning-subtle p-2 rounded text-dark font-monospace fw-bold text-lowercase shadow-sm text-center">
+                                                {{ generatedPassword }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column: Enrollment Roadmap -->
+                                <div class="col-md-6 border-start border-light-subtle">
+                                    <div class="panel p-3 h-100 bg-white border border-light-subtle rounded-3">
+                                        <h6 class="mb-3 text-dark fw-bold" style="font-family: var(--font-heading);">Campus Verification Progress</h6>
+                                        <div class="vertical-stepper">
+                                            <div v-for="(step, index) in selectedStudent.roadmap" :key="step.stepId"
+                                                 class="vertical-step-node"
+                                                 :class="{
+                                                     'is-completed': step.status === 'COMPLETED',
+                                                     'is-active':    step.status === 'IN_PROGRESS',
+                                                     'is-upcoming':  step.status === 'PENDING'
+                                                 }">
+                                                <div class="vertical-step-marker">
+                                                    <i class="fas fa-check" v-if="step.status === 'COMPLETED'"></i>
+                                                    <i :class="getStepIcon(index)" v-else></i>
+                                                </div>
+                                                <div class="vertical-step-content">
+                                                    <span class="vertical-step-title">{{ step.title }}</span>
+                                                    <span class="vertical-step-status">{{ step.status }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer gap-2">
+                            <button type="button" class="btn-pill btn-pill-ghost" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn-pill btn-pill-green" @click="finalizeEnrollment"
+                                    :disabled="isFinalizingEnrollment"
+                                    v-if="selectedStudent && getItStepStatus(selectedStudent) !== 'COMPLETED'">
+                                <span v-if="isFinalizingEnrollment">
+                                    <i class="fa-solid fa-circle-notch fa-spin me-1"></i> Activating Account…
+                                </span>
+                                <span v-else>
+                                    <i class="fa-solid fa-circle-check me-1"></i> Finalize &amp; Activate Account
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Certificate of Registration (COR) Modal -->
+        <div v-if="showCOR" class="confirm-overlay" style="background: rgba(0,0,0,0.85); overflow-y: auto; display: flex; align-items: flex-start; justify-content: center; padding: 2rem 0;">
+            <div class="modal-dialog modal-lg w-100" style="max-width: 800px; margin: auto;">
+                <div class="modal-content text-dark bg-white p-4" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: none;">
+                    
+                    <!-- Print Head -->
+                    <div class="text-center border-bottom pb-3 mb-4 position-relative">
+                        <h4 class="fw-bold font-heading mb-1" style="color: #006A4E; letter-spacing: 0.5px;">GO-ON NATIONAL COLLEGE OF THE PHILIPPINES</h4>
+                        <p class="text-muted small mb-0">Official Student Certificate of Registration (COR)</p>
+                        <p class="font-monospace text-secondary small mb-0" style="font-size: 0.72rem;">Academic Year 2026-2027 · First Semester</p>
+                        <button type="button" class="btn-close position-absolute top-0 end-0" @click="showCOR = false"></button>
+                    </div>
+
+                    <div class="row g-3 small mb-4" v-if="corDetails && corDetails.student">
+                        <!-- Student Details -->
+                        <div class="col-6">
+                            <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Student ID</div>
+                            <div class="fw-bold font-monospace fs-6">{{ corDetails.student.enrollment.permanentId }}</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Student Name</div>
+                            <div class="fw-bold fs-6">{{ corDetails.student.name }}</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Program / Course</div>
+                            <div class="fw-bold">{{ corDetails.student.program }}</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Institutional Email</div>
+                            <div class="fw-bold font-monospace text-lowercase text-primary">{{ corDetails.student.enrollment.institutionalEmail }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Enrolled Subjects Grid -->
+                    <h6 class="fw-bold mb-2 text-uppercase font-heading" style="color:#006A4E; font-size:0.8rem; border-bottom: 2px solid #006A4E; padding-bottom: 4px;">Enrolled Academic Load</h6>
+                    <div class="table-responsive mb-4" v-if="corDetails && corDetails.student">
+                        <table class="table table-bordered table-sm align-middle" style="font-size: 0.75rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Subject Code</th>
+                                    <th>Subject Title</th>
+                                    <th class="text-center">Section</th>
+                                    <th class="text-center">Units</th>
+                                    <th>Schedule / Room</th>
+                                    <th>Instructor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="sub in corDetails.student.prospectusSubjects" :key="sub.code">
+                                    <td class="font-monospace fw-semibold">{{ sub.code }}</td>
+                                    <td>{{ sub.title }}</td>
+                                    <td class="text-center font-monospace">{{ corDetails.student.enrollment.sections[sub.code] || 'TBA' }}</td>
+                                    <td class="text-center">{{ parseInt(sub.lecture_units) + parseInt(sub.lab_units) }}</td>
+                                    <td>
+                                        <!-- Lookup section details -->
+                                        <span v-for="sec in (corDetails.student.availableSections || []).filter(x => x.code === corDetails.student.enrollment.sections[sub.code])" :key="sec.code">
+                                            {{ sec.days }} {{ sec.time }} ({{ sec.room }})
+                                        </span>
+                                        <span v-if="(corDetails.student.availableSections || []).filter(x => x.code === corDetails.student.enrollment.sections[sub.code]).length === 0">
+                                            TBA
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span v-for="sec in (corDetails.student.availableSections || []).filter(x => x.code === corDetails.student.enrollment.sections[sub.code])" :key="sec.code">
+                                            {{ sec.instructor }}
+                                        </span>
+                                        <span v-if="(corDetails.student.availableSections || []).filter(x => x.code === corDetails.student.enrollment.sections[sub.code]).length === 0">
+                                            TBA
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Assessment and Receipt Grid -->
+                    <h6 class="fw-bold mb-2 text-uppercase font-heading" style="color:#006A4E; font-size:0.8rem; border-bottom: 2px solid #006A4E; padding-bottom: 4px;">Accounts Ledger Assessment</h6>
+                    <div class="row g-3 small mb-4" v-if="corDetails && corDetails.student">
+                        <div class="col-4">
+                            <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Total Assessed Fees</div>
+                            <div class="fw-bold">₱{{ parseFloat(corDetails.student.payment.totalFee).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Amount Paid</div>
+                            <div class="fw-bold text-success">₱{{ parseFloat(corDetails.student.payment.amountPaid).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Ledger Balance</div>
+                            <div class="fw-bold text-danger" v-if="parseFloat(corDetails.student.payment.balance) > 0">
+                                ₱{{ parseFloat(corDetails.student.payment.balance).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+                            </div>
+                            <div class="fw-bold text-muted" v-else>₱0.00</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Official Receipt Ref / Status</div>
+                            <div class="font-monospace text-secondary fw-semibold">
+                                {{ corDetails.student.payment.transactionRef || 'N/A' }} 
+                                <span class="badge ms-2" :class="parseFloat(corDetails.student.payment.balance) === 0 ? 'bg-success' : 'bg-warning text-dark'">
+                                    {{ parseFloat(corDetails.student.payment.balance) === 0 ? 'Officially Enrolled' : 'Downpayment Cleared' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted text-uppercase mb-0.5" style="font-size: 0.65rem;">Date Activated / Promoted</div>
+                            <div class="fw-bold">{{ corDetails.student.enrollment.dateActivated }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Actions -->
+                    <div class="modal-footer pt-3 border-top gap-2">
+                        <button type="button" class="btn-pill btn-pill-outline btn-pill-sm text-dark border" onclick="window.print()"><i class="fa-solid fa-print me-1.5"></i>Print Official COR</button>
+                        <button type="button" class="btn-pill btn-pill-green btn-pill-sm" @click="showCOR = false">Done &amp; Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logout Confirm Dialog -->
+        <div v-if="showLogoutConfirm" class="confirm-overlay" @click.self="showLogoutConfirm = false">
+            <div class="confirm-card">
+                <div class="confirm-icon"><i class="fa-solid fa-right-from-bracket text-danger"></i></div>
+                <h4 class="confirm-title">Confirm Logout</h4>
+                <p class="confirm-msg">Are you sure you want to log out of this station?</p>
+                <div class="confirm-actions">
+                    <button class="confirm-btn-cancel" @click="showLogoutConfirm = false">Cancel</button>
+                    <button class="confirm-btn-danger" @click="confirmLogout">Log Out</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <transition name="toast-fade">
+            <div v-if="toast.show"
+                 style="position:fixed;bottom:24px;right:24px;z-index:99999;padding:14px 22px;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.88rem;font-weight:600;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,0.18);"
+                 :style="toast.type === 'success' ? 'background:#006A4E;color:#fff;border:1px solid rgba(255,255,255,0.15);' : 'background:#dc2626;color:#fff;border:1px solid rgba(255,255,255,0.15);'">
+                <i :class="toast.type === 'success' ? 'fa-solid fa-circle-check' : 'fa-solid fa-triangle-exclamation'"></i>
+                {{ toast.message }}
+            </div>
+        </transition>
+
+    </div>
+
+    <!-- Script imports -->
+    <script src="../../shared/libs/bootstrap.bundle.min.js"></script>
+    <script src="../../shared/libs/vue.global.js"></script>
+    <script src="../../shared/libs/sweetalert2.all.min.js"></script>
+    <script src="../../shared/js/SessionExpirationGuard.js?v=1789204778"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js?v=1789204778"></script>
+    <script src="../../shared/js/components/EmployeeSidebar.js?v=1789204778"></script>
+    <script src="../../shared/js/StationPipeline.js?v=1789204778"></script>
+    <script src="../assets/js/DataBus.js?v=1789204778"></script>
+    <script src="assets/js/app.js?v=1789204778"></script>
+</body>
+</html>

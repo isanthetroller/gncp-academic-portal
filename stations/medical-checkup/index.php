@@ -1,0 +1,711 @@
+<?php
+/**
+ * GNCP Medical Checkup Station — PHP Session Gate (CVE-GNCP-002 Remediation)
+ * Server-side authentication check prevents sessionStorage forgery bypass.
+ */
+require_once __DIR__ . '../../shared/backend/utils/session_gate.php';
+session_gate(['MEDICAL', 'ADMIN', 'SUPER_ADMIN']);
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>Medical Check-up | School Clinic</title>
+    <meta name="description" content="Medical check-up dashboard for school clinic.">
+    <link rel="stylesheet" href="../../shared/libs/fonts/fonts.css">
+    <link href="../../shared/libs/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../shared/libs/font-awesome/css/all.min.css">
+    <link rel="stylesheet" href="./assets/css/style.css?v=1789204778">
+    <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=1789204778">
+    <link rel="stylesheet" href="../../shared/css/sidebar.css?v=1789204778">
+    <script src="../../shared/libs/sweetalert2.all.min.js"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js"></script>
+    <style>
+         [v-cloak] { display: none !important; }
+         /* ── Confirmation Dialog */
+         .confirm-overlay { position: fixed; inset: 0; z-index: 99999; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; animation: fadeIn 0.15s ease; }
+         @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+         .confirm-card { background: #0f2318; border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; box-shadow: 0 25px 60px rgba(0,0,0,0.6); padding: 36px 36px 28px; width: 100%; max-width: 380px; text-align: center; animation: slideUp 0.2s ease; }
+         @keyframes slideUp { from { transform: translateY(16px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+         .confirm-icon { font-size: 2.2rem; margin-bottom: 14px; }
+         .confirm-title { font-family: 'Outfit', sans-serif; font-weight: 800; color: #fff; font-size: 1.2rem; margin: 0 0 8px; }
+         .confirm-msg { color: rgba(255,255,255,0.55); font-size: 0.85rem; margin: 0 0 26px; line-height: 1.5; }
+         .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+         .confirm-btn-cancel { flex: 1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: rgba(255,255,255,0.7); font-weight: 600; padding: 11px; font-size: 0.88rem; cursor: pointer; transition: background 0.2s; }
+         .confirm-btn-cancel:hover { background: rgba(255,255,255,0.12); }
+         .confirm-btn-danger { flex: 1; background: linear-gradient(135deg,#ef4444,#dc2626); border: none; border-radius: 10px; color: #fff; font-weight: 700; padding: 11px; font-size: 0.88rem; cursor: pointer; transition: opacity 0.2s; }
+         .confirm-btn-danger:hover { opacity: 0.88; }
+         /* ── Vertical Timeline Stepper inside Modal Review Card ── */
+         .vertical-stepper { display: flex; flex-direction: column; gap: 14px; padding: 6px 0; position: relative; }
+         .vertical-step-node { display: flex; align-items: center; gap: 12px; position: relative; }
+         .vertical-step-node:not(:last-child)::after {
+             content: ''; position: absolute; left: 17px; top: 34px; bottom: -20px; width: 2px; background: #E5E8EC; z-index: 0;
+         }
+         .vertical-step-node.is-completed:not(:last-child)::after { background: var(--primary-green); }
+         .vertical-step-marker {
+             width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: #FFF; border: 2px solid #E5E8EC; color: #9CA3AF; z-index: 1; transition: all 0.2s ease; flex-shrink: 0;
+         }
+         .is-completed .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; }
+         .is-active .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; box-shadow: none !important; }
+         .vertical-step-content { display: flex; flex-direction: column; text-align: left; }
+         .vertical-step-title { font-size: 0.78rem; font-weight: 700; margin: 0; color: var(--text-dark); line-height: 1.2; }
+         .is-completed .vertical-step-title { color: var(--dark-green); }
+         .is-active .vertical-step-title { color: var(--primary-green); }
+         .vertical-step-status { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #9CA3AF; margin-top: 1px; }
+         .is-completed .vertical-step-status { color: var(--primary-green); }
+         .is-active .vertical-step-status { color: var(--primary-green); }
+     </style>
+ </head>
+ <body>
+     <div id="app" class="dashboard-shell" v-cloak>
+        <template v-if="currentUser">
+            <employee-sidebar 
+                station-name="Go-on National College" 
+                station-tag="MEDICAL CLINIC STATION"
+                :nav-groups="[
+                    {
+                        title: 'Clinic Operations',
+                        items: [
+                            { id: 'queue', label: 'Student Queue', icon: 'fa-users-line', badge: pendingCount > 0 ? pendingCount : null },
+                            { id: 'completed', label: 'Completed Clearances', icon: 'fa-user-check', badge: completedCount > 0 ? completedCount : null }
+                        ]
+                    }
+                ]"
+                :current-view="currentView"
+                :current-user="currentUser"
+                base-path="../../"
+                @set-view="setView"
+                @logout="handleLogout">
+            </employee-sidebar>
+
+        <main class="main-panel">
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <span class="eyebrow">School Clinic</span>
+                    <h2>{{ currentView === 'completed' ? 'Completed Medical Clearances' : 'Student Clinic Queue' }}</h2>
+                </div>
+                <div class="top-bar-actions">
+                    <input class="search-pill" type="text" v-model="searchQuery" placeholder="Search queue...">
+                </div>
+            </div>
+
+            <!-- Profile View -->
+            <div v-if="currentView === 'profile'" class="profile-view-wrap p-3">
+                <div class="profile-hero">
+                    <div class="avatar-wrap" @click="triggerFileInput" title="Click to change profile picture">
+                        <img v-if="formattedAvatar" :src="formattedAvatar" alt="Profile Picture">
+                        <div v-else class="avatar-initials">{{ initials }}</div>
+                        <div class="avatar-overlay">
+                            <i class="fa-solid fa-camera mb-1" style="font-size:1.1rem"></i>
+                            <span>Change Photo</span>
+                        </div>
+                    </div>
+                    <input type="file" ref="fileInput" @change="onFileSelected" accept="image/*" style="display:none">
+                    <div class="profile-hero-info">
+                        <h3>{{ user.name || (currentUser ? currentUser.name : 'Medical Staff') }}<span class="profile-hero-badge">{{ user.role || (currentUser ? currentUser.role : 'MEDICAL') }}</span></h3>
+                        <p><i class="fa-solid fa-envelope me-2"></i>{{ user.email || (currentUser ? currentUser.email : 'medical@gncp.edu.ph') }}</p>
+                        <p style="margin-top:4px"><i class="fa-solid fa-at me-2"></i>{{ user.username || (currentUser ? currentUser.username : 'medical') }}</p>
+                    </div>
+                </div>
+
+                <div class="profile-grid">
+                    <div class="card p-4">
+                        <div class="card-title mb-3" style="font-weight:800; font-size:1.05rem; color:var(--primary, #006A4E);"><i class="fa-solid fa-user-edit me-2"></i> Personal Details</div>
+                        <form @submit.prevent="saveStaffProfile">
+                            <div style="margin-bottom:14px"><label class="f-label">Full Name</label><input class="f-input" type="text" v-model="user.name" required></div>
+                            <div style="margin-bottom:14px"><label class="f-label">Email Address</label><input class="f-input" type="email" v-model="user.email" required></div>
+                            <div style="margin-bottom:14px"><label class="f-label">Username / Identity Code</label><input class="f-input" type="text" :value="user.username" disabled></div>
+                            <div style="margin-bottom:14px"><label class="f-label">System Role</label><input class="f-input" type="text" :value="user.role" disabled></div>
+                            <div class="text-end" style="margin-top:12px">
+                                <button type="submit" class="btn-primary-save" :disabled="saving">
+                                    <i class="fa-solid fa-save"></i> {{ saving ? 'Saving...' : 'Save Personal Details' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card p-4">
+                        <div class="card-title mb-3" style="font-weight:800; font-size:1.05rem; color:var(--primary, #006A4E);"><i class="fa-solid fa-shield-alt me-2"></i> Account Security &amp; Password</div>
+                        <form @submit.prevent="updatePassword">
+                            <div style="margin-bottom:14px">
+                                <label class="f-label">Current Password</label>
+                                <div style="position:relative">
+                                    <input :type="showCurrentPass ? 'text' : 'password'" class="f-input" v-model="pass.current" placeholder="Enter your current password" required style="padding-right:42px">
+                                    <button type="button" @click="showCurrentPass = !showCurrentPass" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;">
+                                        <i :class="showCurrentPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div style="margin-bottom:14px">
+                                <label class="f-label">New Password</label>
+                                <div style="position:relative">
+                                    <input :type="showNewPass ? 'text' : 'password'" class="f-input" v-model="pass.newPass" @input="checkPassStrength" placeholder="At least 6 characters" required style="padding-right:42px">
+                                    <button type="button" @click="showNewPass = !showNewPass" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;">
+                                        <i :class="showNewPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                                    </button>
+                                </div>
+                                <div v-if="pass.newPass" class="pass-strength-bar" :style="{ background: passStrengthColor, width: passStrengthWidth }"></div>
+                                <div v-if="pass.newPass" class="pass-strength-text" :style="{ color: passStrengthColor }">{{ passStrengthLabel }}</div>
+                            </div>
+                            <div style="margin-bottom:14px">
+                                <label class="f-label">Confirm New Password</label>
+                                <input type="password" class="f-input" v-model="pass.confirm" placeholder="Re-enter new password" :class="{ 'is-invalid': pass.confirm && pass.confirm !== pass.newPass }" required>
+                                <div v-if="pass.confirm && pass.confirm !== pass.newPass" style="font-size:0.72rem;color:#dc2626;margin-top:4px;font-weight:600">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Passwords do not match.
+                                </div>
+                            </div>
+                            <div class="text-end" style="margin-top:12px">
+                                <button type="submit" class="btn-primary-save" style="background:#003D2B" :disabled="updatingPass || (pass.confirm && pass.confirm !== pass.newPass)">
+                                    <i class="fa-solid fa-key"></i> {{ updatingPass ? 'Updating...' : 'Update Password' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentView === 'queue'" class="view-section">
+                <!-- Greeting Banner -->
+                <div class="greeting-banner mb-3 p-3 rounded text-white" style="background: linear-gradient(135deg, #00553e 0%, #003d2b 100%); border-left: 4px solid var(--gold, #d4af37);">
+                    <h3 class="m-0 font-weight-bold" style="color: #ffffff; font-size: 1.15rem;">
+                        Hello {{ currentUser ? (currentUser.name || currentUser.username) : 'Medical Staff' }}! {{ timeGreeting }}
+                    </h3>
+                    <p class="m-0 small text-white-50" style="font-size: 0.82rem; margin-top: 2px;">Welcome to Medical Check-up &amp; Clinic Clearance Workstation.</p>
+                </div>
+
+                <!-- Quick-Stat Cards matching Registrar style -->
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-md-4">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #f59e0b !important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Pending Queue</div>
+                            <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#d97706;line-height:1.1;">{{ pendingCount }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">needs medical review</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #22c55e !important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Cleared Clearances</div>
+                            <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#16a34a;line-height:1.1;">{{ completedCount }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">examined &amp; fit</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #ef4444 !important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Conditional / Unfit</div>
+                            <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#dc2626;line-height:1.1;">{{ unfitCount }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">requires follow-up</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters & Sorting Toolbar Card matching Registrar style -->
+                <div class="card border border-light-subtle rounded-3 shadow-sm mb-3 p-3" style="background:#fafafa;">
+                    <!-- Status pills row -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
+                            <i class="fa-solid fa-layer-group text-success me-1"></i>Status Filter:
+                        </span>
+                        <button class="btn-pill btn-pill-sm py-1"
+                                :class="activeFilter === 'All' ? 'btn-pill-green' : 'btn-pill-outline'"
+                                @click="setFilter('All')">
+                            All <span class="ms-1 badge rounded-pill">{{ students.length }}</span>
+                        </button>
+                        <button class="btn-pill btn-pill-sm py-1"
+                                :class="activeFilter === 'Pending' ? 'btn-pill-green' : 'btn-pill-outline'"
+                                @click="setFilter('Pending')">
+                            Pending <span class="ms-1 badge rounded-pill">{{ pendingCount }}</span>
+                        </button>
+                        <button class="btn-pill btn-pill-sm py-1"
+                                :class="activeFilter === 'Completed' ? 'btn-pill-green' : 'btn-pill-outline'"
+                                @click="setFilter('Completed')">
+                            Cleared / Fit <span class="ms-1 badge rounded-pill">{{ completedCount }}</span>
+                        </button>
+                        <button class="btn-pill btn-pill-sm py-1"
+                                :class="activeFilter === 'Conditional' ? 'btn-pill-green' : 'btn-pill-outline'"
+                                @click="setFilter('Conditional')">
+                            Conditional / Flagged <span class="ms-1 badge rounded-pill">{{ unfitCount }}</span>
+                        </button>
+                    </div>
+
+                    <!-- Sort Controls Sub-Bar -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-2 pt-2 border-top border-light-subtle">
+                        <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
+                            <i class="fa-solid fa-arrow-down-a-z text-success me-1"></i>Sort By:
+                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select form-select-sm py-1" style="max-width:180px;font-size:0.8rem;border-radius:6px;" v-model="sortBy">
+                                <option value="arrivedAt">Arrival Time</option>
+                                <option value="referenceNumber">Reference ID</option>
+                                <option value="name">Applicant Name</option>
+                                <option value="program">Program Choice</option>
+                                <option value="status">Clearance Status</option>
+                            </select>
+                            <button class="btn-pill btn-pill-sm py-1 px-2.5"
+                                    :class="sortDesc ? 'btn-pill-green' : 'btn-pill-outline'"
+                                    @click="sortDesc = !sortDesc"
+                                    title="Toggle Sort Order">
+                                <i :class="sortDesc ? 'fa-solid fa-sort-down' : 'fa-solid fa-sort-up'"></i>
+                                {{ sortDesc ? 'Descending' : 'Ascending' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="panel">
+                    <div class="panel-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3>Student Clinic Queue</h3>
+                            <p>First-Come, First-Served physical and NSTP/PE fitness examination — click headers to sort</p>
+                        </div>
+                        <span class="badge rounded-pill fw-bold font-monospace px-3 py-2"
+                              :class="filteredStudents.length > 0 ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'">
+                            Showing {{ filteredStudents.length }} of {{ students.length }} Records
+                        </span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:110px;">Queue Ticket</th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
+                                        Ref No. <i :class="getSortIcon('referenceNumber')"></i>
+                                    </th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('name')">
+                                        Student Name <i :class="getSortIcon('name')"></i>
+                                    </th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('program')">
+                                        Program <i :class="getSortIcon('program')"></i>
+                                    </th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('status')">
+                                        Clearance Status <i :class="getSortIcon('status')"></i>
+                                    </th>
+                                    <th style="width:120px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Table Skeleton Loading Animation -->
+                                <tr v-if="isLoadingQueue" v-for="n in 5" :key="'skel-med-q-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-ticket"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 150px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 90px;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 75px;"></div></td>
+                                </tr>
+                                <tr v-else v-for="student in filteredStudents" :key="student.referenceNumber" class="table-row-enter">
+                                     <!-- Queue Ticket -->
+                                     <td>
+                                         <span class="queue-ticket-badge" :class="getQueueRank(student) === 1 ? 'ticket-next' : 'ticket-default'">
+                                             <span v-if="getQueueRank(student) === 1" class="ticket-indicator"></span>
+                                             {{ student.queueTicket || ('MED-' + student.id) }}
+                                         </span>
+                                     </td>
+                                     <td><code>{{ student.referenceNumber }}</code></td>
+                                     <td>
+                                         <strong>{{ student.name }}</strong>
+                                         <span class="badge bg-danger-subtle text-danger border border-danger ms-2" v-if="student.medicalConditions && student.medicalConditions.length > 0" style="font-size: 0.72rem;">
+                                             <i class="fa-solid fa-triangle-exclamation me-1"></i>{{ student.medicalConditions.length }} Condition(s)
+                                         </span>
+                                     </td>
+                                     <td><span class="badge bg-secondary-subtle text-secondary">{{ student.program }}</span></td>
+                                    <td>
+                                        <span class="status-badge" :class="getStatusBadgeClass(getMedicalStepStatus(student))">
+                                            <i class="fa-solid fa-circle-check me-1" v-if="['COMPLETED','CLEARED','FIT'].includes(String(getMedicalStepStatus(student)).toUpperCase())"></i>
+                                            <i class="fa-solid fa-clock me-1" v-else-if="String(getMedicalStepStatus(student)).toUpperCase() === 'PENDING'"></i>
+                                            <i class="fa-solid fa-triangle-exclamation me-1" v-else-if="['CONDITIONAL','UNFIT'].includes(String(getMedicalStepStatus(student)).toUpperCase())"></i>
+                                            {{ formatStatus(getMedicalStepStatus(student)) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-pill btn-pill-green btn-pill-sm w-100" @click="openReview(student)">
+                                                <i class="fa-solid fa-stethoscope me-1"></i>{{ getMedicalStepStatus(student) === 'COMPLETED' ? 'View' : 'Examine' }}
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="!isLoadingQueue && filteredStudents.length === 0">
+                                    <td colspan="6" class="empty-state py-5 text-center text-muted">
+                                        <i class="fa-solid fa-inbox fs-2 mb-2 d-block text-secondary"></i>
+                                        <p class="mb-0">No students matching the criteria found in the clinic queue.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Completed Medical Clearances View (Medical Check-up Only) -->
+            <div v-if="currentView === 'completed'" class="view-section">
+                <!-- Sort Controls Sub-Bar matching Registrar / Queue style -->
+                <div class="card border border-light-subtle rounded-3 shadow-sm mb-3 p-3" style="background:#fafafa;">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
+                            <i class="fa-solid fa-arrow-down-a-z text-success me-1"></i>Sort By:
+                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select form-select-sm py-1" style="max-width:180px;font-size:0.8rem;border-radius:6px;" v-model="sortBy">
+                                <option value="referenceNumber">Reference ID</option>
+                                <option value="name">Student Name</option>
+                                <option value="program">Program</option>
+                                <option value="peFitness">PE Fitness</option>
+                                <option value="nstpFitness">NSTP Fitness</option>
+                                <option value="status">Clearance Status</option>
+                            </select>
+                            <button class="btn-pill btn-pill-sm py-1 px-2.5"
+                                    :class="sortDesc ? 'btn-pill-green' : 'btn-pill-outline'"
+                                    @click="sortDesc = !sortDesc"
+                                    title="Toggle Sort Order">
+                                <i :class="sortDesc ? 'fa-solid fa-sort-down' : 'fa-solid fa-sort-up'"></i>
+                                {{ sortDesc ? 'Descending' : 'Ascending' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="panel">
+                    <div class="panel-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3><i class="fa-solid fa-user-check me-2 text-success"></i>Completed Medical Clearances</h3>
+                            <p>List of students who have successfully cleared clinic examination.</p>
+                        </div>
+                        <span class="badge rounded-pill fw-bold font-monospace px-3 py-2 bg-success bg-opacity-10 text-success">
+                            Showing {{ completedStudents.length }} Record(s)
+                        </span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')" style="cursor: pointer;">
+                                        Ref No. <i :class="getSortIcon('referenceNumber')"></i>
+                                    </th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('name')" style="cursor: pointer;">
+                                        Student Name <i :class="getSortIcon('name')"></i>
+                                    </th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('program')" style="cursor: pointer;">
+                                        Program <i :class="getSortIcon('program')"></i>
+                                    </th>
+                                    <th>Declared Health</th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('peFitness')" style="cursor: pointer;">
+                                        PE Fitness <i :class="getSortIcon('peFitness')"></i>
+                                    </th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('nstpFitness')" style="cursor: pointer;">
+                                        NSTP Fitness <i :class="getSortIcon('nstpFitness')"></i>
+                                    </th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('status')" style="cursor: pointer;">
+                                        Clearance Status <i :class="getSortIcon('status')"></i>
+                                    </th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Table Skeleton Loading Animation -->
+                                <tr v-if="isLoadingQueue" v-for="n in 4" :key="'skel-med-comp-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 70px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 70px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 80px;"></div></td>
+                                </tr>
+                                <tr v-else v-for="student in completedStudents" :key="student.referenceNumber" class="table-row-enter">
+                                    <td><code>{{ student.referenceNumber }}</code></td>
+                                    <td><strong>{{ student.name }}</strong></td>
+                                    <td><span class="badge bg-secondary-subtle text-secondary">{{ student.program }}</span></td>
+                                    <td><span class="badge bg-success-subtle text-success"><i class="fa-solid fa-heart me-1"></i>{{ student.healthStatus }}</span></td>
+                                    <td><span class="badge bg-light text-dark border">{{ student.peFitness }}</span></td>
+                                    <td><span class="badge bg-light text-dark border">{{ student.nstpFitness }}</span></td>
+                                    <td>
+                                        <span class="status-badge completed">
+                                            <i class="fa-solid fa-circle-check me-1"></i> Fit / Cleared
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-pill btn-pill-outline btn-pill-sm" @click="openReview(student)">View Details</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="!isLoadingQueue && completedStudents.length === 0">
+                                    <td colspan="8" class="empty-state py-5 text-center text-muted">
+                                        <i class="fa-solid fa-user-check fs-2 mb-2 d-block text-secondary"></i>
+                                        <p class="mb-0">No completed medical check-up records found yet.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+    <div class="modal fade" id="checkupModal" tabindex="-1" aria-labelledby="checkupModalLabel">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="checkupModalLabel">Medical Review — {{ selectedStudent ? selectedStudent.name : '' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" v-if="selectedStudent">
+                    <div class="row g-4">
+                        <!-- Column 1: Student Info + Medical Assessment Forms -->
+                        <div class="col-md-6">
+                            <!-- Patient Identity & Emergency Contact Card -->
+                            <div class="card border-0 shadow-sm rounded-3 p-3 mb-3" style="background:#f8fafc; border-left: 4px solid var(--primary-green) !important;">
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <div class="text-muted small fw-bold text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">Full Name</div>
+                                        <div class="fw-bold text-dark fs-6">{{ selectedStudent.name }}</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="text-muted small fw-bold text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">Reference Number</div>
+                                        <div class="font-monospace text-success fw-bold">{{ selectedStudent.referenceNumber }}</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="text-muted small fw-bold text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">Program &amp; Student Type</div>
+                                        <div class="fw-semibold text-dark small">
+                                            {{ selectedStudent.program }}
+                                            <span class="badge bg-success-subtle text-success ms-1">{{ selectedStudent.studentType }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="text-muted small fw-bold text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">Age / Gender / NSTP Track</div>
+                                        <div class="small fw-semibold text-dark">
+                                            <span v-if="selectedStudent.birthDate">{{ calculateAge(selectedStudent.birthDate) }} yrs • </span>
+                                            <span>{{ selectedStudent.gender || 'Not specified' }}</span>
+                                            <span class="badge bg-primary-subtle text-primary ms-1" v-if="selectedStudent.nstp">{{ selectedStudent.nstp }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mt-1 border-top pt-2" v-if="selectedStudent.emergencyContactName || selectedStudent.emergencyContactPhone">
+                                        <div class="text-muted small fw-bold text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">
+                                            <i class="fa-solid fa-phone text-danger me-1"></i>Emergency Contact
+                                        </div>
+                                        <div class="small text-dark fw-semibold">
+                                            {{ selectedStudent.emergencyContactName || 'N/A' }}
+                                            <span class="text-muted" v-if="selectedStudent.emergencyContactPhone"> — {{ selectedStudent.emergencyContactPhone }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Student-Declared Medical History -->
+                            <div class="medical-declared-card mb-3">
+                                <h6 class="mb-2" style="color: #92400E; font-weight: 700;"><i class="fa-solid fa-clipboard-list me-2"></i>Student-Declared Medical History</h6>
+                                <div class="row g-2 small">
+                                    <div class="col-12">
+                                        <strong>Declared Health:</strong>
+                                        <span class="badge ms-1" :class="{
+                                            'bg-success-subtle text-success': selectedStudent.healthStatus === 'GOOD',
+                                            'bg-warning-subtle text-warning-emphasis': selectedStudent.healthStatus === 'FAIR',
+                                            'bg-danger-subtle text-danger': selectedStudent.healthStatus === 'POOR'
+                                        }"><i class="fa-solid fa-heart me-1"></i>{{ selectedStudent.healthStatus }}</span>
+                                    </div>
+                                    <div class="col-12">
+                                        <strong>Chronic Conditions:</strong>
+                                        <span class="badge bg-danger-subtle text-danger border border-danger ms-1" v-for="cond in selectedStudent.medicalConditions" :key="cond">{{ cond }}</span>
+                                        <span class="text-muted ms-1" v-if="!selectedStudent.medicalConditions || selectedStudent.medicalConditions.length === 0">None Declared</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Allergies:</strong>
+                                        <span class="text-danger fw-semibold ms-1" v-if="selectedStudent.allergies && selectedStudent.allergies.toLowerCase() !== 'none'">{{ selectedStudent.allergies }}</span>
+                                        <span class="text-muted ms-1" v-else>None</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Medication:</strong>
+                                        <span class="badge bg-primary bg-opacity-75 text-white ms-1" v-if="selectedStudent.currentMedication"><i class="fa-solid fa-capsules me-1"></i>Yes</span>
+                                        <span class="text-muted ms-1" v-else>No</span>
+                                    </div>
+                                    <div class="col-12 mt-2 border-top pt-2" v-if="selectedStudent.currentMedication && selectedStudent.medicationDetails">
+                                        <strong>Medication Details:</strong>
+                                        <div class="p-2 mt-1 bg-white border border-danger-subtle text-dark rounded small font-monospace">
+                                            {{ selectedStudent.medicationDetails }}
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mt-1 border-top pt-1" v-if="selectedStudent.fitnessParticipation !== undefined">
+                                        <strong>PE / Physical Drill:</strong>
+                                        <span class="badge bg-success-subtle text-success ms-1" v-if="selectedStudent.fitnessParticipation"><i class="fa-solid fa-person-running me-1"></i>Fit for Standard Drills</span>
+                                        <span class="badge bg-warning-subtle text-warning-emphasis ms-1" v-else><i class="fa-solid fa-triangle-exclamation me-1"></i>Has Declared Physical Limitations</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Clinic Assessment Fields -->
+                            <div class="card border border-light-subtle rounded-3 p-3" style="background:#ffffff;">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="fw-bold text-dark text-uppercase small" style="letter-spacing:.05em;">
+                                        <i class="fa-solid fa-stethoscope text-success me-1"></i>Clinical Evaluation
+                                    </span>
+                                    <span class="badge bg-danger-subtle text-danger" style="font-size:0.65rem;">* All Dropdowns Required</span>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-uppercase small text-dark mb-1" style="font-size:0.72rem;">
+                                            Physical Exam <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select form-select-sm" 
+                                                :class="{ 'is-invalid': hasSubmitted && (selectedStudent.physicalExam === 'not-assessed' || !selectedStudent.physicalExam) }"
+                                                v-model="selectedStudent.physicalExam" 
+                                                :disabled="isMedicalStepCompleted(selectedStudent)">
+                                            <option value="not-assessed" disabled>-- Select Assessment --</option>
+                                            <option value="fit">fit</option>
+                                            <option value="conditional">conditional</option>
+                                            <option value="unfit">unfit</option>
+                                        </select>
+                                        <div class="invalid-feedback" style="font-size:0.68rem;" v-if="hasSubmitted && (selectedStudent.physicalExam === 'not-assessed' || !selectedStudent.physicalExam)">
+                                            Required field
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-uppercase small text-dark mb-1" style="font-size:0.72rem;">
+                                            Medical Interview <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select form-select-sm" 
+                                                :class="{ 'is-invalid': hasSubmitted && (selectedStudent.medicalInterview === 'not-assessed' || !selectedStudent.medicalInterview) }"
+                                                v-model="selectedStudent.medicalInterview" 
+                                                :disabled="isMedicalStepCompleted(selectedStudent)">
+                                            <option value="not-assessed" disabled>-- Select Assessment --</option>
+                                            <option value="fit">fit</option>
+                                            <option value="conditional">conditional</option>
+                                            <option value="unfit">unfit</option>
+                                        </select>
+                                        <div class="invalid-feedback" style="font-size:0.68rem;" v-if="hasSubmitted && (selectedStudent.medicalInterview === 'not-assessed' || !selectedStudent.medicalInterview)">
+                                            Required field
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-uppercase small text-dark mb-1" style="font-size:0.72rem;">
+                                            PE Fitness <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select form-select-sm" 
+                                                :class="{ 'is-invalid': hasSubmitted && (selectedStudent.peFitness === 'not-assessed' || !selectedStudent.peFitness) }"
+                                                v-model="selectedStudent.peFitness" 
+                                                :disabled="isMedicalStepCompleted(selectedStudent)">
+                                            <option value="not-assessed" disabled>-- Select Assessment --</option>
+                                            <option value="fit">fit</option>
+                                            <option value="conditional">conditional</option>
+                                            <option value="unfit">unfit</option>
+                                        </select>
+                                        <div class="invalid-feedback" style="font-size:0.68rem;" v-if="hasSubmitted && (selectedStudent.peFitness === 'not-assessed' || !selectedStudent.peFitness)">
+                                            Required field
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-uppercase small text-dark mb-1" style="font-size:0.72rem;">
+                                            NSTP Fitness <span class="text-danger">*</span>
+                                            <span class="text-muted fw-normal" style="font-size:0.68rem;" v-if="selectedStudent.nstp">({{ selectedStudent.nstp }})</span>
+                                        </label>
+                                        <select class="form-select form-select-sm" 
+                                                :class="{ 'is-invalid': hasSubmitted && (selectedStudent.nstpFitness === 'not-assessed' || !selectedStudent.nstpFitness) }"
+                                                v-model="selectedStudent.nstpFitness" 
+                                                :disabled="isMedicalStepCompleted(selectedStudent)">
+                                            <option value="not-assessed" disabled>-- Select Assessment --</option>
+                                            <option value="fit">fit</option>
+                                            <option value="conditional">conditional</option>
+                                            <option value="unfit">unfit</option>
+                                        </select>
+                                        <div class="invalid-feedback" style="font-size:0.68rem;" v-if="hasSubmitted && (selectedStudent.nstpFitness === 'not-assessed' || !selectedStudent.nstpFitness)">
+                                            Required field
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mt-1">
+                                        <label class="form-label fw-bold text-uppercase small text-dark mb-1" style="font-size:0.72rem;">
+                                            Overall Medical Status <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select form-select-sm" 
+                                                :class="{ 'is-invalid': hasSubmitted && (selectedStudent.status === 'pending' || !selectedStudent.status) }"
+                                                v-model="selectedStudent.status" 
+                                                :disabled="isMedicalStepCompleted(selectedStudent)">
+                                            <option value="pending" disabled>-- Select Overall Clearance Status --</option>
+                                            <option value="fit">fit (Cleared for Enrollment)</option>
+                                            <option value="conditional">conditional (Cleared with Restrictions)</option>
+                                            <option value="unfit">unfit (Flagged / Requires Follow-up)</option>
+                                        </select>
+                                        <div class="invalid-feedback" style="font-size:0.68rem;" v-if="hasSubmitted && (selectedStudent.status === 'pending' || !selectedStudent.status)">
+                                            Overall clearance status is required before saving.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Column 2: Enrollment Progress + Clinic Notes -->
+                        <div class="col-md-6">
+                            <div class="panel p-3 mb-3" style="background: rgba(0, 106, 78, 0.03); border: 1px solid rgba(0, 106, 78, 0.1); border-radius: var(--radius-md);">
+                                <h6 class="mb-3 text-dark fw-bold" style="font-family: var(--font-heading);">Campus Verification Progress</h6>
+                                <div class="vertical-stepper">
+                                    <div v-for="(step, index) in selectedStudent.roadmap" :key="step.stepId"
+                                         class="vertical-step-node"
+                                         :class="{
+                                             'is-completed': step.status === 'COMPLETED',
+                                             'is-active': step.status === 'IN_PROGRESS',
+                                             'is-upcoming': step.status === 'PENDING'
+                                         }">
+                                        <div class="vertical-step-marker">
+                                            <i class="fas fa-check" v-if="step.status === 'COMPLETED'"></i>
+                                            <i class="fas fa-flag" v-else-if="step.status === 'FLAGGED'"></i>
+                                            <i :class="getStepIcon(index)" v-else></i>
+                                        </div>
+                                        <div class="vertical-step-content">
+                                            <span class="vertical-step-title">{{ step.title }}</span>
+                                            <span class="vertical-step-status">{{ step.status }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-1">
+                                <label class="form-label text-muted small uppercase">Clinic Staff Notes</label>
+                                <textarea class="form-control" rows="5" v-model="selectedStudent.notes" placeholder="Enter medical observations or internal notes here..." :disabled="isMedicalStepCompleted(selectedStudent)"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-pill btn-pill-ghost" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn-pill btn-pill-green" @click="saveCheckup" v-if="selectedStudent && !isMedicalStepCompleted(selectedStudent)"><i class="fa-solid fa-circle-check me-1"></i>Save &amp; Submit</button>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- Logout Confirm Dialog -->
+        <div v-if="showLogoutConfirm" class="confirm-overlay" @click.self="showLogoutConfirm = false">
+            <div class="confirm-card">
+                <div class="confirm-icon"><i class="fa-solid fa-right-from-bracket text-danger"></i></div>
+                <h4 class="confirm-title">Confirm Logout</h4>
+                <p class="confirm-msg">Are you sure you want to log out of this station?</p>
+                <div class="confirm-actions">
+                    <button class="confirm-btn-cancel" @click="showLogoutConfirm = false">Cancel</button>
+                    <button class="confirm-btn-danger" @click="confirmLogout">Log Out</button>
+                </div>
+            </div>
+        </div>
+
+        </template>
+        <template v-else>
+            <div class="d-flex flex-column align-items-center justify-content-center min-vh-100 bg-dark text-white p-4" style="background: linear-gradient(135deg, #0b1511 0%, #15271f 100%); font-family: 'Plus Jakarta Sans', sans-serif;">
+                <div class="spinner-border text-success mb-3" role="status" style="width: 2.5rem; height: 2.5rem; border-width: 0.2em;"></div>
+                <h5 class="fw-bold" style="color: #10b981; font-family: 'Outfit', sans-serif;">Verifying School Clinic Session...</h5>
+                <p class="text-secondary small mb-0">Establishing medical officer credentials and loading patient queue...</p>
+            </div>
+        </template>
+
+    </div> <!-- close app -->
+
+    <script src="../../shared/libs/bootstrap.bundle.min.js"></script>
+    <script src="../../shared/libs/vue.global.js"></script>
+    <script src="../../shared/libs/sweetalert2.all.min.js"></script>
+    <script src="../../shared/js/SessionExpirationGuard.js?v=1789204778"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js?v=1789204778"></script>
+    <script src="../../shared/js/components/EmployeeSidebar.js?v=1789204778"></script>
+    <script src="../../shared/js/StationPipeline.js?v=1789204778"></script>
+    <script src="../assets/js/DataBus.js?v=1789204778"></script>
+    <script src="./assets/js/app.js?v=1789204778"></script>
+</body>
+</html>

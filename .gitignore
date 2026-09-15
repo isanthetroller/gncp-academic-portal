@@ -1,0 +1,15 @@
+.git/
+uploads/
+shared/backend/logs/
+shared/backend/config/db_config.php
+shared/backend/config/mail.local.php
+tools/.ftp_credentials
+*.log
+*.tmp
+*.pyc
+__pycache__/
+node_modules/
+.env
+.DS_Store
+Thumbs.db
+scratch_*.txt

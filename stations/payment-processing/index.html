@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>Payment Processing | Go-on National College</title>
+    <meta name="description" content="Registrar-style payment processing dashboard for student transactions and collections.">
+    <link href="../../shared/libs/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../shared/libs/font-awesome/css/all.min.css">
+    <link rel="stylesheet" href="../../shared/libs/fonts/fonts.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=1789204778">
+    <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=1789204778">
+    <link rel="stylesheet" href="../../shared/css/sidebar.css?v=1789204778">
+    <script src="../../shared/libs/sweetalert2.all.min.js"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js"></script>
+    <style>
+         [v-cloak] { display: none !important; }
+         
+         .unified-login-input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: #fff; padding: 10px 14px; font-size: 0.88rem; box-sizing: border-box; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+         .unified-login-input:focus { border-color: rgba(212,175,55,0.6); box-shadow: 0 0 0 3px rgba(212,175,55,0.1); }
+         .unified-login-btn { width: 100%; background: linear-gradient(135deg, #D4AF37, #b8961e); border: none; border-radius: 10px; color: #0b1511; font-weight: 800; padding: 12px; font-size: 0.9rem; cursor: pointer; letter-spacing: 0.5px; margin-top: 6px; transition: background 0.2s, opacity 0.2s; }
+         .unified-login-btn:hover { background: linear-gradient(135deg, #e0bc3e, #c9a622); }
+         .unified-login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+         .unified-login-error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 10px 14px; color: #fca5a5; font-size: 0.82rem; margin-bottom: 16px; text-align: left; }
+         /* -- Confirmation Dialog */
+         .confirm-overlay { position: fixed; inset: 0; z-index: 99999; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; animation: fadeIn 0.15s ease; }
+         @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+         .confirm-card { background: #0f2318; border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; box-shadow: 0 25px 60px rgba(0,0,0,0.6); padding: 36px 36px 28px; width: 100%; max-width: 380px; text-align: center; animation: slideUp 0.2s ease; }
+         @keyframes slideUp { from { transform: translateY(16px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+         .confirm-icon { font-size: 2.2rem; margin-bottom: 14px; }
+         .confirm-title { font-family: 'Outfit', sans-serif; font-weight: 800; color: #fff; font-size: 1.2rem; margin: 0 0 8px; }
+         .confirm-msg { color: rgba(255,255,255,0.55); font-size: 0.85rem; margin: 0 0 26px; line-height: 1.5; }
+         .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+         .confirm-btn-cancel { flex: 1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: rgba(255,255,255,0.7); font-weight: 600; padding: 11px; font-size: 0.88rem; cursor: pointer; transition: background 0.2s; }
+         .confirm-btn-cancel:hover { background: rgba(255,255,255,0.12); }
+         /* -- Vertical Timeline Stepper -- */
+         .vertical-stepper { display: flex; flex-direction: column; gap: 14px; padding: 6px 0; position: relative; }
+         .vertical-step-node { display: flex; align-items: center; gap: 12px; position: relative; }
+         .vertical-step-node:not(:last-child)::after {
+             content: ''; position: absolute; left: 17px; top: 34px; bottom: -20px; width: 2px; background: #E5E8EC; z-index: 0;
+         }
+         .vertical-step-node.is-completed:not(:last-child)::after { background: var(--primary-green); }
+         .vertical-step-marker {
+             width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: #FFF; border: 2px solid #E5E8EC; color: #9CA3AF; z-index: 1; transition: all 0.2s ease;
+         }
+         .is-completed .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; }
+         .is-active .vertical-step-marker { background: var(--primary-green); border-color: var(--primary-green); color: #FFF; box-shadow: none !important; }
+         .vertical-step-content { display: flex; flex-direction: column; text-align: left; }
+         .vertical-step-title { font-size: 0.78rem; font-weight: 700; margin: 0; color: var(--text-dark); line-height: 1.2; }
+         .is-completed .vertical-step-title { color: var(--dark-green); }
+         .is-active .vertical-step-title { color: var(--primary-green); }
+         .vertical-step-status { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #9CA3AF; margin-top: 1px; }
+         .is-completed .vertical-step-status { color: var(--primary-green); }
+         .is-active .vertical-step-status { color: var(--primary-green); }
+
+         /* -- Direct Payment Plan Component Architecture (Clean Flat Design, Zero Glow) -- */
+         .payment-plan-grid { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; width: 100% !important; }
+         @media (max-width: 576px) { .payment-plan-grid { grid-template-columns: 1fr !important; } }
+         .plan-card { position: relative !important; border: 2px solid #E2E8F0 !important; border-radius: 12px !important; background: #FFFFFF !important; padding: 12px 14px !important; cursor: pointer !important; transition: border-color 0.2s ease, background-color 0.2s ease !important; display: flex !important; flex-direction: column !important; justify-content: space-between !important; min-height: 96px !important; user-select: none !important; box-shadow: none !important; }
+         .plan-card:hover { border-color: #006A4E !important; transform: none !important; box-shadow: none !important; }
+         .plan-card.is-selected { border-color: #006A4E !important; background: #F0FDF4 !important; box-shadow: none !important; }
+         .plan-card .plan-radio-indicator { width: 18px !important; height: 18px !important; border-radius: 50% !important; border: 2px solid #CBD5E1 !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s ease !important; flex-shrink: 0 !important; background: #FFFFFF !important; box-shadow: none !important; }
+         .plan-card.is-selected .plan-radio-indicator { border-color: #006A4E !important; background: #006A4E !important; }
+         .plan-card.is-selected .plan-radio-indicator::after { content: '' !important; width: 6px !important; height: 6px !important; border-radius: 50% !important; background: #FFFFFF !important; }
+         .plan-card-title { font-size: 0.82rem !important; font-weight: 700 !important; color: #1E293B !important; margin-bottom: 4px !important; display: flex !important; align-items: center !important; gap: 6px !important; line-height: 1.2 !important; }
+         .plan-card.is-selected .plan-card-title { color: #006A4E !important; }
+         .plan-card-amount { font-size: 1.05rem !important; font-weight: 800 !important; color: #006A4E !important; letter-spacing: -0.02em !important; line-height: 1.2 !important; margin: 4px 0 !important; }
+         .plan-card.is-selected .plan-card-amount { color: #004D38 !important; }
+         .plan-card-badge { font-size: 0.68rem !important; font-weight: 700 !important; padding: 3px 8px !important; border-radius: 6px !important; background: #F1F5F9 !important; color: #475569 !important; display: inline-block !important; width: fit-content !important; line-height: 1.2 !important; }
+         .plan-card.is-selected .plan-card-badge { background: #DCFCE7 !important; color: #15803D !important; }
+         .payment-input-group { display: flex !important; align-items: stretch !important; border: 1.5px solid #E2E8F0 !important; border-radius: 10px !important; background: #FFFFFF !important; transition: border-color 0.2s ease !important; overflow: hidden !important; min-height: 42px !important; width: 100% !important; box-shadow: none !important; }
+         .payment-input-group:focus-within { border-color: #006A4E !important; box-shadow: none !important; }
+         .payment-input-group.is-readonly { background: #F8FAFC !important; border-color: #E2E8F0 !important; }
+         .payment-input-addon { background: #F1F5F9 !important; color: #334155 !important; font-weight: 800 !important; font-size: 0.92rem !important; padding: 0 14px !important; display: flex !important; align-items: center !important; justify-content: center !important; border-right: 1.5px solid #E2E8F0 !important; flex-shrink: 0 !important; }
+         .payment-input-control { border: none !important; outline: none !important; box-shadow: none !important; font-size: 0.98rem !important; font-weight: 700 !important; color: #0F172A !important; padding: 8px 12px !important; width: 100% !important; flex: 1 !important; background: transparent !important; display: flex !important; align-items: center !important; }
+         .payment-input-control:disabled, .payment-input-control[readonly] { color: #334155 !important; background: transparent !important; cursor: default !important; }
+         .payment-ledger-card { background: #FFFFFF !important; border: 1.5px solid #E2E8F0 !important; border-radius: 12px !important; padding: 14px 16px !important; box-shadow: none !important; }
+         .ledger-row { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 6px 0 !important; font-size: 0.85rem !important; }
+         .ledger-row.total-row { border-top: 1.5px dashed #CBD5E1 !important; padding-top: 10px !important; margin-top: 6px !important; }
+     </style>
+</head>
+<body>
+    <div id="app" class="dashboard-shell" v-cloak>
+        <template v-if="currentUser">
+            <employee-sidebar 
+                station-name="Go-on National College" 
+                station-tag="CASHIER STATION"
+                :nav-groups="[
+                    {
+                        title: 'Treasury Operations',
+                        items: [
+                            { id: 'dashboard', label: 'Dashboard Overview', icon: 'fa-gauge' },
+                            { id: 'queue', label: 'Student Queue', icon: 'fa-users-line', badge: totalInQueue > 0 ? totalInQueue : null },
+                            { id: 'history', label: 'Payment History', icon: 'fa-clock-rotate-left' }
+                        ]
+                    }
+                ]"
+                :current-view="currentView"
+                :current-user="currentUser"
+                base-path="../../"
+                @set-view="setView"
+                @logout="handleLogout">
+            </employee-sidebar>
+
+        <main class="main-panel">
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <span class="eyebrow">Treasury Desk</span>
+                    <h2>Payment Processing</h2>
+                </div>
+                <div class="top-bar-actions">
+                    <button class="btn-pill btn-pill-green" @click="setView('queue')"><i class="fa-solid fa-users-line"></i> Open Queue</button>
+                </div>
+            </div>
+
+            <!-- Profile View -->
+            <div v-if="currentView === 'profile'" class="profile-view-wrap p-3">
+                <div class="profile-hero">
+                    <div class="avatar-wrap" @click="triggerFileInput" title="Click to change profile picture">
+                        <img v-if="formattedAvatar" :src="formattedAvatar" alt="Profile Picture">
+                        <div v-else class="avatar-initials">{{ initials }}</div>
+                        <div class="avatar-overlay">
+                            <i class="fa-solid fa-camera mb-1" style="font-size:1.1rem"></i>
+                            <span>Change Photo</span>
+                        </div>
+                    </div>
+                    <input type="file" ref="fileInput" @change="onFileSelected" accept="image/*" style="display:none">
+                    <div class="profile-hero-info">
+                        <h3>{{ user.name || (currentUser ? currentUser.name : 'Cashier Staff') }}<span class="profile-hero-badge">{{ user.role || (currentUser ? currentUser.role : 'CASHIER') }}</span></h3>
+                        <p><i class="fa-solid fa-envelope me-2"></i>{{ user.email || (currentUser ? currentUser.email : 'cashier@gncp.edu.ph') }}</p>
+                        <p style="margin-top:4px"><i class="fa-solid fa-at me-2"></i>{{ user.username || (currentUser ? currentUser.username : 'cashier') }}</p>
+                    </div>
+                </div>
+
+                <div class="profile-grid">
+                    <div class="card p-4">
+                        <div class="card-title mb-3" style="font-weight:800; font-size:1.05rem; color:var(--primary, #006A4E);"><i class="fa-solid fa-user-edit me-2"></i> Personal Details</div>
+                        <form @submit.prevent="saveStaffProfile">
+                            <div style="margin-bottom:14px"><label class="f-label">Full Name</label><input class="f-input" type="text" v-model="user.name" required></div>
+                            <div style="margin-bottom:14px"><label class="f-label">Email Address</label><input class="f-input" type="email" v-model="user.email" required></div>
+                            <div style="margin-bottom:14px"><label class="f-label">Username / Identity Code</label><input class="f-input" type="text" :value="user.username" disabled></div>
+                            <div style="margin-bottom:14px"><label class="f-label">System Role</label><input class="f-input" type="text" :value="user.role" disabled></div>
+                            <div class="text-end" style="margin-top:12px">
+                                <button type="submit" class="btn-primary-save" :disabled="saving">
+                                    <i class="fa-solid fa-save"></i> {{ saving ? 'Saving...' : 'Save Personal Details' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card p-4">
+                        <div class="card-title mb-3" style="font-weight:800; font-size:1.05rem; color:var(--primary, #006A4E);"><i class="fa-solid fa-shield-alt me-2"></i> Account Security &amp; Password</div>
+                        <form @submit.prevent="updatePassword">
+                            <div style="margin-bottom:14px">
+                                <label class="f-label">Current Password</label>
+                                <div style="position:relative">
+                                    <input :type="showCurrentPass ? 'text' : 'password'" class="f-input" v-model="pass.current" placeholder="Enter your current password" required style="padding-right:42px">
+                                    <button type="button" @click="showCurrentPass = !showCurrentPass" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;">
+                                        <i :class="showCurrentPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div style="margin-bottom:14px">
+                                <label class="f-label">New Password</label>
+                                <div style="position:relative">
+                                    <input :type="showNewPass ? 'text' : 'password'" class="f-input" v-model="pass.newPass" @input="checkPassStrength" placeholder="At least 6 characters" required style="padding-right:42px">
+                                    <button type="button" @click="showNewPass = !showNewPass" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;">
+                                        <i :class="showNewPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                                    </button>
+                                </div>
+                                <div v-if="pass.newPass" class="pass-strength-bar" :style="{ background: passStrengthColor, width: passStrengthWidth }"></div>
+                                <div v-if="pass.newPass" class="pass-strength-text" :style="{ color: passStrengthColor }">{{ passStrengthLabel }}</div>
+                            </div>
+                            <div style="margin-bottom:14px">
+                                <label class="f-label">Confirm New Password</label>
+                                <input type="password" class="f-input" v-model="pass.confirm" placeholder="Re-enter new password" :class="{ 'is-invalid': pass.confirm && pass.confirm !== pass.newPass }" required>
+                                <div v-if="pass.confirm && pass.confirm !== pass.newPass" style="font-size:0.72rem;color:#dc2626;margin-top:4px;font-weight:600">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Passwords do not match.
+                                </div>
+                            </div>
+                            <div class="text-end" style="margin-top:12px">
+                                <button type="submit" class="btn-primary-save" style="background:#003D2B" :disabled="updatingPass || (pass.confirm && pass.confirm !== pass.newPass)">
+                                    <i class="fa-solid fa-key"></i> {{ updatingPass ? 'Updating...' : 'Update Password' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard View -->
+            <div v-if="currentView === 'dashboard'" class="view-section">
+                <div class="greeting-banner mb-3 p-3 rounded text-white" style="background: linear-gradient(135deg, #00553e 0%, #003d2b 100%); border-left: 4px solid var(--gold, #d4af37);">
+                    <h3 class="m-0 font-weight-bold" style="color: #ffffff; font-size: 1.15rem;">
+                        Hello {{ currentUser ? (currentUser.name || currentUser.username) : 'Cashier' }}! {{ timeGreeting }}
+                    </h3>
+                    <p class="m-0 small text-white-50" style="font-size: 0.82rem; margin-top: 2px;">Welcome to Cashier Payment Processing Workstation.</p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total in Queue</div>
+                        <div class="stat-value">{{ totalInQueue }}</div>
+                        <div class="stat-meta">Transactions awaiting collection</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Paid Today</div>
+                        <div class="stat-value">{{ paidToday }}</div>
+                        <div class="stat-meta" style="color: var(--primary-green);">Settled payments today</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Date &amp; Time (PST)</div>
+                        <div class="stat-value" style="font-size: 1.05rem; line-height: 1.25; margin-top: 8px; font-weight: 700; color: var(--primary-green);">{{ currentDateTime }}</div>
+                        <div class="stat-meta" style="color: var(--primary-gold)">Philippine Standard Time</div>
+                    </div>
+                </div>
+
+                <div class="context-bar">
+                    <div class="context-bar-left">
+                        <h3>Treasury operations at a glance</h3>
+                        <p>Monitor payment flow, queued collections, and cashier performance from the registrar finance lens.</p>
+                    </div>
+                    <div class="context-bar-right">
+                        <button type="button" class="btn-pill btn-pill-outline" @click="setView('queue')"><i class="fa-solid fa-users-line"></i> Open student queue</button>
+                    </div>
+                </div>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3>Recent Transactions</h3>
+                            <p>Latest payment records processed by the treasury unit.</p>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Ref No.</th>
+                                    <th>Student Name</th>
+                                    <th>Program</th>
+                                    <th>Payment Type</th>
+                                    <th>Amount Paid</th>
+                                    <th>Balance</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Table Skeleton Loading Animation -->
+                                <tr v-if="isLoadingQueue" v-for="n in 4" :key="'skel-rec-tx-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 130px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 50px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 65px;"></div></td>
+                                </tr>
+                                <tr v-else v-for="student in recentTransactions" :key="student.referenceNumber" class="table-row-enter">
+                                     <td><code>{{ student.referenceNumber }}</code></td>
+                                     <td><strong>{{ student.studentName }}</strong></td>
+                                     <td><span class="badge bg-secondary-subtle text-secondary">{{ student.program }}</span></td>
+                                     <td><span class="badge bg-light text-dark border border-light-subtle">{{ student.payment.paymentType }}</span></td>
+                                     <td><strong class="text-success">₱{{ formatCurrency(student.payment.amountPaid) }}</strong></td>
+                                     <td><span class="text-secondary">₱{{ formatCurrency(student.payment.balance) }}</span></td>
+                                     <td>
+                                         <span class="status-badge" :class="getStatusBadgeClass(student.status)">
+                                             <i class="fa-solid fa-circle-check me-1" v-if="['PAID','COMPLETED','CLEARED'].includes(String(student.status).toUpperCase())"></i>
+                                             <i class="fa-solid fa-clock me-1" v-else-if="String(student.status).toUpperCase() === 'PENDING'"></i>
+                                             <i class="fa-solid fa-spinner fa-spin me-1" v-else-if="String(student.status).toUpperCase() === 'PARTIAL'"></i>
+                                             <i class="fa-solid fa-ban me-1" v-else-if="String(student.status).toUpperCase() === 'REJECTED'"></i>
+                                             {{ formatStatus(student.status) }}
+                                         </span>
+                                     </td>
+                                     <td>
+                                         <button type="button" class="btn-pill btn-pill-sm btn-pill-green" @click="openProcess(student)">Process</button>
+                                     </td>
+                                 </tr>
+                                <tr v-if="!isLoadingQueue && recentTransactions.length === 0">
+                                    <td colspan="8" class="text-center py-4 text-muted">No transactions processed today yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <div v-else-if="currentView === 'queue'" class="view-section">
+                <!-- Quick-Stat Cards matching Registrar style -->
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #f59e0b !important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Pending Payment</div>
+                            <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#d97706;line-height:1.1;">{{ pendingCount }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">full balance due</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #3b82f6 !important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Partial / Installment</div>
+                            <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#3b82f6;line-height:1.1;">{{ partialCount }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">downpayment collected</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #22c55e !important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Paid &amp; Settled</div>
+                            <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#16a34a;line-height:1.1;">{{ paidToday }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">completed settlements</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="border-left: 4px solid #6b7280 !important;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:4px;">Total Queue</div>
+                            <div style="font-size:1.85rem;font-family:'Outfit',sans-serif;font-weight:900;color:#374151;line-height:1.1;">{{ students.length }}</div>
+                            <div style="font-size:0.7rem;color:#9ca3af;">all active accounts</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters & Sorting Toolbar Card matching Registrar style -->
+                <div class="card border border-light-subtle rounded-3 shadow-sm mb-3 p-3" style="background:#fafafa;">
+                    <!-- Status pills row -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
+                            <i class="fa-solid fa-layer-group text-success me-1"></i>Status Filter:
+                        </span>
+                        <button class="btn-pill btn-pill-sm py-1"
+                                :class="activeFilter === 'All' ? 'btn-pill-green' : 'btn-pill-outline'"
+                                @click="setFilter('All')">
+                            All <span class="ms-1 badge rounded-pill" style="background:rgba(0,0,0,0.07);color:#555;font-size:0.65rem;">{{ students.length }}</span>
+                        </button>
+                        <button class="btn-pill btn-pill-sm py-1"
+                                :class="activeFilter === 'PENDING' ? 'btn-pill-green' : 'btn-pill-outline'"
+                                @click="setFilter('PENDING')">
+                            Pending <span class="ms-1 badge rounded-pill" style="background:rgba(0,0,0,0.07);color:#555;font-size:0.65rem;">{{ pendingCount }}</span>
+                        </button>
+                        <button class="btn-pill btn-pill-sm py-1"
+                                :class="activeFilter === 'PARTIAL' ? 'btn-pill-green' : 'btn-pill-outline'"
+                                @click="setFilter('PARTIAL')">
+                            Partial <span class="ms-1 badge rounded-pill" style="background:rgba(0,0,0,0.07);color:#555;font-size:0.65rem;">{{ partialCount }}</span>
+                        </button>
+                        <button class="btn-pill btn-pill-sm py-1"
+                                :class="activeFilter === 'PAID' ? 'btn-pill-green' : 'btn-pill-outline'"
+                                @click="setFilter('PAID')">
+                            Paid <span class="ms-1 badge rounded-pill" style="background:rgba(0,0,0,0.07);color:#555;font-size:0.65rem;">{{ paidToday }}</span>
+                        </button>
+                    </div>
+
+                    <!-- Sort Controls Sub-Bar -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-2 pt-2 border-top border-light-subtle">
+                        <span class="fw-bold text-uppercase me-1" style="font-size:0.68rem;letter-spacing:.05em;color:#9ca3af;white-space:nowrap;">
+                            <i class="fa-solid fa-arrow-down-a-z text-success me-1"></i>Sort By:
+                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select form-select-sm py-1" style="max-width:180px;font-size:0.8rem;border-radius:6px;" v-model="sortBy">
+                                <option value="arrivedAt">Arrival Time</option>
+                                <option value="referenceNumber">Reference ID</option>
+                                <option value="studentName">Student Name</option>
+                                <option value="program">Program Choice</option>
+                                <option value="status">Payment Status</option>
+                            </select>
+                            <button class="btn-pill btn-pill-sm py-1 px-2.5"
+                                    :class="sortDesc ? 'btn-pill-green' : 'btn-pill-outline'"
+                                    @click="sortDesc = !sortDesc"
+                                    title="Toggle Sort Order">
+                                <i :class="sortDesc ? 'fa-solid fa-sort-down' : 'fa-solid fa-sort-up'"></i>
+                                {{ sortDesc ? 'Descending' : 'Ascending' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="panel">
+                    <div class="panel-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3>Treasury Student Queue</h3>
+                            <p>First-Come, First-Served fee settlements, installment downpayments, and OR issuance — click headers to sort</p>
+                        </div>
+                        <span class="badge rounded-pill fw-bold font-monospace px-3 py-2"
+                              :class="filteredStudents.length > 0 ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'">
+                            Showing {{ filteredStudents.length }} of {{ students.length }} Records
+                        </span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:110px;">Queue Ticket</th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('referenceNumber')">
+                                        Ref No. <i :class="getSortIcon('referenceNumber')"></i>
+                                    </th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('studentName')">
+                                        Student Name <i :class="getSortIcon('studentName')"></i>
+                                    </th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('program')">
+                                        Program <i :class="getSortIcon('program')"></i>
+                                    </th>
+                                    <th>Chosen Plan / Mode</th>
+                                    <th>Total Assessment</th>
+                                    <th>Amount Paid</th>
+                                    <th>Balance</th>
+                                    <th class="cursor-pointer select-none" @click="toggleSort('status')">
+                                        Status <i :class="getSortIcon('status')"></i>
+                                    </th>
+                                    <th style="width:120px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Table Skeleton Loading Animation -->
+                                <tr v-if="isLoadingQueue" v-for="n in 5" :key="'skel-pay-q-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-ticket"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 75px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 90px;"></div></td>
+                                    <td><div class="skeleton-btn" style="width: 75px;"></div></td>
+                                </tr>
+                                <tr v-else v-for="student in filteredStudents" :key="student.referenceNumber" class="table-row-enter">
+                                     <!-- Queue Ticket -->
+                                     <td>
+                                         <span class="queue-ticket-badge" :class="getQueueRank(student) === 1 ? 'ticket-next' : 'ticket-default'">
+                                             <span v-if="getQueueRank(student) === 1" class="ticket-indicator"></span>
+                                             {{ student.queueTicket || ('CSH-' + student.id) }}
+                                         </span>
+                                     </td>
+                                     <td><code class="text-dark fw-bold font-monospace">{{ student.referenceNumber }}</code></td>
+                                     <td><strong>{{ student.studentName }}</strong></td>
+                                     <td><span class="badge bg-secondary-subtle text-secondary font-monospace">{{ student.program }}</span></td>
+                                     <td>
+                                         <div class="d-flex flex-column gap-1">
+                                             <span class="badge" :class="student.paymentMode === 'CASH' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle'" style="font-size: 0.72rem; width: fit-content;">
+                                                 <i class="fa-solid" :class="student.paymentMode === 'CASH' ? 'fa-money-bill-wave me-1' : 'fa-layer-group me-1'"></i>
+                                                 {{ getPaymentModeBadge(student.paymentMode) }}
+                                             </span>
+                                             <span class="text-muted" style="font-size: 0.72rem;">
+                                                 {{ student.payment?.paymentType || 'Cash' }}
+                                             </span>
+                                         </div>
+                                     </td>
+                                     <td><strong class="text-dark">₱{{ formatCurrency(student.payment.totalFee) }}</strong></td>
+                                     <td><strong class="text-success">₱{{ formatCurrency(student.payment.amountPaid) }}</strong></td>
+                                     <td><strong :class="(student.payment.balance && student.payment.balance > 0) ? 'text-danger' : 'text-success'">₱{{ formatCurrency(student.payment.balance) }}</strong></td>
+                                     <td>
+                                         <span class="status-badge" :class="getStatusBadgeClass(student.status)">
+                                             <i class="fa-solid fa-circle-check me-1" v-if="['PAID','COMPLETED','CLEARED'].includes(String(student.status).toUpperCase())"></i>
+                                             <i class="fa-solid fa-clock me-1" v-else-if="String(student.status).toUpperCase() === 'PENDING'"></i>
+                                             <i class="fa-solid fa-spinner fa-spin me-1" v-else-if="String(student.status).toUpperCase() === 'PARTIAL'"></i>
+                                             <i class="fa-solid fa-ban me-1" v-else-if="String(student.status).toUpperCase() === 'REJECTED'"></i>
+                                             {{ formatStatus(student.status) }}
+                                         </span>
+                                     </td>
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn-pill btn-pill-sm btn-pill-green w-100" @click="openProcess(student)">
+                                                <i class="fa-solid fa-cash-register me-1"></i>{{ (student.status === 'PAID' || student.status === 'ENROLLED') ? 'View' : 'Process' }}
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="!isLoadingQueue && filteredStudents.length === 0">
+                                    <td colspan="10" class="empty-state text-center py-4 text-muted">
+                                        <i class="fa-solid fa-inbox fs-3 mb-2 d-block text-secondary"></i>
+                                        <p class="mb-0 small">No students in the cashier payment queue match your filter.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Payment History View -->
+            <div v-else-if="currentView === 'history'" class="view-section">
+                <div class="card border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-1 font-monospace fw-bold" style="color:var(--dark-green, #004D38);font-size:1.1rem;">
+                                <i class="fa-solid fa-clock-rotate-left me-2"></i>Treasury Payment History
+                            </h4>
+                            <p class="text-muted small mb-0">Audited records of students with settled fees and issued receipts</p>
+                        </div>
+                        <button class="btn-pill btn-pill-outline btn-pill-sm" @click="fetchReviewHistory">
+                            <i class="fa-solid fa-rotate me-1"></i>Refresh History
+                        </button>
+                    </div>
+                </div>
+
+                <section class="panel">
+                    <div class="panel-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3>Completed Payment Records</h3>
+                            <p>Students cleared for IT Center permanent account and ID provisioning</p>
+                        </div>
+                        <span class="badge bg-success bg-opacity-10 text-success fw-bold font-monospace px-3 py-2 rounded-pill">
+                            {{ completedStudents.length }} Records
+                        </span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Ref / ID</th>
+                                    <th>Student Name</th>
+                                    <th>Program</th>
+                                    <th>OR / Ref No.</th>
+                                    <th>Cashier</th>
+                                    <th>Settlement Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Table Skeleton Loading Animation -->
+                                <tr v-if="isLoadingHistory" v-for="n in 4" :key="'skel-pay-hist-' + n" class="table-skeleton-row" aria-hidden="true">
+                                    <td><div class="skeleton-bar" style="width: 85px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 140px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 65px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 100px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 90px;"></div></td>
+                                    <td><div class="skeleton-bar" style="width: 110px;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 85px;"></div></td>
+                                </tr>
+                                <tr v-else v-for="item in completedStudents" :key="item.auditId || item.referenceNumber || item.id" class="table-row-enter">
+                                    <td><code>{{ item.referenceNumber || item.studentId || item.id }}</code></td>
+                                    <td><strong>{{ item.studentName || item.name }}</strong></td>
+                                    <td><span class="badge bg-secondary-subtle text-secondary font-monospace">{{ item.program }}</span></td>
+                                    <td>
+                                        <code class="fw-bold text-dark font-monospace">{{ item.orNumber || item.transactionRef || (item.payment && item.payment.transactionRef) || '—' }}</code>
+                                    </td>
+                                    <td>
+                                        <div style="font-size:0.82rem;font-weight:600;"><i class="fa-solid fa-user-check me-1 text-muted"></i>{{ item.cashierName || item.operatorUsername || 'Cashier Staff' }}</div>
+                                    </td>
+                                    <td>
+                                        <div style="font-size:0.8rem;font-weight:500;">{{ item.completedAt || item.enrolledAt ? new Date(item.completedAt || item.enrolledAt).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' }) : 'Settled' }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge" :class="getStatusBadgeClass(item.currentStatus || item.status)">
+                                            <i class="fa-solid fa-circle-check me-1"></i>{{ formatStatus(item.currentStatus || item.status) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr v-if="!isLoadingHistory && completedStudents.length === 0">
+                                    <td colspan="7" class="text-center py-4 text-muted">No completed payment records found.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+    <!-- Process Payment Modal -->
+    <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
+            <div class="modal-content" v-if="selectedStudent">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="paymentModalLabel">Payment Processing · {{ selectedStudent.studentName }}</h5>
+                    <button type="button" class="btn-close" @click="closeModal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-4">
+                        <!-- Column 1: Student Info & Payment Details Form -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-label text-muted small uppercase">Full Name</div>
+                                <div class="fw-bold text-dark fs-6">{{ selectedStudent.studentName }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-label text-muted small uppercase">Reference Number</div>
+                                <div class="font-monospace text-secondary fw-semibold">{{ selectedStudent.referenceNumber }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-label text-muted small uppercase">Program / Course</div>
+                                <div class="fw-bold text-dark">{{ selectedStudent.program }}</div>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <div class="form-label text-muted small uppercase">Student Type</div>
+                                    <div class="badge bg-success-subtle text-success px-2 py-1 rounded">{{ selectedStudent.studentType }}</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-label text-muted small uppercase">Chosen Plan (Pre-Reg)</div>
+                                    <div class="badge px-2 py-1 rounded" :class="selectedStudent.paymentMode === 'CASH' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle'">
+                                        <i class="fa-solid" :class="selectedStudent.paymentMode === 'CASH' ? 'fa-money-bill-wave me-1' : 'fa-layer-group me-1'"></i>
+                                        {{ formatPaymentMode(selectedStudent.paymentMode) }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Financial Account Summary -->
+                            <div class="panel p-3 mb-3" style="background: #FFFBEB; border: 1px solid #FDE68A;">
+                                <h6 class="mb-2" style="color: #92400E; font-weight: 700;"><i class="fa-solid fa-calculator me-2"></i>Account Ledger Summary</h6>
+                                <div class="row g-2 small">
+                                    <div class="col-6">
+                                        <strong>Total Assessment:</strong>
+                                        <span class="text-dark fw-semibold ms-1">₱{{ formatCurrency(selectedStudent.payment.totalFee) }}</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Amount Received:</strong>
+                                        <span class="text-success fw-bold ms-1">₱{{ formatCurrency(selectedStudent.payment.amountPaid) }}</span>
+                                    </div>
+                                    <div class="col-12 border-top pt-2 mt-2">
+                                        <strong>Outstanding Balance:</strong>
+                                        <span class="text-danger fw-bold ms-1">₱{{ formatCurrency(selectedStudent.payment.balance) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Collect Payment Details Panel -->
+                            <div class="panel p-3.5 bg-white border rounded-3 shadow-sm mb-3" style="border-color: #E2E8F0 !important;" v-if="selectedStudent.payment.balance > 0">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="m-0 text-dark fw-bold" style="font-size: 0.88rem; font-family: var(--font-heading);">
+                                        <i class="fa-solid fa-hand-holding-dollar me-2 text-success"></i>Collect Payment Details
+                                    </h6>
+                                    <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2.5 py-1" style="font-size: 0.7rem; font-weight: 700;">
+                                        <i class="fa-solid fa-calculator me-1"></i>Active Assessment
+                                    </span>
+                                </div>
+
+                                <div class="row g-3">
+                                    <!-- Interactive Payment Plan Cards -->
+                                    <div class="col-12">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label class="form-label text-secondary small uppercase fw-bold m-0" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                                Select Payment Plan
+                                            </label>
+                                            <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.68rem; font-weight: 700;">
+                                                <i class="fa-solid fa-user-check me-1 text-primary"></i>Pre-Reg Choice: <strong class="text-dark">{{ formatPaymentMode(selectedStudent.paymentMode) }}</strong>
+                                            </span>
+                                        </div>
+                                        <div class="payment-plan-grid">
+                                            <!-- Full Payment Option -->
+                                            <div class="plan-card" :class="{'is-selected': paymentScheme === 'FULL'}" @click="selectScheme('FULL')">
+                                                <div class="d-flex justify-content-between align-items-center w-100">
+                                                    <span class="plan-card-title">
+                                                        <i class="fa-solid fa-circle-check text-success"></i> Full Settlement
+                                                    </span>
+                                                    <span class="plan-radio-indicator"></span>
+                                                </div>
+                                                <div class="plan-card-amount">₱{{ formatCurrency(selectedStudent.payment.balance) }}</div>
+                                                <span class="plan-card-badge">100% Cleared</span>
+                                            </div>
+
+                                            <!-- Minimum Downpayment Option -->
+                                            <div class="plan-card" v-if="selectedStudent.payment.balance >= 3000" :class="{'is-selected': paymentScheme === 'DOWNPAYMENT'}" @click="selectScheme('DOWNPAYMENT')">
+                                                <div class="d-flex justify-content-between align-items-center w-100">
+                                                    <span class="plan-card-title">
+                                                        <i class="fa-solid fa-layer-group text-warning"></i> Downpayment
+                                                    </span>
+                                                    <span class="plan-radio-indicator"></span>
+                                                </div>
+                                                <div class="plan-card-amount">₱3,000</div>
+                                                <span class="plan-card-badge">Min. Entry</span>
+                                            </div>
+                                            <!-- Custom Amount Option -->
+                                            <div class="plan-card" :class="{'is-selected': paymentScheme === 'CUSTOM'}" @click="selectScheme('CUSTOM')">
+                                                <div class="d-flex justify-content-between align-items-center w-100">
+                                                    <span class="plan-card-title">
+                                                        <i class="fa-solid fa-sliders text-secondary"></i> Custom
+                                                    </span>
+                                                    <span class="plan-radio-indicator"></span>
+                                                </div>
+                                                <div class="plan-card-amount" style="font-size: 0.95rem; color: #4B5563;">Flexible</div>
+                                                <span class="plan-card-badge">Manual Entry</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Payment Mode & Amount Inputs -->
+                                    <div class="col-md-6">
+                                        <label class="form-label text-secondary small uppercase fw-bold mb-1.5" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                             Payment Mode
+                                        </label>
+                                        <div class="payment-input-group">
+                                            <span class="payment-input-addon">
+                                                <i class="fa-solid" :class="selectedStudent.payment.paymentType === 'Cash' ? 'fa-money-bill-wave text-success' : 'fa-wallet text-success'"></i>
+                                            </span>
+                                            <select class="form-select border-0 shadow-none fw-semibold" style="font-size: 0.88rem; background-color: transparent;" v-model="selectedStudent.payment.paymentType" @change="onPaymentTypeChange">
+                                                <option value="Cash">Cash (Over-the-Counter)</option>
+                                                <option value="GCash">GCash / Digital</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label text-secondary small uppercase fw-bold mb-1.5" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                            Amount to Pay
+                                        </label>
+                                        <div class="payment-input-group" :class="{'is-readonly': paymentScheme !== 'CUSTOM'}">
+                                            <span class="payment-input-addon">₱</span>
+                                            <input class="payment-input-control" type="number" :min="selectedStudent.payment.balance < 3000 ? selectedStudent.payment.balance : 3000" :max="selectedStudent.payment.balance" v-model.number="payAmountInput" :readonly="paymentScheme !== 'CUSTOM'" @input="onAmountChanged" placeholder="0">
+                                            <span class="d-flex align-items-center pe-3 text-muted" v-if="paymentScheme !== 'CUSTOM'" title="Locked by selected plan" style="font-size: 0.8rem;">
+                                                <i class="fa-solid fa-lock text-secondary"></i>
+                                            </span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mt-1.5 px-0.5">
+                                            <span class="text-muted" style="font-size: 0.7rem; font-weight: 600;">Min: ₱{{ formatCurrency(selectedStudent.payment.balance < 3000 ? selectedStudent.payment.balance : 3000) }}</span>
+                                            <span class="badge bg-light text-secondary border px-2 py-0.5" style="font-size: 0.68rem; font-weight: 700;" v-if="paymentScheme !== 'CUSTOM'">
+                                                {{ paymentScheme === 'FULL' ? 'Full Settlement' : 'Minimum Downpayment' }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- 1. Cash Mode: Cash Tendered & Change Due -->
+                                    <div class="col-md-6" v-if="selectedStudent.payment.paymentType === 'Cash'">
+                                        <label class="form-label text-secondary small uppercase fw-bold mb-1.5" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                            Cash Tendered
+                                        </label>
+                                        <div class="payment-input-group">
+                                            <span class="payment-input-addon">₱</span>
+                                            <input class="payment-input-control" type="number" min="0" v-model.number="cashTendered" placeholder="0">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6" v-if="selectedStudent.payment.paymentType === 'Cash'">
+                                        <label class="form-label text-secondary small uppercase fw-bold mb-1.5" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                            Change Due
+                                        </label>
+                                        <div class="payment-input-group is-readonly" style="background: #F0FDF4; border-color: #86EFAC;">
+                                            <span class="payment-input-addon" style="background: #DCFCE7; color: #15803D; border-color: #86EFAC;">₱</span>
+                                            <div class="payment-input-control text-success fw-bold d-flex align-items-center" style="font-size: 1.15rem; color: #166534 !important;">
+                                                {{ formatCurrency(changeDue) }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 2. GCash / Digital Channel -->
+                                    <div class="col-12" v-if="selectedStudent.payment.paymentType === 'GCash'">
+                                        <div class="card border rounded-3 p-3" style="background: #F8FAFC; border-color: #E2E8F0 !important;">
+                                            <div class="d-flex justify-content-between align-items-center mb-2.5 pb-2 border-bottom">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="badge px-2.5 py-1 text-white fw-bold" style="background: var(--primary-green, #006A4E); font-size: 0.72rem;">
+                                                        <i class="fa-solid fa-wallet me-1"></i>Digital Payment
+                                                    </span>
+                                                    <span class="text-secondary small fw-semibold">GCash / Maya / Online Checkout</span>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <button type="button" class="btn-pill btn-pill-sm btn-pill-outline py-1 px-2.5" @click="copyPayMongoLink" title="Copy payment link for student">
+                                                        <i class="fa-regular fa-copy me-1"></i>Copy Link
+                                                    </button>
+                                                    <button type="button" class="btn-pill btn-pill-sm btn-pill-green py-1 px-3" @click="launchPayMongoCheckout">
+                                                        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Open Checkout
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label class="form-label text-secondary small uppercase fw-bold mb-1" style="font-size: 0.7rem; letter-spacing: 0.04em;">
+                                                    Transaction Reference No. / GCash Ref ID
+                                                </label>
+                                                <div class="payment-input-group bg-white">
+                                                    <span class="payment-input-addon"><i class="fa-solid fa-hashtag text-muted"></i></span>
+                                                    <input class="payment-input-control font-monospace" type="text" v-model="otcReferenceNumber" placeholder="e.g. MP-20260823-998124 or GCash Ref No.">
+                                                </div>
+                                                <small class="text-muted mt-1 d-block" style="font-size: 0.72rem;">
+                                                    Enter the student's transaction reference ID, or click <strong>Open Checkout</strong> to process digitally.
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Dynamic Real-Time Settlement Ledger Breakdown -->
+                                    <div class="col-12">
+                                        <div class="payment-ledger-card">
+                                            <div class="ledger-row text-secondary">
+                                                <span class="d-flex align-items-center"><i class="fa-solid fa-wallet me-2 text-muted"></i>Current Assessment Balance:</span>
+                                                <span class="fw-bold text-dark fs-6">₱{{ formatCurrency(selectedStudent.payment.balance) }}</span>
+                                            </div>
+                                            <div class="ledger-row text-success">
+                                                <span class="d-flex align-items-center"><i class="fa-solid fa-circle-minus me-2"></i>Payment Amount:</span>
+                                                <span class="fw-bold fs-6">- ₱{{ formatCurrency(payAmountInput) }}</span>
+                                            </div>
+                                            <div class="ledger-row total-row">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="fw-bold text-dark d-flex align-items-center"><i class="fa-solid fa-scale-balanced me-2 text-muted"></i>New Remaining Balance:</span>
+                                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" :class="newBalance === 0 ? 'bg-success text-white' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'" style="font-size: 0.7rem;">
+                                                        {{ newBalance === 0 ? 'Fully Cleared' : 'Remaining Balance' }}
+                                                    </span>
+                                                </div>
+                                                <span class="fw-bold fs-5" :class="newBalance === 0 ? 'text-success' : 'text-danger'">
+                                                    ₱{{ formatCurrency(newBalance) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Account Fully Settled Hero Banner -->
+                            <div class="panel p-4 text-center border-0 rounded-3 shadow-sm" style="background: linear-gradient(135deg, #006A4E 0%, #004D38 100%); color: #ffffff;" v-else>
+                                <div class="mb-2" style="font-size: 2.5rem; color: #34D399;"><i class="fa-solid fa-circle-check"></i></div>
+                                <h5 class="fw-bold mb-1" style="font-family: var(--font-heading); letter-spacing: -0.02em;">ACCOUNT FULLY SETTLED</h5>
+                                <p class="small text-white-50 mb-3">All tuition and matriculation fees for this term have been paid in full (Balance: ₱0.00).</p>
+                                <button type="button" class="btn-pill btn-pill-green border-0 shadow-sm px-4" style="background: #ffffff; color: #006A4E; font-weight: 800;" @click="markEnrolledAndPrint(selectedStudent)">
+                                    <i class="fa-solid fa-print me-1"></i> Print Official Receipt
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Column 2: Enrollment Scope, Subject Breakdown & Observations -->
+                        <div class="col-md-6">
+                            <!-- Current Enrollment & Subjects Breakdown Card (Transparent Assessment) -->
+                            <div class="panel p-3 mb-3 border rounded-3 shadow-sm bg-white" style="border-color: #E2E8F0 !important;">
+                                <div class="d-flex justify-content-between align-items-center mb-2.5 pb-2 border-bottom">
+                                    <div>
+                                        <h6 class="m-0 text-dark fw-bold" style="font-size: 0.88rem; font-family: var(--font-heading);">
+                                            <i class="fa-solid fa-graduation-cap me-2 text-primary"></i>Current Enrollment Assessment
+                                        </h6>
+                                        <div class="text-muted small mt-0.5" style="font-size: 0.73rem;">
+                                            Academic Term: <strong class="text-dark">{{ selectedStudent.academicYear || '2026-2027' }}</strong> &middot; Semester: <strong class="text-primary">{{ selectedStudent.activeSemester || '1st Semester' }}</strong>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style="font-size: 0.7rem; font-weight: 700;">
+                                        {{ selectedStudent.curriculumVersion || '2022 Curriculum' }}
+                                    </span>
+                                </div>
+
+                                <!-- Subject List Table -->
+                                <div class="table-responsive mb-2.5" style="max-height: 190px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover align-middle mb-0 table-assessment-subjects" style="font-size: 0.74rem;">
+                                        <thead class="table-light sticky-top" style="font-size: 0.69rem; letter-spacing: 0.03em;">
+                                            <tr class="text-secondary text-uppercase">
+                                                <th class="ps-2">Subject</th>
+                                                <th class="text-center">Lec</th>
+                                                <th class="text-center">Lab</th>
+                                                <th class="text-center">Units</th>
+                                                <th class="text-end">Lab Fee</th>
+                                                <th class="text-end pe-2">Tuition</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="sub in getAdvisedSubjects(selectedStudent)" :key="sub.code">
+                                                <td class="ps-2">
+                                                    <div class="fw-bold text-dark">{{ sub.code }}</div>
+                                                    <div class="text-muted text-truncate" style="max-width: 130px; font-size: 0.68rem;" :title="sub.title">{{ sub.title }}</div>
+                                                </td>
+                                                <td class="text-center text-secondary">{{ sub.lecture_units }}</td>
+                                                <td class="text-center text-secondary">{{ sub.lab_units }}</td>
+                                                <td class="text-center fw-semibold text-dark">{{ sub.units }}</td>
+                                                <td class="text-end font-monospace text-secondary">
+                                                    {{ sub.lab_fee > 0 ? '₱' + formatCurrency(sub.lab_fee) : '—' }}
+                                                </td>
+                                                <td class="text-end pe-2 font-monospace fw-semibold text-dark">
+                                                    ₱{{ formatCurrency(sub.tuitionFee) }}
+                                                </td>
+                                            </tr>
+                                            <tr v-if="getAdvisedSubjects(selectedStudent).length === 0">
+                                                <td colspan="6" class="text-center py-3 text-muted small">No advised subjects loaded.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Itemized Fee Calculation Summary -->
+                                <div class="p-2.5 rounded-2" style="background: #F8FAFC; border: 1px solid #E2E8F0; font-size: 0.75rem;">
+                                    <div class="d-flex justify-content-between text-secondary mb-1">
+                                        <span>Tuition ({{ getAssessmentBreakdown(selectedStudent).totalUnits }} Units &times; ₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).tuitionRate) }}):</span>
+                                        <span class="fw-semibold text-dark font-monospace">₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).tuitionFee) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-secondary mb-1">
+                                        <span>Total Laboratory Fees:</span>
+                                        <span class="fw-semibold text-dark font-monospace">₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).totalLabFee) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-secondary mb-1">
+                                        <span>Miscellaneous Fees (Reg + Library):</span>
+                                        <span class="fw-semibold text-dark font-monospace">₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).miscFee) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-success mb-1" v-if="getAssessmentBreakdown(selectedStudent).discount > 0">
+                                        <span>Scholarship Discount:</span>
+                                        <span class="fw-bold font-monospace">- ₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).discount) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between border-top pt-1.5 mt-1 fw-bold text-dark" style="font-size: 0.82rem;">
+                                        <span class="text-uppercase" style="color: var(--dark-green);">Total Current Semester Charges:</span>
+                                        <span class="text-success fs-6 font-monospace">₱{{ formatCurrency(getAssessmentBreakdown(selectedStudent).cashTotal) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Verification Stepper -->
+                            <div class="panel p-3 mb-3" style="background: rgba(0, 106, 78, 0.03); border: 1px solid rgba(0, 106, 78, 0.1); border-radius: var(--radius-md);">
+                                <h6 class="mb-3 text-dark fw-bold" style="font-family: var(--font-heading);">Campus Verification Progress</h6>
+                                <div class="vertical-stepper">
+                                    <div v-for="(step, index) in selectedStudent.roadmap" :key="step.stepId"
+                                         class="vertical-step-node"
+                                         :class="{
+                                             'is-completed': step.status === 'COMPLETED',
+                                             'is-active': step.status === 'IN_PROGRESS',
+                                             'is-upcoming': step.status === 'PENDING'
+                                         }">
+                                        <div class="vertical-step-marker">
+                                            <i class="fas fa-check" v-if="step.status === 'COMPLETED'"></i>
+                                            <i class="fas fa-flag" v-else-if="step.status === 'FLAGGED'"></i>
+                                            <i :class="getStepIcon(index)" v-else></i>
+                                        </div>
+                                        <div class="vertical-step-content">
+                                            <span class="vertical-step-title">{{ step.title }}</span>
+                                            <span class="vertical-step-status">{{ step.status }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-1" v-if="selectedStudent.payment.balance > 0">
+                                <label class="form-label text-muted small uppercase fw-bold">Cashier Observations / Notes</label>
+                                <textarea class="form-control" rows="4" v-model="selectedStudent.payment.cashierNotes" placeholder="Enter ledger modifications or payment observations here..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ledger Payment History -->
+                    <div class="mt-4 border-top pt-3" v-if="selectedStudent.payment.history && selectedStudent.payment.history.length > 0">
+                        <h6 class="mb-3 text-dark fw-bold" style="font-size: 0.85rem;"><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Transaction &amp; Payment History Ledger</h6>
+                        <div class="table-responsive">
+                            <table class="data-table small">
+                                <thead>
+                                    <tr>
+                                        <th>Date &amp; Time</th>
+                                        <th>Transaction / OR Ref</th>
+                                        <th>Mode</th>
+                                        <th>Amount Paid</th>
+                                        <th>Cashier</th>
+                                        <th>Observations</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="h in selectedStudent.payment.history" :key="h.date">
+                                        <td><code class="text-secondary font-monospace">{{ new Date(h.date).toLocaleString() }}</code></td>
+                                        <td><code class="fw-bold text-dark font-monospace">{{ h.reference }}</code></td>
+                                        <td><span class="badge bg-light text-dark border">{{ h.paymentType }}</span></td>
+                                        <td><strong class="text-success">₱{{ formatCurrency(h.amount) }}</strong></td>
+                                        <td>{{ h.cashier }}</td>
+                                        <td><span class="text-muted">{{ h.notes || '-' }}</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer gap-2">
+                    <button type="button" class="btn-pill btn-pill-ghost" @click="closeModal">Cancel</button>
+                    <button type="button" class="btn-pill btn-pill-green" @click="recordPayment" :disabled="isRecordingPayment" v-if="selectedStudent && selectedStudent.status !== 'PAID' && selectedStudent.status !== 'ENROLLED'">
+                        <i v-if="isRecordingPayment" class="fa-solid fa-circle-notch fa-spin me-1"></i>
+                        <i v-else class="fa-solid fa-circle-check me-1"></i>
+                        {{ isRecordingPayment ? 'Recording...' : 'Record Payment' }}
+                    </button>
+                    <button type="button" class="btn-pill btn-pill-green" v-if="selectedStudent && (selectedStudent.status === 'PAID' || selectedStudent.status === 'PARTIAL') && selectedStudent.status !== 'ENROLLED'" @click="markEnrolledAndPrint(selectedStudent)"><i class="fa-solid fa-print me-1"></i>Print Receipt</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+        <!-- Printable Receipt Overlay -->
+        <div v-if="receiptData" class="confirm-overlay"
+            style="background: rgba(0, 0, 0, 0.75); z-index: 1100; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto;">
+            <div class="receipt-container bg-white text-dark p-4 rounded-4 shadow-lg position-relative" style="width: 820px; max-width: 95%; max-height: 95vh; overflow-y: auto;">
+                
+                <!-- Print Header & Controls (Hidden during print) -->
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom no-print">
+                    <div class="d-flex align-items-center gap-2 text-success fw-bold">
+                        <i class="fa-solid fa-circle-check fs-5"></i>
+                        <span>Official Receipt Generated</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3 fw-semibold" @click="closeReceipt">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Close &amp; Back to Queue
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success px-3 fw-bold text-white shadow-sm"
+                            style="background: var(--primary-green, #006A4E); border-color: var(--primary-green, #006A4E);"
+                            @click="printReceipt">
+                            <i class="fa-solid fa-print me-1"></i> Print Receipt
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Actual Receipt Section (Printed horizontally) -->
+                <div id="printable-receipt-card" class="receipt-horizontal-layout p-4 border border-dark rounded-3" style="background: #fafafa; font-size: 0.85rem; font-family: 'Courier New', Courier, monospace;">
+                    <div class="row align-items-center border-bottom pb-2 mb-3">
+                        <div class="col-8">
+                            <h4 class="fw-bold m-0" style="color: #004A3C; font-family: sans-serif; letter-spacing: 0.5px; font-size: 1.25rem;">
+                                GO-ON NATIONAL COLLEGE OF THE PHILIPPINES
+                            </h4>
+                            <small class="text-muted">Emilio Aguinaldo Highway, Dasmari&ntilde;as City, Cavite</small>
+                        </div>
+                        <div class="col-4 text-end">
+                            <div class="fw-bold text-uppercase fs-6" style="color: #cda819;">Official Receipt</div>
+                            <small class="font-monospace text-secondary fw-bold">OR: {{ receiptData.transactionRef }}</small>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <div class="mb-1"><strong>Student Name:</strong> {{ receiptData.name }}</div>
+                            <div class="mb-1"><strong>Reference No:</strong> {{ receiptData.refNo }}</div>
+                            <div><strong>Degree Course:</strong> {{ receiptData.program }}</div>
+                        </div>
+                        <div class="col-6 border-start ps-3">
+                            <div class="mb-1"><strong>Payment Date:</strong> {{ receiptData.date }}</div>
+                            <div class="mb-1"><strong>Payment Mode:</strong> {{ receiptData.paymentMode }}</div>
+                            <div><strong>Cashier:</strong> {{ receiptData.cashier }}</div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive mb-4">
+                        <table class="table table-sm table-bordered border-dark text-center align-middle mb-0" style="font-size: 0.82rem;">
+                            <thead class="table-light border-dark">
+                                <tr>
+                                    <th>Particulars</th>
+                                    <th>Total Assessment</th>
+                                    <th>Amount Paid</th>
+                                    <th>Outstanding Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-start font-monospace fw-bold">GNCP College Matriculation (AY 2026-2027)</td>
+                                    <td>₱{{ formatCurrency(receiptData.totalFee) }}</td>
+                                    <td class="fw-bold text-success">₱{{ formatCurrency(receiptData.amountPaid) }}</td>
+                                    <td class="fw-bold text-danger">₱{{ formatCurrency(receiptData.balance) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <small class="text-muted" style="font-size:0.7rem; line-height: 1.2;">Disclaimer: This serves as an official electronic receipt of payment validation for Go-on National College of the Philippines. Keep this copy for records.</small>
+                        </div>
+                        <div class="col-4 text-center border-top border-dark pt-2">
+                            <div class="fw-bold" style="font-size: 0.75rem;">AUTHORIZED SIGNATURE</div>
+                            <small class="text-secondary">GNCP Finance &amp; Treasury</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logout Confirm Dialog -->
+        <div v-if="showLogoutConfirm" class="confirm-overlay" @click.self="showLogoutConfirm = false">
+            <div class="confirm-card">
+                <div class="confirm-icon"><i class="fa-solid fa-right-from-bracket text-danger"></i></div>
+                <h4 class="confirm-title">Confirm Logout</h4>
+                <p class="confirm-msg">Are you sure you want to log out of this station?</p>
+                <div class="confirm-actions">
+                    <button class="confirm-btn-cancel" @click="showLogoutConfirm = false">Cancel</button>
+                    <button class="confirm-btn-danger" @click="confirmLogout">Log Out</button>
+                </div>
+            </div>
+        </div>
+
+    </template>
+    <template v-else>
+        <div class="d-flex flex-column align-items-center justify-content-center min-vh-100 bg-dark text-white p-4" style="background: linear-gradient(135deg, #0b1511 0%, #15271f 100%); font-family: 'Plus Jakarta Sans', sans-serif;">
+            <div class="spinner-border text-warning mb-3" role="status" style="width: 2.5rem; height: 2.5rem; border-width: 0.2em;"></div>
+            <h5 class="fw-bold" style="color: #D4AF37; font-family: 'Outfit', sans-serif;">Verifying Treasury Session...</h5>
+            <p class="text-secondary small mb-0">Establishing operator credentials and loading collection ledger...</p>
+        </div>
+    </template>
+    </div> <!-- close app -->
+
+    <script src="../../shared/libs/bootstrap.bundle.min.js"></script>
+    <script src="../../shared/libs/vue.global.js"></script>
+    <script src="../../shared/libs/sweetalert2.all.min.js"></script>
+    <script src="../../shared/js/SessionExpirationGuard.js?v=1789204778"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js?v=1789204778"></script>
+    <script src="../../shared/js/components/EmployeeSidebar.js?v=1789204778"></script>
+    <script src="../../shared/js/StationPipeline.js?v=1789204778"></script>
+    <script src="../assets/js/DataBus.js?v=1789204778"></script>
+    <script src="assets/js/app.js?v=1789204778"></script>
+</body>
+</html>

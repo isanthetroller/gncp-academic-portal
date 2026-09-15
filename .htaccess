@@ -1,0 +1,153 @@
+# ==============================================================================
+# GNCP Academic & Enrollment System â€” Production Server Configuration & Caching
+# ==============================================================================
+
+DirectoryIndex index.php index.html
+
+# ------------------------------------------------------------------------------
+# 1. URL Rewriting: Clean extensionless URLs & Server-Side Portal Protection
+# ------------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 1.0 Force HTTPS Canonical 301 Redirect for all live/production requests
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:\d+)?$ [NC]
+    RewriteCond %{HTTPS} off [OR]
+    RewriteCond %{HTTP:X-Forwarded-Proto} =http [OR]
+    RewriteCond %{HTTP:CF-Visitor} '"scheme":"http"'
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301,NE]
+
+    # 1.1 External Canonical 301 Redirect: Strip index.html & .html from direct browser requests
+    RewriteCond %{THE_REQUEST} \s/+([^\s?]+?)/index\.html[\s?] [NC]
+    RewriteRule ^ /%1/ [R=301,L,NE]
+
+    RewriteCond %{THE_REQUEST} \s/+([^\s?]*?)index\.html[\s?] [NC]
+    RewriteRule ^ /%1 [R=301,L,NE]
+
+    RewriteCond %{THE_REQUEST} \s/+([^\s?]+?)\.html[\s?] [NC]
+    RewriteRule ^ /%1 [R=301,L,NE]
+
+    # 1.2 Block direct HTTP access to internal test suites, database dumps, logs, config, and dev tools
+    RewriteRule ^(tests|scratch|database|shared/backend/config|shared/backend/logs|\.agents)(/.*)?$ - [F,L,NC]
+
+    # 1.3 Clean Public URLs (internal rewrites to target files)
+    RewriteRule ^login/?$ index.html [L,QSA]
+    RewriteRule ^school-website/?$ school-website/index.html [L,QSA]
+    RewriteRule ^enrollment-system/?$ enrollment-system/index.html [L,QSA]
+    RewriteRule ^enrollment-system/tracker/?$ enrollment-system/tracker.html [L,QSA]
+    RewriteRule ^student-portal/login/?$ student-portal/login.html [L,QSA]
+    RewriteRule ^student-portal/forgot-password/?$ student-portal/forgot-password.html [L,QSA]
+
+    # 1.4 Reroute direct requests for protected station and student portal pages to their server-side auth PHP wrappers
+    RewriteRule ^admin/?(index(\.html|\.php)?)?$ admin/index.php [L,QSA]
+    RewriteRule ^registrar/?(index(\.html|\.php)?)?$ registrar/index.php [L,QSA]
+    RewriteRule ^student-portal/?(index(\.html|\.php)?)?$ student-portal/index.php [L,QSA]
+    RewriteRule ^stations/([^/]+)/?(index(\.html|\.php)?)?$ stations/$1/index.php [L,QSA]
+    RewriteRule ^monitoring/?(index(\.html|\.php)?)?$ monitoring/index.php [L,QSA]
+
+    # 1.5 Internally resolve any remaining extensionless URL to .html if corresponding file exists
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME}.html -f
+    RewriteRule ^(.*)$ $1.html [L,QSA]
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# 2. Enable GZIP & Deflate Compression (Reduces payload size by up to 75%)
+# ------------------------------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript
+    AddOutputFilterByType DEFLATE application/javascript application/x-javascript application/json
+    AddOutputFilterByType DEFLATE application/xml application/xhtml+xml application/rss+xml
+    AddOutputFilterByType DEFLATE image/svg+xml font/ttf font/otf font/woff font/woff2
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# 3. Browser Cache-Control & Expiration Policy (Instant repeat page loads)
+# ------------------------------------------------------------------------------
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresDefault "access plus 1 day"
+
+    # Static CSS and JavaScript (Cached for 7 days)
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType text/javascript "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType application/x-javascript "access plus 7 days"
+
+    # Images and Media (Cached for 1 month)
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType image/x-icon "access plus 1 month"
+
+    # Web Fonts (Cached for 1 year)
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType font/otf "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+
+    # Dynamic HTML and JSON APIs (No cache to ensure real-time accuracy)
+    ExpiresByType text/html "access plus 0 seconds"
+    ExpiresByType application/json "access plus 0 seconds"
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# 4. HTTP Header Optimizations & Security
+# ------------------------------------------------------------------------------
+# Disable Directory Index Browsing
+Options -Indexes
+
+<IfModule mod_headers.c>
+    # Strip Server & Language Fingerprints
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
+
+    # Static Assets Cache-Control Headers
+    <FilesMatch "\.(ico|jpe?g|png|gif|webp|svg|woff2?|ttf|otf|eot)$">
+        Header set Cache-Control "max-age=2592000, public"
+    </FilesMatch>
+
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "max-age=604800, public"
+    </FilesMatch>
+
+    # Protect sensitive files from direct download
+    <FilesMatch "(\.(sql|log|git|env|md|jsonl|ini|conf|bak|sh|bat|credentials)|composer\.(json|lock)|package\.(json|lock)|database\.php|mail\.php|db_config\.php|mail\.local\.php|.*\.local\.php)$">
+        <IfModule mod_authz_core.c>
+            Require all denied
+        </IfModule>
+        <IfModule !mod_authz_core.c>
+            Order allow,deny
+            Deny from all
+        </IfModule>
+    </FilesMatch>
+
+    # Block all hidden dotfiles (e.g. .git, .env, .htaccess)
+    <FilesMatch "^\.">
+        <IfModule mod_authz_core.c>
+            Require all denied
+        </IfModule>
+        <IfModule !mod_authz_core.c>
+            Order allow,deny
+            Deny from all
+        </IfModule>
+    </FilesMatch>
+
+    # Security Headers
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    Header set Content-Security-Policy "upgrade-insecure-requests; default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; font-src 'self' https: data:; img-src 'self' data: blob: https:;"
+    Header set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" "expr=%{HTTPS} == 'on' || %{HTTP:X-Forwarded-Proto} == 'https'"
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# 5. UTF-8 Default Charset
+# ------------------------------------------------------------------------------
+AddDefaultCharset UTF-8
