@@ -68,3 +68,5 @@ uploads/documents/*
 !uploads/documents/.htaccess
 shared/assets/uploads/avatar_*
 stations/it-center/assets/uploads/avatar_*
+
+tools/.js_originals/
