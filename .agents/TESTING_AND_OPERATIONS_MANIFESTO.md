@@ -187,7 +187,7 @@ When executing any update, maintenance, or deployment cycle, follow this exact 7
 - **Account**: `if0_42745296`
 - **Remote Root**: `/htdocs`
 - **Excluded Directories**: `.git`, `.idea`, `.vscode`, `tests`, `cache`, `logs`, `scratch`, `backups`.
-- **Live URL**: `https://gncp.free.nf`
+- **Live URL**: `https://gncp-main.site.je`
 - **Remote Validation Checks**:
   1. Clean URL resolution for `/`, `/login`, `/school-website/`, `/enrollment-system/`, `/student-portal/login`.
   2. Static asset caching and compression header checks.

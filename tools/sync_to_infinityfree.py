@@ -376,13 +376,13 @@ class LiveSyncMonitor:
         """Send live HTTP requests to InfinityFree web domain to ensure portals load cleanly."""
         print("--- Performing Live Production HTTP Health Checks ---")
         endpoints = [
-            ("Home Page", "https://gncp.free.nf/"),
-            ("School Website", "https://gncp.free.nf/school-website/"),
-            ("Enrollment Form", "https://gncp.free.nf/enrollment-system/"),
-            ("Application Tracker", "https://gncp.free.nf/enrollment-system/tracker/"),
-            ("Student Portal Login", "https://gncp.free.nf/student-portal/login/"),
-            ("Registrar Station", "https://gncp.free.nf/registrar/"),
-            ("Admin Login", "https://gncp.free.nf/admin/"),
+            ("Home Page", "https://gncp-main.site.je/"),
+            ("School Website", "https://gncp-main.site.je/school-website/"),
+            ("Enrollment Form", "https://gncp-main.site.je/enrollment-system/"),
+            ("Application Tracker", "https://gncp-main.site.je/enrollment-system/tracker/"),
+            ("Student Portal Login", "https://gncp-main.site.je/student-portal/login/"),
+            ("Registrar Station", "https://gncp-main.site.je/registrar/"),
+            ("Admin Login", "https://gncp-main.site.je/admin/"),
         ]
 
         ctx = ssl.create_default_context()
