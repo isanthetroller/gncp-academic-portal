@@ -31,39 +31,12 @@ class StudentPortalController {
             return ['success' => false, 'message' => 'Student ID is required.', 'code' => 400];
         }
 
-        // Authorize caller: Student must match session, or Admin/Staff
-        initSession();
-        $studentSess = $_SESSION['gncp_student'] ?? null;
-        $adminSess   = $_SESSION['gncp_admin_user'] ?? null;
-        $stationSess = $_SESSION['gncp_station_user'] ?? null;
-        $sessStudentId = is_array($studentSess) ? ($studentSess['id'] ?? '') : '';
-
-        if (!$adminSess && !$stationSess && (!$sessStudentId || strcasecmp($sessStudentId, $studentId) !== 0)) {
-            return ['success' => false, 'message' => 'Unauthorized access to student dashboard. Please sign in.', 'code' => 401];
-        }
-
-        // Idle Timeout verification (7200s)
-        $now = time();
-        if (isset($_SESSION['last_activity']) && ($now - $_SESSION['last_activity']) > 7200) {
-            $_SESSION = [];
-            @session_destroy();
-            return ['success' => false, 'message' => 'Your session has expired due to inactivity. Please sign in again.', 'code' => 401];
-        }
-        $_SESSION['last_activity'] = $now;
-
-        // Single-Active Session Token verification
-        if ($studentSess && !empty($studentSess['session_token'])) {
-            $checkStmt = $this->pdo->prepare("SELECT `active_session_token` FROM `students` WHERE `id` = :id LIMIT 1");
-            $checkStmt->execute(['id' => $sessStudentId]);
-            $activeDbToken = $checkStmt->fetchColumn();
-
-            if ($activeDbToken && $activeDbToken !== $studentSess['session_token']) {
-                $_SESSION = [];
-                @session_destroy();
-                return ['success' => false, 'message' => 'Your session has expired because your account was logged in from another device.', 'code' => 401];
+        $caller = requireAuth(['STUDENT', 'ADMIN', 'SUPER_ADMIN', 'REGISTRAR', 'HELPDESK', 'IT_CENTER']);
+        if (strtoupper($caller['role'] ?? '') === 'STUDENT') {
+            if (strcasecmp($caller['identity'] ?? '', $studentId) !== 0) {
+                return ['success' => false, 'message' => 'Unauthorized access to student dashboard.', 'code' => 403];
             }
         }
-        session_write_close();
 
         return StudentPortalService::getStudentDashboard($this->pdo, $studentId);
     }
@@ -74,15 +47,13 @@ class StudentPortalController {
             return ['success' => false, 'message' => 'Student ID is required.', 'code' => 400];
         }
 
-        initSession();
-        $studentSess = $_SESSION['gncp_student'] ?? null;
-        $adminSess   = $_SESSION['gncp_admin_user'] ?? null;
-        $stationSess = $_SESSION['gncp_station_user'] ?? null;
-        $sessStudentId = is_array($studentSess) ? ($studentSess['id'] ?? '') : '';
-
-        if (!$adminSess && !$stationSess && (!$sessStudentId || strcasecmp($sessStudentId, $studentId) !== 0)) {
-            return ['success' => false, 'message' => 'Unauthorized access to update student profile.', 'code' => 401];
+        $caller = requireAuth(['STUDENT', 'ADMIN', 'SUPER_ADMIN']);
+        if (strtoupper($caller['role'] ?? '') === 'STUDENT') {
+            if (strcasecmp($caller['identity'] ?? '', $studentId) !== 0) {
+                return ['success' => false, 'message' => 'Unauthorized access to update profile.', 'code' => 403];
+            }
         }
+
         $res = StudentPortalService::updateProfile($this->pdo, $studentId, $data);
         if (!empty($res['success']) && !empty($res['data']['photo'])) {
             initSession();
@@ -95,22 +66,21 @@ class StudentPortalController {
         return $res;
     }
 
-
     public function changePassword(array $data = []): array {
         $studentId       = $data['studentId'] ?? ($data['student_id'] ?? ($data['id'] ?? ''));
         $currentPassword = $data['currentPassword'] ?? ($data['current_password'] ?? '');
         $newPassword     = $data['newPassword'] ?? ($data['new_password'] ?? '');
 
-        initSession();
-        $studentSess = $_SESSION['gncp_student'] ?? null;
-        $adminSess   = $_SESSION['gncp_admin_user'] ?? null;
-        $stationSess = $_SESSION['gncp_station_user'] ?? null;
-        $sessStudentId = is_array($studentSess) ? ($studentSess['id'] ?? '') : '';
-
-        if (!$adminSess && !$stationSess && (!$sessStudentId || strcasecmp($sessStudentId, $studentId) !== 0)) {
-            return ['success' => false, 'message' => 'Unauthorized access to change password.', 'code' => 401];
+        if (!$studentId) {
+            return ['success' => false, 'message' => 'Student ID is required.', 'code' => 400];
         }
-        session_write_close();
+
+        $caller = requireAuth(['STUDENT', 'ADMIN', 'SUPER_ADMIN']);
+        if (strtoupper($caller['role'] ?? '') === 'STUDENT') {
+            if (strcasecmp($caller['identity'] ?? '', $studentId) !== 0) {
+                return ['success' => false, 'message' => 'Unauthorized access to change password.', 'code' => 403];
+            }
+        }
 
         return StudentPortalService::changePassword($this->pdo, $studentId, $currentPassword, $newPassword);
     }
@@ -129,32 +99,38 @@ class StudentPortalController {
 
     public function getDocuments(array $params = []): array {
         $studentId = $params['studentId'] ?? ($params['id'] ?? ($params['ref'] ?? ''));
+        $caller = requireAuth(['STUDENT', 'ADMIN', 'SUPER_ADMIN', 'REGISTRAR', 'HELPDESK', 'IT_CENTER']);
+        if (strtoupper($caller['role'] ?? '') === 'STUDENT') {
+            if (strcasecmp($caller['identity'] ?? '', $studentId) !== 0) {
+                return ['success' => false, 'message' => 'Unauthorized access to student documents.', 'code' => 403];
+            }
+        }
+
         $ctrl = new StudentController($this->pdo);
         return $ctrl->getDocuments($studentId);
     }
 
     public function uploadDocument(array $data = []): array {
+        $studentId = $data['studentId'] ?? ($data['id'] ?? ($data['ref'] ?? ''));
+        $caller = requireAuth(['STUDENT', 'ADMIN', 'SUPER_ADMIN']);
+        if (strtoupper($caller['role'] ?? '') === 'STUDENT' && !empty($studentId)) {
+            if (strcasecmp($caller['identity'] ?? '', $studentId) !== 0) {
+                return ['success' => false, 'message' => 'Unauthorized access to upload document.', 'code' => 403];
+            }
+        }
+
         $ctrl = new StudentController($this->pdo);
         return $ctrl->uploadDocument($data);
     }
 
     public function logout(): array {
         initSession();
-        $_SESSION = [];
-        if (ini_get("session.use_cookies")) {
-            $params = session_get_cookie_params();
-            setcookie(
-                session_name(),
-                '',
-                time() - 42000,
-                $params["path"] ?? '/',
-                $params["domain"] ?? '',
-                $params["secure"] ?? false,
-                $params["httponly"] ?? true
-            );
+        $studentSess = $_SESSION['gncp_student'] ?? null;
+        $sessStudentId = is_array($studentSess) ? ($studentSess['id'] ?? '') : '';
+        if (!empty($sessStudentId)) {
+            clearUserActiveSessionToken($sessStudentId, true);
         }
-        @session_unset();
-        @session_destroy();
+        destroySessionCompletely();
         return ['success' => true, 'data' => null, 'message' => 'Logged out successfully.'];
     }
 }

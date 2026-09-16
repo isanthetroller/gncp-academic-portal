@@ -29,7 +29,8 @@ tests/selenium/__pycache__/
 tests/playwright/__pycache__/
 tests/selenium/screenshots/*.png
 !tests/selenium/screenshots/.gitkeep
-tests/playwright/screenshots/*_[0-9]*.png
+tests/playwright/screenshots/*.png
+tests/unified/screenshots/*.png
 
 # IDEs and editors
 .idea/

@@ -160,10 +160,20 @@ class SeleniumTestRunner:
     def get_api_session(self, username="admin", password="admin12345"):
         """Creates an authenticated requests.Session for API operations."""
         s = requests.Session()
-        try:
-            s.post(f"{config.BASE_URL}/shared/backend/login.php", json={"username": username, "password": password})
-        except Exception:
-            pass
+        s.headers["Origin"] = config.BASE_URL
+        s.headers["Referer"] = config.BASE_URL
+        if self.driver:
+            for cookie in self.driver.get_cookies():
+                s.cookies.set(cookie['name'], cookie['value'])
+        if 'PHPSESSID' not in s.cookies:
+            try:
+                res = s.post(f"{config.BASE_URL}/shared/backend/login.php", json={"username": username, "password": password})
+                if res.status_code == 200:
+                    csrf = (res.json().get("data") or {}).get("csrf_token")
+                    if csrf:
+                        s.headers["X-CSRF-Token"] = csrf
+            except Exception:
+                pass
         return s
 
     def _do_station_login(self, page_key, role_key):
@@ -194,17 +204,31 @@ class SeleniumTestRunner:
             EC.presence_of_element_located((By.ID, "password"))
         )
 
-        user_field.clear()
-        user_field.send_keys(creds["username"])
-        pass_field.clear()
-        pass_field.send_keys(creds["password"])
+        # Set values and dispatch events for Vue reactivity
+        self.driver.execute_script("""
+            arguments[0].value = arguments[1];
+            arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
+            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+        """, user_field, creds["username"])
+        
+        self.driver.execute_script("""
+            arguments[0].value = arguments[1];
+            arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
+            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+        """, pass_field, creds["password"])
         time.sleep(0.5)
 
-        submit_btn = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit'].login-btn, button[type='submit']"))
-        )
-        submit_btn.click()
-        time.sleep(2.5)
+        # Submit login form
+        self.driver.execute_script("""
+            const form = document.querySelector('form');
+            if (form) {
+                form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+            } else {
+                const btn = document.querySelector("button[type='submit'].login-btn, button[type='submit']");
+                if (btn) btn.click();
+            }
+        """)
+        time.sleep(3.0)
 
         # Set user session in client storage for guaranteed Vue station component rendering
         user_dict = json.dumps({
@@ -215,6 +239,10 @@ class SeleniumTestRunner:
         key = "gncp_admin_user" if role_key in ["ADMIN", "SUPER_ADMIN"] else "gncp_station_user"
         try:
             self.driver.execute_script("""
+                sessionStorage.removeItem('gncp_admin_user');
+                sessionStorage.removeItem('gncp_station_user');
+                localStorage.removeItem('gncp_admin_user');
+                localStorage.removeItem('gncp_station_user');
                 const storageKey = arguments[0];
                 const storageVal = arguments[1];
                 sessionStorage.setItem(storageKey, storageVal);
@@ -413,9 +441,8 @@ class SeleniumTestRunner:
         # 3. Navigate to Class Sections view
         try:
             self.driver.execute_script("""
-                const appElem = document.querySelector('#admin-app') || document.querySelector('#app');
-                if (appElem && appElem.__vue_app__) {
-                    const vm = appElem.__vue_app__._instance.proxy;
+                const vm = window.app || document.querySelector('#admin-app')?.__vue_app__?._instance?.proxy || document.querySelector('#app')?.__vue_app__?._instance?.proxy;
+                if (vm) {
                     if (vm.expandedCats) vm.expandedCats.sections = true;
                     if (vm.setView) vm.setView('classOfferings');
                 }
@@ -642,13 +669,10 @@ class SeleniumTestRunner:
 
         # Mark all required documents as ORIGINAL via Vue controller
         self.driver.execute_script("""
-            const appElem = document.querySelector('#app') || document.querySelector('#registrar-app');
-            if (appElem && appElem.__vue_app__) {
-                const vm = appElem.__vue_app__._instance.proxy;
-                if (vm.selectedApplication && vm.setDocStatus) {
-                    const reqs = vm.selectedApplication.requirements || [];
-                    reqs.forEach(item => vm.setDocStatus(item, 'ORIGINAL'));
-                }
+            const vm = window.app || document.querySelector('#app')?.__vue_app__?._instance?.proxy || document.querySelector('#registrar-app')?.__vue_app__?._instance?.proxy;
+            if (vm && vm.selectedApplication && vm.setDocStatus) {
+                const reqs = vm.selectedApplication.requirements || [];
+                reqs.forEach(item => vm.setDocStatus(item, 'ORIGINAL'));
             }
         """)
         time.sleep(1.0)
@@ -709,8 +733,7 @@ class SeleniumTestRunner:
 
         # Click Approve & Verify button inside modal or trigger via controller
         self.driver.execute_script("""
-            const appElem = document.querySelector('#app') || document.querySelector('#registrar-app');
-            const vm = (appElem && appElem.__vue_app__) ? appElem.__vue_app__._instance.proxy : window.app;
+            const vm = window.app || document.querySelector('#app')?.__vue_app__?._instance?.proxy || document.querySelector('#registrar-app')?.__vue_app__?._instance?.proxy;
             if (vm && vm.updateApplicationStatus) {
                 vm.updateApplicationStatus('Approved');
             } else {
@@ -820,7 +843,7 @@ class SeleniumTestRunner:
                 ]
             }
         }
-        requests.post(f"{config.BASE_URL}/api/index.php?action=stations/update", json=update_payload)
+        self.get_api_session().post(f"{config.BASE_URL}/api/index.php?action=stations/update", json=update_payload)
 
         # DB ASSERTION: Verify status = ADVISED
         verify_resp = self.get_api_session().get(f"{config.BASE_URL}/api/index.php?action=stations/queue")
@@ -864,7 +887,7 @@ class SeleniumTestRunner:
                 ]
             }
         }
-        requests.post(f"{config.BASE_URL}/api/index.php?action=stations/update", json=update_payload)
+        self.get_api_session().post(f"{config.BASE_URL}/api/index.php?action=stations/update", json=update_payload)
 
         # DB ASSERTION: Verify status = MEDICAL_CLEARED
         verify_resp = self.get_api_session().get(f"{config.BASE_URL}/api/index.php?action=stations/queue")
@@ -910,7 +933,7 @@ class SeleniumTestRunner:
                 ]
             }
         }
-        requests.post(f"{config.BASE_URL}/api/index.php?action=stations/update", json=update_payload)
+        self.get_api_session().post(f"{config.BASE_URL}/api/index.php?action=stations/update", json=update_payload)
 
         # DB ASSERTION: Verify status = PAID
         verify_resp = self.get_api_session().get(f"{config.BASE_URL}/api/index.php?action=stations/queue")

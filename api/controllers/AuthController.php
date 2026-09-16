@@ -145,6 +145,17 @@ class AuthController {
         $success = $this->userModel->changePassword($username, $newPassword);
         if ($success) {
             require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
+
+            // Rotate session token on password change to invalidate any concurrent sessions on other devices
+            $newSessionToken = bin2hex(random_bytes(32));
+            try {
+                $pdo = Database::getInstance();
+                $tokenStmt = $pdo->prepare("UPDATE `station_users` SET `active_session_token` = :token WHERE `username` = :username");
+                $tokenStmt->execute(['token' => $newSessionToken, 'username' => $username]);
+            } catch (Exception $e) {
+                error_log('[AuthController::changePasswordTokenRotate] Failed: ' . $e->getMessage());
+            }
+
             initSession();
             $sessionKeys = ['gncp_admin_user', 'gncp_station_user'];
             foreach ($sessionKeys as $key) {
@@ -152,6 +163,7 @@ class AuthController {
                     $sessionUser = is_string($_SESSION[$key]) ? json_decode($_SESSION[$key], true) : $_SESSION[$key];
                     if (is_array($sessionUser) && ($sessionUser['username'] ?? '') === $username) {
                         $sessionUser['must_change_password'] = false;
+                        $sessionUser['session_token'] = $newSessionToken;
                         $_SESSION[$key] = is_string($_SESSION[$key]) ? json_encode($sessionUser) : $sessionUser;
                         break;
                     }
@@ -167,21 +179,18 @@ class AuthController {
     public function logout() {
         require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
         initSession();
-        $_SESSION = [];
-        if (ini_get("session.use_cookies")) {
-            $params = session_get_cookie_params();
-            setcookie(
-                session_name(),
-                '',
-                time() - 42000,
-                $params["path"] ?? '/',
-                $params["domain"] ?? '',
-                $params["secure"] ?? false,
-                $params["httponly"] ?? true
-            );
+
+        $user = $_SESSION['gncp_admin_user'] ?? ($_SESSION['gncp_station_user'] ?? ($_SESSION['gncp_student'] ?? null));
+        if ($user) {
+            $u = is_string($user) ? json_decode($user, true) : $user;
+            $identity = $u['username'] ?? ($u['id'] ?? '');
+            $isStudent = (($u['role'] ?? '') === 'STUDENT' || isset($_SESSION['gncp_student']));
+            if (!empty($identity)) {
+                clearUserActiveSessionToken($identity, $isStudent);
+            }
         }
-        session_unset();
-        session_destroy();
+
+        destroySessionCompletely();
         return ['success' => true, 'message' => 'Logged out successfully.'];
     }
 

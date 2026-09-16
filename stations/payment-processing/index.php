@@ -1,26 +1,12 @@
 <?php
 /**
  * GNCP Payment Processing (Cashier) Station — Server-Side Authentication Gateway
+ * Enforces server-side authentication and single-active session before serving portal DOM or scripts.
  */
 require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
-initSession();
 
-$stationUser = $_SESSION['gncp_station_user'] ?? ($_SESSION['gncp_admin_user'] ?? null);
-$userRole    = '';
+requirePageAuth(['CASHIER', 'ADMIN', 'SUPER_ADMIN'], '../../');
 
-if ($stationUser) {
-    $u = is_array($stationUser) ? $stationUser : json_decode($stationUser, true);
-    $userRole = strtoupper($u['role'] ?? '');
-}
-
-if (!$stationUser || !in_array($userRole, ['CASHIER', 'ADMIN', 'SUPER_ADMIN'], true)) {
-    $redirectUrl = '../../?clear=true&auth_required=true&redirect=' . urlencode($_SERVER['REQUEST_URI'] ?? '/systemtest/stations/payment-processing/');
-    if (!headers_sent()) {
-        header('Location: ' . $redirectUrl);
-        exit;
-    }
-    echo '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>';
-    exit;
-}
-
+// Caller is authenticated with valid single-active session — serve station
 readfile(__DIR__ . '/index.html');
+

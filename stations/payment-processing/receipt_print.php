@@ -12,17 +12,7 @@ if (empty($ref)) {
 try {
     $pdo = Database::getInstance();
 
-    // Check staff session for security
-    initSession();
-    $isLoggedInStaff = false;
-    $storedUser = $_SESSION['gncp_station_user'] ?? $_SESSION['gncp_admin_user'] ?? null;
-    if ($storedUser) {
-        $user = is_array($storedUser) ? $storedUser : (is_string($storedUser) ? json_decode($storedUser, true) : []);
-        $role = strtoupper($user['role'] ?? '');
-        if (in_array($role, ['CASHIER', 'REGISTRAR', 'ADMIN', 'SUPER_ADMIN', 'HELPDESK', 'MEDICAL', 'IT_CENTER'])) {
-            $isLoggedInStaff = true;
-        }
-    }
+
 
     // Retrieve pre-enrollment details
     $stmt = $pdo->prepare("
@@ -79,16 +69,22 @@ try {
         die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>Error: Student record not found.</h1>");
     }
 
-    // Access control: allow staff, matching authenticated student, or valid PIN
-    $isAuthorized = $isLoggedInStaff;
-    if (!$isAuthorized && !empty($_SESSION['gncp_student'])) {
-        $studentUser = is_array($_SESSION['gncp_student']) ? $_SESSION['gncp_student'] : json_decode($_SESSION['gncp_student'], true);
-        $sId = strtolower($studentUser['id'] ?? ($studentUser['username'] ?? ''));
-        $targetId = strtolower($student['temp_student_id'] ?? ($student['id'] ?? ''));
-        if ($sId && ($sId === $targetId || strcasecmp($sId, $ref) === 0)) {
+    // Access control: allow staff with valid single-active session, matching authenticated student, or valid PIN
+    $isAuthorized = false;
+    $authValidation = validateSession(['CASHIER', 'REGISTRAR', 'ADMIN', 'SUPER_ADMIN', 'HELPDESK', 'MEDICAL', 'IT_CENTER', 'STUDENT']);
+    if (!empty($authValidation['authenticated'])) {
+        $role = strtoupper($authValidation['role'] ?? '');
+        if ($role !== 'STUDENT') {
             $isAuthorized = true;
+        } else {
+            $sId = strtolower($authValidation['identity'] ?? '');
+            $targetId = strtolower($student['temp_student_id'] ?? ($student['id'] ?? ''));
+            if ($sId && ($sId === $targetId || strcasecmp($sId, $ref) === 0)) {
+                $isAuthorized = true;
+            }
         }
     }
+
     if (!$isAuthorized) {
         $reqPin = trim($_GET['pin'] ?? '');
         $storedPin = (string)($student['temp_pin'] ?? '');

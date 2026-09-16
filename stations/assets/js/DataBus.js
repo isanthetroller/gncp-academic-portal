@@ -103,20 +103,22 @@ class StationDataBus {
                 StationDataBus.stopPolling();
                 const result = await response.json().catch(() => ({}));
                 console.warn('[DataBus] 401 Session Terminated:', result.message || 'Unauthorized');
+                const isSuperseded = !!(result.session_invalidated || (result.data && result.data.session_invalidated));
                 if (typeof window.SessionExpirationGuard !== 'undefined') {
                     window.SessionExpirationGuard.handleExpiredSession({
-                        title: 'Session Expired',
-                        message: result.message || 'Your workstation session has expired. Please sign in again to continue.',
-                        reason: 'expired',
+                        title: isSuperseded ? 'Session Invalidated' : 'Session Expired',
+                        message: isSuperseded 
+                            ? 'Your session has been invalidated because this account was signed in from another device or browser.' 
+                            : (result.message || 'Your workstation session has expired. Please sign in again to continue.'),
+                        reason: isSuperseded ? 'superseded' : 'expired',
                         forceAlert: true
                     });
                 } else {
                     const isStation = window.location.pathname.includes('/stations/');
                     const isRegistrar = window.location.pathname.includes('/registrar/');
-                    const redirectTarget = (isStation ? '../../' : (isRegistrar ? '../' : './')) + '?session_expired=1';
-                    if (!window.location.href.includes('session_expired=1')) {
-                        window.location.href = redirectTarget;
-                    }
+                    const paramKey = isSuperseded ? 'session_invalidated=1&reason=superseded' : 'session_expired=1';
+                    const redirectTarget = (isStation ? '../../' : (isRegistrar ? '../' : './')) + `?clear=true&${paramKey}`;
+                    window.location.href = redirectTarget;
                 }
                 return;
             }

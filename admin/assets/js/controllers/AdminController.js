@@ -1309,6 +1309,27 @@ const app = createApp({
 
             try {
                 const res = await fetch('../api/index.php?action=auth/check', { credentials: 'same-origin' });
+                if (res.status === 401) {
+                    const errData = await res.json().catch(() => ({}));
+                    const isSuperseded = !!(errData.session_invalidated || (errData.data && errData.data.session_invalidated));
+                    currentAdmin.value = null;
+                    if (typeof window.SessionExpirationGuard !== 'undefined') {
+                        window.SessionExpirationGuard.handleExpiredSession({
+                            title: isSuperseded ? 'Session Invalidated' : 'Session Expired',
+                            message: isSuperseded 
+                                ? 'Your session has been invalidated because this account was signed in from another device or browser.' 
+                                : 'Your administrator session has expired. Please sign in again to continue managing the system.',
+                            reason: isSuperseded ? 'superseded' : 'expired',
+                            forceAlert: true
+                        });
+                    } else {
+                        sessionStorage.removeItem('gncp_admin_user');
+                        sessionStorage.removeItem('gncp_station_user');
+                        const paramKey = isSuperseded ? 'session_invalidated=1&reason=superseded' : 'session_expired=1';
+                        window.location.href = `../?clear=true&${paramKey}&redirect=` + encodeURIComponent(window.location.pathname + window.location.search);
+                    }
+                    return;
+                }
                 if (res.ok) {
                     const result = await res.json();
                     if (result.success && result.data && (result.data.role === 'SUPER_ADMIN' || result.data.role === 'ADMIN')) {

@@ -26,7 +26,8 @@
 
             const redirectTarget = encodeURIComponent(window.location.pathname + window.location.search);
             if (reason) {
-                return `${prefix}?session_expired=1&reason=${encodeURIComponent(reason)}&redirect=${redirectTarget}`;
+                const paramName = (reason === 'superseded') ? 'session_invalidated=1' : 'session_expired=1';
+                return `${prefix}?clear=true&${paramName}&reason=${encodeURIComponent(reason)}&redirect=${redirectTarget}`;
             }
             return `${prefix}?redirect=${redirectTarget}`;
         },
@@ -48,11 +49,11 @@
         },
 
         /**
-         * Notifies user that session is expired and redirects to login portal.
+         * Notifies user that session is expired or invalidated and redirects to login portal.
          * If the user was NEVER logged in (e.g. freshly opened in new browser),
          * it redirects immediately and silently to login without showing an expired alert.
          * @param {Object} options
-         * @param {string} [options.title='Session Expired']
+         * @param {string} [options.title]
          * @param {string} [options.message]
          * @param {string} [options.reason='expired']
          * @param {number} [options.timer=4000]
@@ -61,7 +62,8 @@
         handleExpiredSession(options = {}) {
             if (this._isNotifying) return;
 
-            const hadSession = options.forceAlert || this.hasPriorSession();
+            const isSuperseded = (options.reason === 'superseded');
+            const hadSession = options.forceAlert || isSuperseded || this.hasPriorSession();
 
             // Clear active user credentials
             try {
@@ -79,16 +81,18 @@
 
             this._isNotifying = true;
 
-            // User had a prior session that expired: show informative alert
-            const title = options.title || 'Session Expired';
-            const message = options.message || 'Your workstation session has timed out or expired. Please sign in again to continue.';
-            const redirectUrl = this.getLoginRedirectUrl(options.reason || 'expired');
+            // User had a prior session that was invalidated or expired: show informative alert
+            const title = options.title || (isSuperseded ? 'Session Invalidated' : 'Session Expired');
+            const message = options.message || (isSuperseded 
+                ? 'Your session has been invalidated because this account was signed in from another device or browser.' 
+                : 'Your workstation session has timed out or expired. Please sign in again to continue.');
+            const redirectUrl = this.getLoginRedirectUrl(options.reason || (isSuperseded ? 'superseded' : 'expired'));
 
             if (typeof window.Swal !== 'undefined') {
                 window.Swal.fire({
                     title: title,
                     text: message,
-                    icon: 'warning',
+                    icon: isSuperseded ? 'warning' : 'warning',
                     confirmButtonText: '<i class="fa-solid fa-right-to-bracket me-1"></i> Sign In Again',
                     confirmButtonColor: '#006A4E',
                     allowOutsideClick: false,

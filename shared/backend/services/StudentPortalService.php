@@ -559,9 +559,17 @@ class StudentPortalService {
             return ['success' => false, 'message' => 'Current password is incorrect.', 'code' => 401];
         }
 
+        $newSessionToken = bin2hex(random_bytes(32));
         $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
-        $pdo->prepare("UPDATE `students` SET `password` = :pwd, `must_change_password` = 0 WHERE `id` = :id")
-            ->execute(['pwd' => $hashed, 'id' => $studentId]);
+        $pdo->prepare("UPDATE `students` SET `password` = :pwd, `must_change_password` = 0, `active_session_token` = :token WHERE `id` = :id")
+            ->execute(['pwd' => $hashed, 'token' => $newSessionToken, 'id' => $studentId]);
+
+        initSession();
+        if (isset($_SESSION['gncp_student']) && is_array($_SESSION['gncp_student'])) {
+            $_SESSION['gncp_student']['must_change_password'] = false;
+            $_SESSION['gncp_student']['session_token'] = $newSessionToken;
+        }
+        session_write_close();
 
         return [
             'success' => true,

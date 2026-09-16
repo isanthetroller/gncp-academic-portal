@@ -43,13 +43,28 @@ class AdminController {
     public function cleanupTestUsers($payload) { return $this->userCtrl->cleanupTestUsers($payload); }
 
     public function getAnnouncements($filters = []) { return AnnouncementService::getAnnouncements($this->pdo, $filters); }
-    public function saveAnnouncement($payload) { return AnnouncementService::saveAnnouncement($this->pdo, $payload); }
-    public function deleteAnnouncement($payload) { return AnnouncementService::deleteAnnouncement($this->pdo, $payload); }
-    public function uploadAnnouncementImage() { return AnnouncementService::uploadImage(); }
+    public function saveAnnouncement($payload) { 
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
+        return AnnouncementService::saveAnnouncement($this->pdo, $payload); 
+    }
+    public function deleteAnnouncement($payload) { 
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
+        return AnnouncementService::deleteAnnouncement($this->pdo, $payload); 
+    }
+    public function uploadAnnouncementImage() { 
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
+        return AnnouncementService::uploadImage(); 
+    }
 
     public function getMilestones($filters = []) { return MilestoneService::getMilestones($this->pdo, $filters); }
-    public function saveMilestone($payload) { return MilestoneService::saveMilestone($this->pdo, $payload); }
-    public function deleteMilestone($payload) { return MilestoneService::deleteMilestone($this->pdo, $payload); }
+    public function saveMilestone($payload) { 
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
+        return MilestoneService::saveMilestone($this->pdo, $payload); 
+    }
+    public function deleteMilestone($payload) { 
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
+        return MilestoneService::deleteMilestone($this->pdo, $payload); 
+    }
 }
 
 

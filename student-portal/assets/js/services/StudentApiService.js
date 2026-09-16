@@ -37,6 +37,24 @@ window.StudentApiService = {
             const responseReqId = response.headers.get('X-Request-ID') || reqId;
             const data = await response.json();
 
+            if (response.status === 401 && action !== 'login' && action !== 'student_login') {
+                sessionStorage.removeItem('gncp_portal_student');
+                localStorage.removeItem('gncp_portal_student');
+                const isInvalidated = !!(data && (data.session_invalidated || (data.data && data.data.session_invalidated)));
+                const param = isInvalidated ? 'session_invalidated=1&reason=superseded' : 'session_expired=1&reason=expired';
+                if (!window.location.pathname.includes('login.html')) {
+                    window.location.href = `login.html?clear=true&${param}`;
+                }
+                return {
+                    success: false,
+                    message: data.message || 'Session invalidated. Redirecting to login...',
+                    code: 401,
+                    session_invalidated: isInvalidated,
+                    requestId: responseReqId,
+                    data: null
+                };
+            }
+
             if (!response.ok || !data.success) {
                 console.warn(`[StudentPortal::API] ⚠️ API returned error status for [${action}] (ID: ${responseReqId}):`, data);
                 return {

@@ -13,29 +13,7 @@ if (empty($ref)) {
     die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>Error: Student reference number or Student ID is required.</h1>");
 }
 
-initSession();
-$isAuthorized = false;
 
-// 1. Staff session check
-$adminUser = $_SESSION['gncp_admin_user'] ?? null;
-$stationUser = $_SESSION['gncp_station_user'] ?? null;
-if ($adminUser || $stationUser) {
-    $u = $adminUser ?: $stationUser;
-    $role = strtoupper(is_array($u) ? ($u['role'] ?? '') : (json_decode($u, true)['role'] ?? ''));
-    if (in_array($role, ['CASHIER', 'REGISTRAR', 'ADMIN', 'SUPER_ADMIN', 'HELPDESK', 'IT_CENTER'])) {
-        $isAuthorized = true;
-    }
-}
-
-// 2. Student session check
-$studentSess = $_SESSION['gncp_student'] ?? null;
-if ($studentSess) {
-    $sessId = is_array($studentSess) ? ($studentSess['id'] ?? '') : '';
-    if (!empty($sessId) && strcasecmp($sessId, $ref) === 0) {
-        $isAuthorized = true;
-    }
-}
-session_write_close();
 
 try {
     $pdo = Database::getInstance();
@@ -99,26 +77,19 @@ try {
         die("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>Error: Student record not found.</h1>");
     }
 
-    // Access control check: allow logged in cashier/admin/staff, active student session, or valid PIN
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    // Access control check: allow logged in cashier/admin/staff with valid session, active student session, or valid PIN
     $isAuthorized = false;
-    $storedUser = $_SESSION['gncp_station_user'] ?? $_SESSION['gncp_admin_user'] ?? null;
-    if ($storedUser) {
-        $user = is_array($storedUser) ? $storedUser : (is_string($storedUser) ? json_decode($storedUser, true) : []);
-        $role = strtoupper($user['role'] ?? '');
-        if (in_array($role, ['CASHIER', 'REGISTRAR', 'ADMIN', 'SUPER_ADMIN', 'HELPDESK', 'MEDICAL', 'IT_CENTER'])) {
+    $authValidation = validateSession(['CASHIER', 'REGISTRAR', 'ADMIN', 'SUPER_ADMIN', 'HELPDESK', 'MEDICAL', 'IT_CENTER', 'STUDENT']);
+    if (!empty($authValidation['authenticated'])) {
+        $role = strtoupper($authValidation['role'] ?? '');
+        if ($role !== 'STUDENT') {
             $isAuthorized = true;
-        }
-    }
-
-    if (!$isAuthorized && !empty($_SESSION['gncp_student'])) {
-        $studentUser = is_array($_SESSION['gncp_student']) ? $_SESSION['gncp_student'] : json_decode($_SESSION['gncp_student'], true);
-        $sId = strtolower($studentUser['id'] ?? ($studentUser['username'] ?? ''));
-        $targetId = strtolower($student['temp_student_id'] ?? ($student['id'] ?? ''));
-        if ($sId && ($sId === $targetId || strcasecmp($sId, $ref) === 0)) {
-            $isAuthorized = true;
+        } else {
+            $sId = strtolower($authValidation['identity'] ?? '');
+            $targetId = strtolower($student['temp_student_id'] ?? ($student['id'] ?? ''));
+            if ($sId && ($sId === $targetId || strcasecmp($sId, $ref) === 0)) {
+                $isAuthorized = true;
+            }
         }
     }
 

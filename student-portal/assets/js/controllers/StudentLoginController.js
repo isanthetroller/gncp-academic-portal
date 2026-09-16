@@ -4,6 +4,7 @@ window.StudentLoginController = {
         const isLoggingIn = ref(false);
         const loginError = ref('');
         const resetSuccessMsg = ref('');
+        const sessionInvalidatedNotice = ref(false);
         const showPassword = ref(false);
         const rememberMe = ref(true);
         const hasSavedCredentials = ref(false);
@@ -36,6 +37,20 @@ window.StudentLoginController = {
             if (params.get('clear') === 'true' || params.get('logout') === 'true') {
                 sessionStorage.removeItem('gncp_portal_student');
                 localStorage.removeItem('gncp_portal_student');
+            }
+            if (params.get('session_invalidated') === '1' || params.get('reason') === 'superseded') {
+                sessionStorage.removeItem('gncp_portal_student');
+                localStorage.removeItem('gncp_portal_student');
+                sessionInvalidatedNotice.value = true;
+                try {
+                    const cleanParams = new URLSearchParams(window.location.search);
+                    cleanParams.delete('session_invalidated');
+                    cleanParams.delete('reason');
+                    cleanParams.delete('clear');
+                    const newQuery = cleanParams.toString();
+                    const newUrl = window.location.pathname + (newQuery ? '?' + newQuery : '');
+                    window.history.replaceState({}, document.title, newUrl);
+                } catch (e) {}
                 return;
             }
             if (params.get('reset') === 'success') {
@@ -91,6 +106,7 @@ window.StudentLoginController = {
             isLoggingIn,
             loginError,
             resetSuccessMsg,
+            sessionInvalidatedNotice,
             loginForm,
             showPassword,
             rememberMe,

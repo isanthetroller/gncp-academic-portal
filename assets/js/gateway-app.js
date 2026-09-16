@@ -31,19 +31,25 @@ const { createApp, ref, reactive, computed, onMounted } = Vue;
                     sessionStorage.getItem('gncp_admin_user') ||
                     localStorage.getItem('gncp_was_logged_in')
                 );
+                const hasInvalidatedQuery = (
+                    urlParams.get('session_invalidated') === '1' ||
+                    urlParams.get('reason') === 'superseded'
+                );
                 const hasExpiredQuery = (
                     urlParams.get('session_expired') === '1' ||
                     urlParams.get('expired') === '1' ||
                     urlParams.get('reason') === 'expired'
                 );
-                // Only show expiration notice if this browser actually had a previous session
-                const sessionExpiredNotice = ref(hasExpiredQuery && hadPriorSession);
+                const sessionInvalidatedNotice = ref(hasInvalidatedQuery);
+                // Only show expiration notice if this browser actually had a previous session and not invalidated
+                const sessionExpiredNotice = ref(hasExpiredQuery && hadPriorSession && !hasInvalidatedQuery);
 
-                // Clean the URL query params so copying the link or refreshing doesn't keep the expired flag
-                if (hasExpiredQuery) {
+                // Clean the URL query params so copying the link or refreshing doesn't keep the flags
+                if (hasExpiredQuery || hasInvalidatedQuery) {
                     try {
                         const cleanParams = new URLSearchParams(window.location.search);
                         cleanParams.delete('session_expired');
+                        cleanParams.delete('session_invalidated');
                         cleanParams.delete('expired');
                         cleanParams.delete('reason');
                         const newQuery = cleanParams.toString();
@@ -265,6 +271,7 @@ const { createApp, ref, reactive, computed, onMounted } = Vue;
                     loginForm,
                     loginError,
                     sessionExpiredNotice,
+                    sessionInvalidatedNotice,
                     errorKey,
                     isLoggingIn,
                     loginStatusText,

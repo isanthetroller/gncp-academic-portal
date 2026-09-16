@@ -35,14 +35,19 @@
                 });
 
                 if (response.status === 401) {
+                    const errData = await response.json().catch(() => ({}));
+                    const isSuperseded = !!(errData.session_invalidated || (errData.data && errData.data.session_invalidated));
                     if (typeof global.SessionExpirationGuard !== 'undefined') {
                         global.SessionExpirationGuard.handleExpiredSession({
-                            title: 'Session Expired',
-                            message: 'Your registrar workstation session has expired. Please sign in again.',
-                            reason: 'expired'
+                            title: isSuperseded ? 'Session Invalidated' : 'Session Expired',
+                            message: isSuperseded 
+                                ? 'Your session has been invalidated because this account was signed in from another device or browser.' 
+                                : (errData.message || 'Your registrar workstation session has expired. Please sign in again.'),
+                            reason: isSuperseded ? 'superseded' : 'expired',
+                            forceAlert: true
                         });
                     }
-                    return createResponse(false, null, 'Authentication required. Please sign in.', { code: 401, requestId: reqId });
+                    return createResponse(false, null, errData.message || 'Authentication required. Please sign in.', { code: 401, requestId: reqId });
                 }
 
                 if (response.status === 304) {
