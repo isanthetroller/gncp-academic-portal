@@ -41,16 +41,19 @@ class StudentController {
             return ['success' => false, 'message' => 'Application record not found.', 'code' => 404];
         }
 
-        // Sensitive field protection: Require staff session, matching student, or valid PIN for full PII
+        // Sensitive field protection: Require staff session with valid token, matching student, or valid PIN for full PII
         require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
-        initSession();
-        $adminSess   = $_SESSION['gncp_admin_user'] ?? null;
-        $stationSess = $_SESSION['gncp_station_user'] ?? null;
-        $studentSess = $_SESSION['gncp_student'] ?? null;
-        $sessStudentId = is_array($studentSess) ? ($studentSess['id'] ?? '') : '';
-        $isStaff = ($adminSess !== null || $stationSess !== null);
-        $isMatchingStudent = (!empty($sessStudentId) && (strcasecmp($sessStudentId, (string)($student['id'] ?? '')) === 0 || strcasecmp($sessStudentId, (string)($student['referenceNumber'] ?? '')) === 0));
-        session_write_close();
+        $authValidation = validateSession(['ADMIN', 'SUPER_ADMIN', 'REGISTRAR', 'HELPDESK', 'MEDICAL', 'CASHIER', 'IT_CENTER', 'STUDENT']);
+        $isStaff = false;
+        $isMatchingStudent = false;
+        if (!empty($authValidation['authenticated'])) {
+            if ($authValidation['role'] !== 'STUDENT') {
+                $isStaff = true;
+            } else {
+                $sessStudentId = $authValidation['identity'] ?? '';
+                $isMatchingStudent = (!empty($sessStudentId) && (strcasecmp($sessStudentId, (string)($student['id'] ?? '')) === 0 || strcasecmp($sessStudentId, (string)($student['referenceNumber'] ?? '')) === 0));
+            }
+        }
 
         $reqPin = trim($_GET['pin'] ?? ($_POST['pin'] ?? ''));
         $storedPin = (string)($student['tempPin'] ?? '');
@@ -116,14 +119,17 @@ class StudentController {
         }
 
         require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
-        initSession();
-        $adminSess   = $_SESSION['gncp_admin_user'] ?? null;
-        $stationSess = $_SESSION['gncp_station_user'] ?? null;
-        $studentSess = $_SESSION['gncp_student'] ?? null;
-        $sessStudentId = is_array($studentSess) ? ($studentSess['id'] ?? ($studentSess['username'] ?? '')) : '';
-
-        $isStaff = ($adminSess !== null || $stationSess !== null);
-        $isMatchingStudent = (!empty($sessStudentId) && strcasecmp($sessStudentId, $identifier) === 0);
+        $authValidation = validateSession(['ADMIN', 'SUPER_ADMIN', 'REGISTRAR', 'HELPDESK', 'MEDICAL', 'CASHIER', 'IT_CENTER', 'STUDENT']);
+        $isStaff = false;
+        $isMatchingStudent = false;
+        if (!empty($authValidation['authenticated'])) {
+            if ($authValidation['role'] !== 'STUDENT') {
+                $isStaff = true;
+            } else {
+                $sessStudentId = $authValidation['identity'] ?? '';
+                $isMatchingStudent = (!empty($sessStudentId) && strcasecmp($sessStudentId, $identifier) === 0);
+            }
+        }
 
         if (!$isStaff && !$isMatchingStudent) {
             $reqPin = trim($pin ?: ($_GET['pin'] ?? ($_POST['pin'] ?? '')));
@@ -170,16 +176,19 @@ class StudentController {
             return ['success' => false, 'message' => 'Student identifier and document requirement key are required.', 'code' => 400];
         }
 
-        // Authorization check: Must be staff, matching student session, or valid applicant with verified PIN
+        // Authorization check: Must be staff, matching student session with valid token, or valid applicant with verified PIN
         require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
-        initSession();
-        $adminSess   = $_SESSION['gncp_admin_user'] ?? null;
-        $stationSess = $_SESSION['gncp_station_user'] ?? null;
-        $studentSess = $_SESSION['gncp_student'] ?? null;
-        $sessStudentId = is_array($studentSess) ? ($studentSess['id'] ?? ($studentSess['username'] ?? '')) : '';
-
-        $isStaff = ($adminSess !== null || $stationSess !== null);
-        $isMatchingStudent = (!empty($sessStudentId) && strcasecmp($sessStudentId, $identifier) === 0);
+        $authValidation = validateSession(['ADMIN', 'SUPER_ADMIN', 'REGISTRAR', 'HELPDESK', 'MEDICAL', 'CASHIER', 'IT_CENTER', 'STUDENT']);
+        $isStaff = false;
+        $isMatchingStudent = false;
+        if (!empty($authValidation['authenticated'])) {
+            if ($authValidation['role'] !== 'STUDENT') {
+                $isStaff = true;
+            } else {
+                $sessStudentId = $authValidation['identity'] ?? '';
+                $isMatchingStudent = (!empty($sessStudentId) && strcasecmp($sessStudentId, $identifier) === 0);
+            }
+        }
 
         if (!$isStaff && !$isMatchingStudent) {
             $reqPin = trim($payload['pin'] ?? ($payload['tempPin'] ?? ($_GET['pin'] ?? ($_POST['pin'] ?? ''))));

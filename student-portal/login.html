@@ -509,6 +509,11 @@
                     <p class="login-subtitle">Please enter your Student ID or Reference Code</p>
                 </div>
 
+                <div v-if="sessionInvalidatedNotice" class="alert-custom-err" style="background: #FEF2F2; border-color: #F87171; color: #991B1B;">
+                    <i class="fa-solid fa-shield-halved mt-1" style="color: #DC2626;"></i>
+                    <div>Your session has been invalidated because this account was signed in from another device or browser.</div>
+                </div>
+
                 <div v-if="resetSuccessMsg" class="alert-custom-ok">
                     <i class="fa-solid fa-circle-check mt-1"></i>
                     <div>{{ resetSuccessMsg }}</div>
