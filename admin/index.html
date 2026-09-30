@@ -3298,7 +3298,7 @@
                     <div class="warn-banner">
                         <i class="fa-solid fa-lightbulb"></i>
                         <div>
-                            <strong>Guide:</strong> Manage workstation logins (Registrar, Helpdesk, Clinic, Cashier, IT Center). Staff accounts reside in <code>station_users</code>. Click <strong>Approve</strong>, <strong>Deactivate</strong>, or <strong>Reset Password</strong> to manage operator credentials.
+                            <strong>Guide:</strong> Manage workstation logins (Registrar, Helpdesk, Clinic, Cashier, IT Center, Academic Scheduler, Admin). Staff accounts reside in <code>station_users</code>. Click <strong>Approve</strong>, <strong>Deactivate</strong>, or <strong>Reset Password</strong> to manage operator credentials.
                         </div>
                     </div>
                     <div class="status-filters">
@@ -3335,6 +3335,101 @@
                                     </span></td>
                                 </tr>
                                 <tr v-if="filteredUsers.length===0" class="empty-row"><td colspan="5">No operator accounts found.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ── PROFESSOR / TEACHER ACCOUNTS ──────────────────────── -->
+                <div v-if="view==='professors'" class="card">
+                    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                        <span><i class="fa-solid fa-user-tie"></i> Faculty Professor Accounts</span>
+                        <button type="button" class="btn-add" @click="openCreateProfessorModal"><i class="fa-solid fa-user-plus" style="margin-right:6px"></i>Add Professor</button>
+                    </div>
+                    <div class="warn-banner">
+                        <i class="fa-solid fa-lightbulb"></i>
+                        <div>
+                            <strong>Guide:</strong> Manage academic faculty and teacher accounts. Professors belong to academic departments and are assigned to subject sections by the Academic Scheduler.
+                        </div>
+                    </div>
+                    <div class="filter-bar" style="margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div class="status-filters" style="margin-bottom: 0;">
+                            <button type="button" class="btn-status-filter" :class="{active:filterProfStatus==='ALL'}" @click="filterProfStatus='ALL'">All Professors</button>
+                            <button type="button" class="btn-status-filter" :class="{active:filterProfStatus==='ACTIVE'}" @click="filterProfStatus='ACTIVE'">Active</button>
+                            <button type="button" class="btn-status-filter" :class="{active:filterProfStatus==='INACTIVE'}" @click="filterProfStatus='INACTIVE'">Inactive</button>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                            <select class="f-select" v-model="filterProfDept" style="width: auto; min-width: 160px; padding: 6px 12px; font-size: 0.8rem;">
+                                <option value="ALL">All Departments</option>
+                                <option v-for="d in departments" :key="d.id" :value="d.name">{{ d.name }}</option>
+                            </select>
+                            <input type="text" class="search-box" v-model="searchProfQuery" placeholder="Search professor name, ID, email..." style="width: 220px; padding: 6px 12px; font-size: 0.8rem;">
+                        </div>
+                    </div>
+                    <div class="table-responsive stable-table-container">
+                        <table class="tbl table-layout-fixed">
+                            <thead>
+                                <tr>
+                                    <th style="width:22%;">Professor Name</th>
+                                    <th style="width:14%;">Faculty ID</th>
+                                    <th style="width:18%;">Username / Email</th>
+                                    <th style="width:18%;">Department</th>
+                                    <th style="width:10%;">Teaching Load</th>
+                                    <th style="width:8%;">Status</th>
+                                    <th style="width:10%;" class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody v-if="isLoadingProfessors && (!professors || professors.length === 0)">
+                                <tr v-for="n in 5" :key="'prof-skel-' + n" class="table-skeleton-row">
+                                    <td><div class="skeleton-bar" style="width: 80%;"></div></td>
+                                    <td><div class="skeleton-bar skeleton-bar-sm" style="width: 70%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 60%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 60%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 50%;"></div></td>
+                                    <td><div class="skeleton-pill" style="width: 50%;"></div></td>
+                                    <td style="text-align:right"><div class="skeleton-btn" style="width: 80px; margin-left: auto;"></div></td>
+                                </tr>
+                            </tbody>
+                            <tbody v-else>
+                                <tr v-for="p in filteredProfessors" :key="p.id" class="table-row-enter">
+                                    <td style="font-weight:600">
+                                        <div style="display:flex;align-items:center;gap:8px">
+                                            <div style="width:28px;height:28px;border-radius:50%;background:#006A4E;color:#fff;display:grid;place-items:center;font-size:0.75rem;font-weight:700">
+                                                {{ (p.name || 'P').substring(0,2).toUpperCase() }}
+                                            </div>
+                                            <span>{{ p.name }}</span>
+                                        </div>
+                                    </td>
+                                    <td><code style="color:var(--primary);font-weight:600">{{ p.employee_id || ('FAC-' + p.id) }}</code></td>
+                                    <td>
+                                        <div><code style="color:var(--sky)">{{ p.username }}</code></div>
+                                        <small style="color:var(--text-muted);font-size:0.72rem">{{ p.email }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd">
+                                            {{ p.department_name || p.department_code || 'General Faculty' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge" style="background:#f1f5f9;color:#334155;font-weight:600">
+                                            {{ p.current_load || 0 }} class(es)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge" :class="(p.status||'ACTIVE').toUpperCase()==='ACTIVE'?'badge-active':'badge-deact'">
+                                            {{ (p.status || 'ACTIVE').toUpperCase() }}
+                                        </span>
+                                    </td>
+                                    <td style="text-align:right">
+                                        <span style="display:flex;gap:4px;justify-content:flex-end">
+                                            <button type="button" v-if="(p.status||'ACTIVE').toUpperCase()==='ACTIVE'" class="btn-sm-warn" @click="toggleProfessorStatus(p, 'INACTIVE')" title="Deactivate"><i class="fa-solid fa-ban"></i></button>
+                                            <button type="button" v-else class="btn-sm-green" @click="toggleProfessorStatus(p, 'ACTIVE')" title="Activate"><i class="fa-solid fa-rotate-left"></i></button>
+                                            <button type="button" class="btn-sm-sky" @click="resetProfessorPassword(p)" title="Reset Password"><i class="fa-solid fa-key"></i></button>
+                                            <button type="button" class="btn-sm-sky" @click="openEditProfessorModal(p)" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr v-if="filteredProfessors.length===0" class="empty-row"><td colspan="7">No faculty professors found matching criteria.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -3940,6 +4035,8 @@
                         <option value="MEDICAL">Medical Clinic (Doctor & Health Clearance)</option>
                         <option value="CASHIER">Cashier / Treasury (Payment Processing)</option>
                         <option value="IT_CENTER">IT Center (Student Portal Account Promotion)</option>
+                        <option value="SCHEDULER">Academic Scheduler (Course & Faculty Scheduling)</option>
+                        <option value="ADMIN">System Administrator (Administrative Console)</option>
                     </select>
                 </div>
             </div>
@@ -3991,7 +4088,9 @@
                         <option value="MEDICAL">Medical Clinic (Doctor & Health Clearance)</option>
                         <option value="CASHIER">Cashier / Treasury (Payment Processing)</option>
                         <option value="IT_CENTER">IT Center (Student Portal Account Promotion)</option>
-                        <option v-if="['ADMIN','SUPER_ADMIN'].includes((operatorForm.role||'').toUpperCase())" :value="operatorForm.role">{{ operatorForm.role }}</option>
+                        <option value="SCHEDULER">Academic Scheduler (Course & Faculty Scheduling)</option>
+                        <option value="ADMIN">System Administrator (Administrative Console)</option>
+                        <option v-if="(operatorForm.role||'').toUpperCase() === 'SUPER_ADMIN'" value="SUPER_ADMIN">SUPER_ADMIN</option>
                     </select>
                 </div>
             </div>
@@ -4012,10 +4111,62 @@
         </div>
     </div>
 
+    <!-- ══ CREATE / EDIT PROFESSOR ACCOUNT MODAL ══ -->
+    <div v-if="isProfessorModalOpen" class="overlay" @click.self="closeProfessorModal">
+        <div class="modal-card" @click.stop style="max-width: 580px; padding: 32px 36px;">
+            <div class="modal-title" style="margin-bottom: 18px;">
+                <i class="fa-solid fa-user-tie" style="color:var(--primary); font-size: 1.3rem;"></i>
+                <span>{{ professorForm.id ? 'Edit Faculty Professor Account' : 'Create Faculty Professor Account' }}</span>
+            </div>
 
+            <div class="form-row" style="margin-bottom: 16px;">
+                <div class="form-group">
+                    <label class="form-label" style="margin-bottom: 6px;">Full Name / Academic Title <span style="color:var(--danger)">*</span></label>
+                    <input class="form-input" v-model="professorForm.name" placeholder="Prof. Alan Turing or Dr. Jane Doe" style="padding: 10px 14px;">
+                </div>
+            </div>
 
+            <div class="form-row col2" style="margin-bottom: 16px; gap: 16px;">
+                <div class="form-group">
+                    <label class="form-label" style="margin-bottom: 6px;">Employee / Faculty ID</label>
+                    <input class="form-input" v-model="professorForm.employee_id" placeholder="FAC-2026-001" style="padding: 10px 14px;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="margin-bottom: 6px;">Academic Department <span style="color:var(--danger)">*</span></label>
+                    <select class="form-select" v-model="professorForm.department_id" style="padding: 10px 14px;">
+                        <option value="" disabled>Select department…</option>
+                        <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+                    </select>
+                </div>
+            </div>
 
+            <div class="form-row col2" style="margin-bottom: 16px; gap: 16px;">
+                <div class="form-group">
+                    <label class="form-label" style="margin-bottom: 6px;">Username <span style="color:var(--danger)">*</span></label>
+                    <input class="form-input" v-model="professorForm.username" placeholder="alan.turing" autocomplete="off" style="padding: 10px 14px;" :disabled="!!professorForm.id">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="margin-bottom: 6px;">Official Email Address</label>
+                    <input class="form-input" type="email" v-model="professorForm.email" placeholder="faculty@gncp.edu.ph" style="padding: 10px 14px;">
+                </div>
+            </div>
 
+            <div class="form-row" v-if="!professorForm.id" style="margin-bottom: 24px;">
+                <div class="form-group">
+                    <label class="form-label" style="margin-bottom: 6px;">Initial Password (Auto-generated if left blank)</label>
+                    <input class="form-input" v-model="professorForm.password" placeholder="Leave blank for auto-generated password" style="padding: 10px 14px;">
+                </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 10px; gap: 12px;">
+                <button type="button" class="btn-modal-cancel" @click="closeProfessorModal" :disabled="isSubmittingProfessor" style="padding: 11px 24px;">Cancel</button>
+                <button type="button" class="btn-modal-save" @click="submitSaveProfessor" :disabled="isSubmittingProfessor" style="background-color: var(--primary); padding: 11px 24px; min-width: 200px;">
+                    <i v-if="isSubmittingProfessor" class="fa-solid fa-circle-notch fa-spin me-1"></i>
+                    {{ isSubmittingProfessor ? 'Saving...' : (professorForm.id ? 'Save Professor Details' : 'Create Professor Account') }}
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Clone Term Modal -->
     <div v-if="modal==='clone-term'" class="overlay" @click.self="closeModal">
@@ -4488,6 +4639,6 @@
 
 </div><!-- /app -->
 
-<script src="assets/js/controllers/AdminController.js?v=20260910_v3"></script>
+<script src="assets/js/controllers/AdminController.js?v=20260930_v99"></script>
 </body>
 </html>

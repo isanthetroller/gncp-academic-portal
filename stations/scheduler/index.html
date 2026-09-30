@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>Academic Scheduling & Faculty Allocation | Go-on National College</title>
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="../../shared/libs/fonts/fonts.css">
+    <link rel="stylesheet" href="../../shared/libs/font-awesome/css/all.min.css">
+    <link href="../../shared/libs/bootstrap.min.css" rel="stylesheet">
+    <!-- Workstation Theme -->
+    <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=20260825_light">
+    <link rel="stylesheet" href="../../shared/css/sidebar.css?v=10">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="../../shared/libs/sweetalert2.all.min.js"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js"></script>
+</head>
+<body>
+    <div id="app" class="scheduler-shell" v-cloak>
+        <template v-if="currentUser">
+            <!-- Unified Employee Sidebar -->
+            <employee-sidebar 
+                station-name="Go-on National College" 
+                station-tag="ACADEMIC SCHEDULER"
+                :nav-groups="[
+                    {
+                        title: 'Academic Scheduling',
+                        items: [
+                            { id: 'dashboard', label: 'Dashboard Overview', icon: 'fa-gauge' },
+                            { id: 'cohort_schedules', label: 'Cohort Schedules', icon: 'fa-calendar-week' },
+                            { id: 'auto_assign', label: 'Auto-Scheduler', icon: 'fa-wand-magic-sparkles' },
+                            { id: 'professors', label: 'Faculty Directory', icon: 'fa-chalkboard-user' },
+                            { id: 'conflict_checker', label: 'Conflict Simulator', icon: 'fa-shield-halved' }
+                        ]
+                    },
+                    {
+                        title: 'Account & Settings',
+                        items: [
+                            { id: 'profile', label: 'My Account Profile', icon: 'fa-user-gear' }
+                        ]
+                    }
+                ]"
+                :current-view="currentView"
+                :current-user="currentUser"
+                base-path="../../"
+                @set-view="setView"
+                @logout="handleLogout">
+            </employee-sidebar>
+
+            <!-- Main Application Panel -->
+            <main class="main-panel">
+                <!-- Sticky Top Bar -->
+                <header class="top-bar">
+                    <div class="top-bar-left">
+                        <span class="eyebrow">ACADEMIC SCHEDULER</span>
+                        <span class="top-bar-divider">|</span>
+                        <h2>{{ greeting }}, {{ currentUser ? currentUser.name : 'Officer' }}!</h2>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-semibold" style="font-size:0.78rem">
+                            <i class="fa-solid fa-clock me-1"></i> Operating Window: 7:00 AM – 7:00 PM
+                        </span>
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 fw-semibold" style="font-size:0.78rem">
+                            <i class="fa-solid fa-utensils me-1"></i> Lunch: 12:00 PM – 1:00 PM
+                        </span>
+                    </div>
+                </header>
+
+                <div class="page-body">
+                    <!-- VIEW 1: DASHBOARD OVERVIEW -->
+                    <div v-if="currentView === 'dashboard'">
+                        <!-- Stat Grid -->
+                        <div class="stat-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon-box stat-icon-green"><i class="fa-solid fa-users-rectangle"></i></div>
+                                <div>
+                                    <div class="stat-value">{{ totalSections }}</div>
+                                    <div class="stat-label">Active Cohorts</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon-box stat-icon-gold"><i class="fa-solid fa-chalkboard-user"></i></div>
+                                <div>
+                                    <div class="stat-value">{{ totalProfessors }}</div>
+                                    <div class="stat-label">Faculty Professors</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon-box stat-icon-blue"><i class="fa-solid fa-book-open"></i></div>
+                                <div>
+                                    <div class="stat-value">{{ assignedSlotsCount }}</div>
+                                    <div class="stat-label">Scheduled Slots</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon-box stat-icon-green"><i class="fa-solid fa-calendar-check"></i></div>
+                                <div>
+                                    <div class="stat-value" style="font-size:1.1rem; padding-top:4px;">{{ context.activePeriod ? context.activePeriod.name : 'A.Y. 2026-2027' }}</div>
+                                    <div class="stat-label">Current Term</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Institutional Operating Guidelines Alert -->
+                        <div class="content-card mb-4" style="background:#f8fafc; border-left:4px solid var(--primary-green);">
+                            <div class="p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div>
+                                    <h6 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-shield-halved text-success me-2"></i>Institutional Scheduling Rules Enforced</h6>
+                                    <p class="mb-0 text-muted" style="font-size:0.84rem;">
+                                        All class schedules strictly conform to the <strong>7:00 AM – 7:00 PM</strong> operating window with a mandatory <strong>12:00 PM – 1:00 PM</strong> lunch blackout. Cohort suffixes (<strong>M</strong>: Morning 7am–12pm, <strong>A</strong>: Afternoon 1pm–7pm, <strong>E</strong>: Evening 5pm–7pm) are strictly validated on assignment.
+                                    </p>
+                                </div>
+                                <button type="button" class="btn-action btn-primary-action" @click="setView('cohort_schedules')">
+                                    <i class="fa-solid fa-calendar-plus me-1"></i> Open Schedule Workbench
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Section Overview List -->
+                        <div class="content-card">
+                            <div class="card-header-bar">
+                                <div class="card-header-title"><i class="fa-solid fa-layer-group text-success"></i> Academic Sections Overview</div>
+                                <span class="badge bg-secondary-subtle text-secondary">{{ context.sections.length }} total section(s)</span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="schedule-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Program</th>
+                                            <th>Year Level</th>
+                                            <th>Section Code</th>
+                                            <th>Offerings</th>
+                                            <th>Academic Period</th>
+                                            <th class="text-end">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="s in context.sections" :key="s.id">
+                                            <td class="fw-bold">{{ s.program }}</td>
+                                            <td>{{ s.year_level }}</td>
+                                            <td><span class="badge bg-light text-dark border font-monospace px-2 py-1">{{ s.code }}</span></td>
+                                            <td><span class="badge bg-success-subtle text-success">{{ s.offerings_count || 0 }} Subject(s)</span></td>
+                                            <td>{{ s.period_name || 'Active Semester' }}</td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn-action btn-outline-action" @click="selectedSectionId = s.id; filterProgram = s.program; filterYearLevel = s.year_level; setView('cohort_schedules')">
+                                                    <i class="fa-solid fa-calendar-days me-1"></i> Manage Schedule
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 2: COHORT SCHEDULE WORKBENCH -->
+                    <div v-if="currentView === 'cohort_schedules'">
+                        <div class="content-card">
+                            <div class="card-header-bar">
+                                <div class="card-header-title">
+                                    <i class="fa-solid fa-calendar-week text-success"></i> Cohort Class Scheduling Workbench
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn-action btn-gold-action" @click="autoAssignSectionId = selectedSectionId; setView('auto_assign')">
+                                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto-Assign This Section
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Filter Controls -->
+                            <div class="filter-row">
+                                <div>
+                                    <label class="d-block fw-semibold mb-1" style="font-size:0.75rem; text-transform:uppercase;">Degree Program</label>
+                                    <select class="select-control" v-model="filterProgram">
+                                        <option value="">All Programs</option>
+                                        <option v-for="p in context.programs" :key="p.id" :value="p.name">{{ p.code }} — {{ p.name }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="d-block fw-semibold mb-1" style="font-size:0.75rem; text-transform:uppercase;">Year Level</label>
+                                    <select class="select-control" v-model="filterYearLevel">
+                                        <option>1st Year</option>
+                                        <option>2nd Year</option>
+                                        <option>3rd Year</option>
+                                        <option>4th Year</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="d-block fw-semibold mb-1" style="font-size:0.75rem; text-transform:uppercase;">Target Section</label>
+                                    <select class="select-control" v-model="selectedSectionId" @change="onSectionChange">
+                                        <option v-for="sec in filteredSections" :key="sec.id" :value="sec.id">{{ sec.code }} ({{ sec.program }})</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Offering Slots Table -->
+                            <div class="table-responsive">
+                                <div v-if="isFetchingSchedule" class="p-5 text-center text-muted">
+                                    <i class="fa-solid fa-circle-notch fa-spin fa-2x mb-3 text-success"></i>
+                                    <div>Loading section subjects &amp; schedules...</div>
+                                </div>
+                                <table v-else-if="activeSectionSchedule && activeSectionSchedule.offerings && activeSectionSchedule.offerings.length > 0" class="schedule-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Subject Offering</th>
+                                            <th>Units</th>
+                                            <th>Day &amp; Time Window</th>
+                                            <th>Room</th>
+                                            <th>Assigned Faculty</th>
+                                            <th>Status</th>
+                                            <th class="text-end">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="off in activeSectionSchedule.offerings" :key="off.id">
+                                            <td>
+                                                <div class="fw-bold">{{ off.subject }}</div>
+                                                <div class="text-muted font-monospace" style="font-size:0.75rem;">{{ off.code }}</div>
+                                            </td>
+                                            <td>{{ off.totalUnits.toFixed(1) }} <span class="text-muted" style="font-size:0.75rem;">(Lec: {{ off.lectureUnits }}, Lab: {{ off.labUnits }})</span></td>
+                                            <td>
+                                                <div class="fw-semibold">{{ off.days }} &bull; {{ off.time }}</div>
+                                                <span class="badge-slot mt-1" :class="off.time.includes('AM') && !off.time.includes('PM') ? 'badge-morning' : off.time.includes('PM') && (off.time.includes('05:') || off.time.includes('06:') || off.time.includes('5:') || off.time.includes('6:')) ? 'badge-evening' : 'badge-afternoon'">
+                                                    {{ off.time.includes('AM') && !off.time.includes('PM') ? 'Morning Slot' : off.time.includes('PM') && (off.time.includes('05:') || off.time.includes('06:') || off.time.includes('5:') || off.time.includes('6:')) ? 'Evening Shift' : 'Afternoon Slot' }}
+                                                </span>
+                                            </td>
+                                            <td><span class="badge bg-light text-dark border">{{ off.room }}</span></td>
+                                            <td>
+                                                <div v-if="off.professorId" class="fw-bold text-dark">
+                                                    {{ off.professorName }}
+                                                    <span v-if="off.professorDept" class="badge bg-secondary-subtle text-secondary ms-1">{{ off.professorDept }}</span>
+                                                </div>
+                                                <div v-else class="text-muted fst-italic">
+                                                    {{ off.instructor || 'Unassigned' }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span v-if="off.hasConflict" class="badge-slot badge-conflict" :title="off.conflictMessage">
+                                                    <i class="fa-solid fa-triangle-exclamation"></i> Schedule Conflict
+                                                </span>
+                                                <span v-else-if="off.professorId" class="badge-slot badge-ok">
+                                                    <i class="fa-solid fa-circle-check"></i> Assigned
+                                                </span>
+                                                <span v-else class="badge-slot badge-unassigned">
+                                                    <i class="fa-solid fa-circle-notch"></i> Pending Assignment
+                                                </span>
+                                            </td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn-action btn-outline-action" @click="openAssignModal(off)">
+                                                    <i class="fa-solid fa-user-pen me-1"></i> {{ off.professorId ? 'Change Faculty' : 'Assign Faculty' }}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div v-else class="p-5 text-center text-muted">
+                                    <i class="fa-solid fa-calendar-xmark fa-2x mb-2 text-secondary"></i>
+                                    <div>No subject offerings found for the selected section.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 3: DETERMINISTIC AUTO-SCHEDULER -->
+                    <div v-if="currentView === 'auto_assign'">
+                        <div class="content-card">
+                            <div class="card-header-bar">
+                                <div class="card-header-title"><i class="fa-solid fa-wand-magic-sparkles text-success"></i> Deterministic Faculty Auto-Scheduler</div>
+                            </div>
+                            <div class="p-4">
+                                <div class="alert alert-info border-0 rounded-3 mb-4" style="background:#e0f2fe; color:#0369a1;">
+                                    <h6 class="fw-bold mb-1"><i class="fa-solid fa-circle-info me-1"></i> Transparent Allocation Rules</h6>
+                                    <p class="mb-0" style="font-size:0.85rem;">
+                                        Auto-assignment deterministically maps eligible professors without random numbers:
+                                        <strong>1)</strong> Department Compatibility (home department prioritised),
+                                        <strong>2)</strong> Availability &amp; Non-Overlap (rejects time conflicts or lunch blackout),
+                                        <strong>3)</strong> Load Balancing (faculty with lowest active teaching units assigned first),
+                                        <strong>4)</strong> Deterministic Tie-Breaker (Faculty ID ASC).
+                                    </p>
+                                </div>
+
+                                <div class="row align-items-end g-3 mb-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold" style="font-size:0.85rem;">Select Target Section for Auto-Assignment</label>
+                                        <select class="form-select" v-model="autoAssignSectionId" style="border-radius:10px;">
+                                            <option v-for="sec in context.sections" :key="sec.id" :value="sec.id">
+                                                {{ sec.code }} &bull; {{ sec.program }} ({{ sec.year_level }})
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button type="button" class="btn-action btn-gold-action py-2.5 px-4" :disabled="isRunningAutoAssign" @click="runAutoAssignment">
+                                            <i class="fa-solid" :class="isRunningAutoAssign ? 'fa-spinner fa-spin' : 'fa-play'"></i>
+                                            {{ isRunningAutoAssign ? 'Processing Auto-Allocation...' : 'Run Auto-Allocation Engine' }}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Auto-Assignment Results Report -->
+                                <div v-if="autoAssignResult" class="border rounded-3 p-4 bg-light mt-3">
+                                    <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-clipboard-check text-success me-2"></i>Execution Results Summary</h6>
+                                    
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-md-4">
+                                            <div class="p-3 bg-white border rounded-2">
+                                                <div class="text-success fw-bold fs-4">{{ autoAssignResult.assigned ? autoAssignResult.assigned.length : 0 }}</div>
+                                                <div class="text-muted fw-semibold" style="font-size:0.75rem;">SUBJECTS ASSIGNED</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="p-3 bg-white border rounded-2">
+                                                <div class="text-secondary fw-bold fs-4">{{ autoAssignResult.skipped ? autoAssignResult.skipped.length : 0 }}</div>
+                                                <div class="text-muted fw-semibold" style="font-size:0.75rem;">ALREADY CONFLICT-FREE</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="p-3 bg-white border rounded-2">
+                                                <div class="text-danger fw-bold fs-4">{{ autoAssignResult.failed ? autoAssignResult.failed.length : 0 }}</div>
+                                                <div class="text-muted fw-semibold" style="font-size:0.75rem;">UNABLE TO ASSIGN</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Table of Assigned -->
+                                    <h6 class="fw-bold text-dark mb-2" style="font-size:0.85rem;">Assigned Faculty Breakdown:</h6>
+                                    <div class="table-responsive bg-white rounded-2 border">
+                                        <table class="schedule-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Subject</th>
+                                                    <th>Code</th>
+                                                    <th>Assigned Professor</th>
+                                                    <th>Dept Compatibility</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="item in autoAssignResult.assigned" :key="item.offeringId">
+                                                    <td class="fw-bold">{{ item.subject }}</td>
+                                                    <td><code>{{ item.code }}</code></td>
+                                                    <td class="text-success fw-bold">{{ item.professorName }}</td>
+                                                    <td>
+                                                        <span class="badge" :class="item.deptMatch ? 'bg-success' : 'bg-warning text-dark'">
+                                                            {{ item.deptMatch ? 'Home Department Match' : 'Cross-Department Assignment' }}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr v-if="!autoAssignResult.assigned || autoAssignResult.assigned.length === 0">
+                                                    <td colspan="4" class="text-center text-muted p-3">No new assignments were required or processed.</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 4: FACULTY DIRECTORY & WORKLOADS -->
+                    <div v-if="currentView === 'professors'">
+                        <div class="content-card">
+                            <div class="card-header-bar">
+                                <div class="card-header-title"><i class="fa-solid fa-chalkboard-user text-success"></i> Faculty Directory &amp; Teaching Loads</div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="schedule-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Faculty Professor</th>
+                                            <th>Employee / Faculty ID</th>
+                                            <th>Department</th>
+                                            <th>Official Email</th>
+                                            <th>Teaching Load</th>
+                                            <th>Account Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="prof in context.professors" :key="prof.id">
+                                            <td class="fw-bold">{{ prof.name }}</td>
+                                            <td><span class="font-monospace text-secondary">{{ prof.employee_id }}</span></td>
+                                            <td><span class="badge bg-light text-dark border">{{ prof.department_name }} ({{ prof.department_code }})</span></td>
+                                            <td>{{ prof.email || 'N/A' }}</td>
+                                            <td>
+                                                <span class="badge bg-success-subtle text-success">
+                                                    {{ prof.assigned_classes_count || 0 }} Assigned Class(es)
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge" :class="prof.status === 'ACTIVE' ? 'bg-success' : 'bg-danger'">
+                                                    {{ prof.status }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 5: CONFLICT SIMULATOR -->
+                    <div v-if="currentView === 'conflict_checker'">
+                        <div class="content-card">
+                            <div class="card-header-bar">
+                                <div class="card-header-title"><i class="fa-solid fa-shield-halved text-success"></i> Real-Time Schedule Slot Simulator</div>
+                            </div>
+                            <div class="p-4">
+                                <p class="text-muted" style="font-size:0.85rem;">
+                                    Simulate a potential class schedule slot to test whether it violates the 7:00 AM – 7:00 PM operating window, the 12:00 PM – 1:00 PM lunch blackout, section shift constraints, or professor/room double-booking.
+                                </p>
+
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-bold" style="font-size:0.8rem;">Days Pattern</label>
+                                        <input type="text" class="form-control" v-model="simForm.days" placeholder="e.g. MW, TTH, F, S">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-bold" style="font-size:0.8rem;">Start Time</label>
+                                        <input type="text" class="form-control" v-model="simForm.startTime" placeholder="09:00 AM">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-bold" style="font-size:0.8rem;">End Time</label>
+                                        <input type="text" class="form-control" v-model="simForm.endTime" placeholder="10:30 AM">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-bold" style="font-size:0.8rem;">Room Assignment</label>
+                                        <input type="text" class="form-control" v-model="simForm.room" placeholder="Lab 1">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold" style="font-size:0.8rem;">Section Code (Shift Check)</label>
+                                        <input type="text" class="form-control" v-model="simForm.sectionCode" placeholder="BSIT-1M">
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label fw-bold" style="font-size:0.8rem;">Professor Candidate (Optional)</label>
+                                        <select class="form-select" v-model="simForm.professorId">
+                                            <option value="">-- No Professor / TBA --</option>
+                                            <option v-for="p in context.professors" :key="p.id" :value="p.id">{{ p.name }} ({{ p.department_code }})</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 d-flex align-items-end">
+                                        <button type="button" class="btn-action btn-primary-action w-100 py-2" :disabled="isCheckingSim" @click="runSimulationCheck">
+                                            <i class="fa-solid" :class="isCheckingSim ? 'fa-spinner fa-spin' : 'fa-vial'"></i> Run Verification
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Simulation Output -->
+                                <div v-if="simResult" class="border rounded-3 p-4" :style="simResult.success ? 'background:#f0fdf4; border-color:#bbf7d0;' : 'background:#fff1f2; border-color:#fecdd3;'">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <i class="fa-solid fa-2x" :class="simResult.success ? 'fa-circle-check text-success' : 'fa-circle-xmark text-danger'"></i>
+                                        <div>
+                                            <h5 class="fw-bold mb-1" :class="simResult.success ? 'text-success' : 'text-danger'">
+                                                {{ simResult.success ? 'Valid Schedule Slot: No Conflicts Detected' : 'Schedule Conflict Detected: Rejected' }}
+                                            </h5>
+                                            <p class="mb-0" :class="simResult.success ? 'text-success-emphasis' : 'text-danger-emphasis'" style="font-size:0.88rem;">
+                                                {{ simResult.message }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 6: EMPLOYEE PROFILE -->
+                    <div v-if="currentView === 'profile'">
+                        <div class="content-card p-4">
+                            <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                                <div class="stat-icon-box stat-icon-green" style="width:64px; height:64px; font-size:1.8rem;">
+                                    <i class="fa-solid fa-user-shield"></i>
+                                </div>
+                                <div>
+                                    <h4 class="fw-bold mb-1">{{ currentUser.name }}</h4>
+                                    <span class="badge bg-success font-monospace">{{ currentUser.role }}</span>
+                                    <div class="text-muted mt-1" style="font-size:0.85rem;">{{ currentUser.email }}</div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold text-muted" style="font-size:0.8rem;">Username</label>
+                                    <input type="text" class="form-control" :value="currentUser.username" disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold text-muted" style="font-size:0.8rem;">Station Privilege</label>
+                                    <input type="text" class="form-control" value="Academic Scheduling & Faculty Allocation" disabled>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- ASSIGN PROFESSOR MODAL -->
+            <div v-if="isAssignModalOpen" class="modal-overlay" @click.self="isAssignModalOpen = false">
+                <div class="modal-dialog-box">
+                    <div class="modal-head">
+                        <div>
+                            <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-user-check text-success me-2"></i>Select Faculty Professor</h5>
+                            <small class="text-muted" v-if="activeOffering">{{ activeOffering.subject }} &bull; {{ activeOffering.days }} {{ activeOffering.time }}</small>
+                        </div>
+                        <button type="button" class="btn-close" @click="isAssignModalOpen = false"></button>
+                    </div>
+
+                    <div class="modal-body-scroll">
+                        <div class="alert alert-light border mb-3 py-2 px-3 text-muted" style="font-size:0.8rem;">
+                            <i class="fa-solid fa-arrow-down-wide-short me-1 text-success"></i>
+                            Candidates are ranked deterministically: Available first, Home Department match first, followed by lowest active teaching load.
+                        </div>
+
+                        <!-- Candidates List -->
+                        <div v-if="candidateProfessors.length > 0">
+                            <div v-for="cand in candidateProfessors" 
+                                 :key="cand.id" 
+                                 class="candidate-item" 
+                                 :class="{ 'selected': selectedCandidateId === cand.id, 'has-conflict': !cand.isAvailable }"
+                                 @click="selectCandidate(cand)">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="fw-bold text-dark">{{ cand.name }}</span>
+                                        <span class="badge" :class="cand.isDeptMatch ? 'bg-success-subtle text-success' : 'bg-light text-secondary border'">
+                                            {{ cand.departmentCode }}
+                                        </span>
+                                        <span v-if="cand.isAssigned" class="badge bg-primary">Currently Assigned</span>
+                                    </div>
+                                    <div class="text-muted mt-1" style="font-size:0.78rem;">
+                                        ID: {{ cand.employeeId }} &bull; Current Load: {{ cand.currentLoad }} class(es)
+                                    </div>
+                                    <div v-if="!cand.isAvailable" class="text-danger mt-1 fw-semibold" style="font-size:0.75rem;">
+                                        <i class="fa-solid fa-ban me-1"></i> {{ cand.conflictMessage }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <span v-if="cand.isAvailable" class="badge bg-success-subtle text-success py-1.5 px-2.5">
+                                        <i class="fa-solid fa-check me-1"></i> Available
+                                    </span>
+                                    <span v-else class="badge bg-danger-subtle text-danger py-1.5 px-2.5">
+                                        <i class="fa-solid fa-xmark me-1"></i> Conflict
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-center py-4 text-muted">
+                            <i class="fa-solid fa-circle-notch fa-spin me-2 text-success"></i> Evaluating candidate faculty availability...
+                        </div>
+                    </div>
+
+                    <div class="modal-foot">
+                        <button type="button" class="btn-action btn-outline-action" @click="isAssignModalOpen = false">Cancel</button>
+                        <button type="button" class="btn-action btn-primary-action" :disabled="!selectedCandidateId || isAssigning" @click="confirmProfessorAssignment">
+                            <i class="fa-solid" :class="isAssigning ? 'fa-spinner fa-spin' : 'fa-check'"></i>
+                            {{ isAssigning ? 'Saving...' : 'Confirm Assignment' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toast Notification -->
+            <transition name="fade">
+                <div v-if="toast.show" 
+                     style="position:fixed; bottom:24px; right:24px; z-index:99999; padding:12px 20px; border-radius:10px; font-weight:600; font-size:0.88rem; box-shadow:0 8px 24px rgba(0,0,0,0.15);"
+                     :style="toast.type === 'success' ? 'background:#006A4E; color:#fff;' : 'background:#dc2626; color:#fff;'">
+                    <i class="fa-solid me-2" :class="toast.type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'"></i>
+                    {{ toast.message }}
+                </div>
+            </transition>
+        </template>
+    </div>
+
+    <!-- Script Imports -->
+    <script src="../../shared/libs/bootstrap.bundle.min.js"></script>
+    <script src="../../shared/libs/vue.global.js"></script>
+    <script src="../../shared/js/SessionExpirationGuard.js"></script>
+    <script src="../../shared/js/components/EmployeeSidebar.js"></script>
+    <script src="assets/js/app.js"></script>
+</body>
+</html>

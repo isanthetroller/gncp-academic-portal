@@ -210,16 +210,17 @@ class StudentPortalService {
 
             $sectionRow = null;
             if (!empty($studentSection)) {
-                $cleanSec = preg_replace('/^(BSCpE|BSCOE|BSIT|BSCS|BSBA|BSED)-[1-4][A-Z]-?/i', '', $studentSection);
                 $secStmtSect = $pdo->prepare("
-                    SELECT * FROM `subject_sections` 
-                    WHERE (`code` LIKE :sect_pattern OR `code` LIKE :clean_pattern) AND (`subject` = :title OR `code` LIKE :code_pattern)
+                    SELECT ss.* FROM `subject_sections` ss
+                    LEFT JOIN `sections` s ON ss.section_id = s.id
+                    WHERE (s.code = :sec_exact OR ss.code LIKE :sect_pattern) 
+                      AND (ss.subject = :title OR ss.code LIKE :code_pattern)
                     LIMIT 1
                 ");
                 $secStmtSect->execute([
+                    'sec_exact'    => $studentSection,
                     'sect_pattern' => '%' . $studentSection . '%',
-                    'clean_pattern' => '%' . $cleanSec . '%',
-                    'title' => $subTitle,
+                    'title'        => $subTitle,
                     'code_pattern' => '%' . $subCode . '%'
                 ]);
                 $sectionRow = $secStmtSect ? $secStmtSect->fetch(PDO::FETCH_ASSOC) : null;
@@ -785,5 +786,125 @@ class StudentPortalService {
             'success' => true,
             'message' => 'Password reset successfully! You can now log into your GNCP Student Portal with your new password.'
         ];
+    }
+
+    public static function getStudentAssignedSection(PDO $pdo, string $studentId): string {
+        $stmt = $pdo->prepare("SELECT enrollment_data, helpdesk_data FROM `students` WHERE id = :id_val OR email = :email_val LIMIT 1");
+        $stmt->execute(['id_val' => $studentId, 'email_val' => $studentId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $enrollment = json_decode($row['enrollment_data'] ?? '{}', true) ?: [];
+            $helpdesk   = json_decode($row['helpdesk_data'] ?? '{}', true) ?: [];
+            if (!empty($enrollment['assignedSection'])) return $enrollment['assignedSection'];
+            if (!empty($helpdesk['section'])) return $helpdesk['section'];
+        }
+
+        $peStmt = $pdo->prepare("SELECT section_code, helpdesk_data FROM `pre_enrollments` WHERE temp_student_id = :tid_val OR existing_student_id = :eid_val LIMIT 1");
+        $peStmt->execute(['tid_val' => $studentId, 'eid_val' => $studentId]);
+        $peRow = $peStmt->fetch(PDO::FETCH_ASSOC);
+        if ($peRow) {
+            if (!empty($peRow['section_code'])) return $peRow['section_code'];
+            $peHd = json_decode($peRow['helpdesk_data'] ?? '{}', true) ?: [];
+            if (!empty($peHd['section'])) return $peHd['section'];
+        }
+        return '';
+    }
+
+    public static function getLearningMaterials(PDO $pdo, string $studentId): array {
+        $secCode = self::getStudentAssignedSection($pdo, $studentId);
+        if (empty($secCode)) {
+            return ['success' => true, 'data' => [], 'message' => 'No section assigned yet.'];
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT m.*, f.filename, f.file_type, f.file_size, p.name as professor_name, d.name as department_name
+            FROM `lms_materials` m
+            JOIN `lms_material_sections` ms ON m.id = ms.material_id
+            JOIN `professor_files` f ON m.file_id = f.id
+            JOIN `professors` p ON m.professor_id = p.id
+            JOIN `departments` d ON p.department_id = d.id
+            WHERE ms.section_code = :sec1 OR :sec2 LIKE CONCAT('%', ms.section_code, '%')
+            GROUP BY m.id
+            ORDER BY m.id DESC
+        ");
+        $stmt->execute(['sec1' => $secCode, 'sec2' => $secCode]);
+        $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $formatted = [];
+        foreach ($materials as $m) {
+            $bytes = (int)$m['file_size'];
+            $sizeStr = $bytes >= 1048576 ? round($bytes / 1048576, 2) . ' MB' : ($bytes >= 1024 ? round($bytes / 1024, 2) . ' KB' : $bytes . ' B');
+
+            $formatted[] = [
+                'id'                => (int)$m['id'],
+                'file_id'           => (int)$m['file_id'],
+                'fileId'            => (int)$m['file_id'],
+                'title'             => $m['title'],
+                'description'       => $m['description'],
+                'subject_code'      => $m['subject_code'],
+                'subjectCode'       => $m['subject_code'],
+                'professor_name'    => $m['professor_name'],
+                'professorName'     => $m['professor_name'],
+                'department'        => $m['department_name'],
+                'department_name'   => $m['department_name'],
+                'filename'          => $m['filename'],
+                'original_filename' => $m['filename'],
+                'file_type'         => strtolower($m['file_type'] ?? 'pdf'),
+                'fileType'          => strtolower($m['file_type'] ?? 'pdf'),
+                'file_size'         => $bytes,
+                'fileSize'          => $bytes,
+                'file_size_format'  => $sizeStr,
+                'fileSizeFormat'    => $sizeStr,
+                'published_at'      => $m['created_at'],
+                'publishedAt'       => $m['created_at']
+            ];
+        }
+
+        return ['success' => true, 'data' => $formatted, 'sectionCode' => $secCode];
+    }
+
+    public static function getStudentAnnouncements(PDO $pdo, string $studentId): array {
+        $secCode = self::getStudentAssignedSection($pdo, $studentId);
+
+        $sql = "
+            SELECT a.* 
+            FROM `announcements` a
+            WHERE a.status = 'PUBLISHED' 
+              AND (
+                  a.target_audience = 'ALL' 
+                  OR a.target_audience = 'STUDENTS'
+        ";
+        $params = [];
+        if (!empty($secCode)) {
+            $sql .= " OR a.id IN (SELECT announcement_id FROM `announcement_sections` WHERE section_code = :sec1 OR :sec2 LIKE CONCAT('%', section_code, '%'))";
+            $params['sec1'] = $secCode;
+            $params['sec2'] = $secCode;
+        }
+        $sql .= " ) ORDER BY a.is_pinned DESC, a.id DESC LIMIT 50";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $formatted = [];
+        foreach ($rows as $r) {
+            $formatted[] = [
+                'id'              => (int)$r['id'],
+                'title'           => $r['title'],
+                'content'         => $r['content'],
+                'category'        => $r['category'],
+                'subject_code'    => $r['subject_code'] ?? null,
+                'subjectCode'     => $r['subject_code'] ?? null,
+                'author_name'     => $r['author_name'] ?? 'Faculty',
+                'authorName'      => $r['author_name'] ?? 'Faculty',
+                'author_id'       => $r['author_id'] ?? null,
+                'target_audience' => $r['target_audience'] ?? 'ALL',
+                'is_pinned'       => (bool)($r['is_pinned'] ?? false),
+                'created_at'      => $r['created_at'],
+                'createdAt'       => $r['created_at']
+            ];
+        }
+
+        return ['success' => true, 'data' => $formatted];
     }
 }

@@ -306,35 +306,41 @@
 
                     <!-- 1. Programs View -->
                     <programs-view v-else-if="currentView === 'programs'" :programs="programs" :search-text="searchText"
-                        :is-admin="isAdmin" @open-program-modal="openProgramModal">
+                        :is-admin="isAdmin" :selected-program="selectedProgram" :program-modal-mode="programModalMode"
+                        @open-program-modal="openProgramModal" @save-program="saveProgram" @delete-program="deleteProgram">
                     </programs-view>
 
                     <!-- 2. Subjects View -->
                     <subjects-view v-else-if="currentView === 'subjects'" :subjects="subjects" :search-text="searchText"
-                        :is-admin="isAdmin" @open-subject-modal="openSubjectModal">
+                        :is-admin="isAdmin" :selected-subject="selectedSubject" :subject-modal-mode="subjectModalMode"
+                        @open-subject-modal="openSubjectModal" @save-subject="saveSubject" @delete-subject="deleteSubject">
                     </subjects-view>
 
                     <!-- 3. Curriculum View -->
                     <curriculum-view v-else-if="currentView === 'curriculum'" :curriculum="curriculum"
-                        :programs="programs" :search-text="searchText" :is-admin="isAdmin"
-                        @open-curriculum-modal="openCurriculumModal">
+                        :programs="programs" :subjects="subjects" :search-text="searchText" :is-admin="isAdmin"
+                        :selected-curriculum="selectedCurriculum" :curriculum-modal-mode="curriculumModalMode"
+                        @open-curriculum-modal="openCurriculumModal" @save-curriculum="saveCurriculum" @delete-curriculum="deleteCurriculum">
                     </curriculum-view>
 
                     <!-- 4. Academic Periods View -->
                     <academic-periods-view v-else-if="currentView === 'academic-periods'"
                         :academic-periods="academicPeriods" :search-text="searchText" :is-admin="isAdmin"
-                        @open-period-modal="openPeriodModal">
+                        :selected-period="selectedPeriod" :period-modal-mode="periodModalMode"
+                        @open-period-modal="openPeriodModal" @save-period="saveAcademicPeriod" @delete-period="deleteAcademicPeriod">
                     </academic-periods-view>
 
                     <!-- 5. Subject Sections View -->
                     <subject-sections-view v-else-if="currentView === 'subject-sections'"
-                        :subject-sections="subjectSections" :search-text="searchText" :is-admin="isAdmin"
-                        @open-section-modal="openSectionModal">
+                        :subject-sections="subjectSections" :subjects="subjects" :programs="programs" :search-text="searchText" :is-admin="isAdmin"
+                        :selected-section="selectedSection" :section-modal-mode="sectionModalMode"
+                        @open-section-modal="openSectionModal" @save-section="saveSubjectSection" @delete-section="deleteSubjectSection">
                     </subject-sections-view>
 
                     <!-- 6. Fee Schedule View -->
                     <fee-schedule-view v-else-if="currentView === 'fee-schedule'" :fee-schedule="feeSchedule"
-                        :search-text="searchText" :is-admin="isAdmin" @open-fee-modal="openFeeModal">
+                        :search-text="searchText" :is-admin="isAdmin" :selected-fee="selectedFee" :fee-modal-mode="feeModalMode"
+                        @open-fee-modal="openFeeModal" @save-fee="saveFee" @delete-fee="deleteFee">
                     </fee-schedule-view>
 
                     <!-- Pending Applications View -->

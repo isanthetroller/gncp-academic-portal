@@ -2030,6 +2030,781 @@
                 width: 100% !important;
             }
         }
+
+        /* ═══════════════════════════════════════════════════════════════════════════════
+           INSTITUTIONAL UNIVERSITY STUDENT PORTAL SIDEBAR DESIGN SYSTEM
+           Refined, calm academic navigation adhering to production portal standards
+           ═══════════════════════════════════════════════════════════════════════════════ */
+        .sidebar {
+            background: #002419 !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15) !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        .sidebar .brand {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            padding: 20px 18px 16px 18px !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+            margin-bottom: 0 !important;
+        }
+
+        .brand-logo {
+            width: 36px !important;
+            height: 36px !important;
+            object-fit: contain !important;
+            flex-shrink: 0 !important;
+        }
+
+        .brand-text-block {
+            min-width: 0 !important;
+            flex: 1 !important;
+        }
+
+        .brand-title {
+            font-size: 0.95rem !important;
+            font-weight: 700 !important;
+            color: #ffffff !important;
+            line-height: 1.25 !important;
+            margin: 0 !important;
+            letter-spacing: -0.01em !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        .brand-subtitle {
+            font-size: 0.72rem !important;
+            font-weight: 500 !important;
+            color: rgba(255, 255, 255, 0.52) !important;
+            letter-spacing: 0.04em !important;
+            text-transform: uppercase !important;
+            margin-top: 2px !important;
+        }
+
+        /* ── Student Academic Context Header ── */
+        .sidebar-student-context {
+            padding: 14px 18px 14px 18px !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 3px !important;
+        }
+
+        .student-context-main {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 8px !important;
+        }
+
+        .student-program {
+            font-size: 0.82rem !important;
+            font-weight: 600 !important;
+            color: #ffffff !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        .student-status-tag {
+            font-size: 0.65rem !important;
+            font-weight: 500 !important;
+            color: #86efac !important;
+            background: rgba(34, 197, 94, 0.12) !important;
+            padding: 1px 7px !important;
+            border-radius: 4px !important;
+            line-height: 1.4 !important;
+            flex-shrink: 0 !important;
+        }
+
+        .student-meta {
+            font-size: 0.72rem !important;
+            color: rgba(255, 255, 255, 0.5) !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+
+        .meta-dot {
+            color: rgba(255, 255, 255, 0.3) !important;
+        }
+
+        /* ── Navigation List & Grouping ── */
+        .nav-body {
+            flex: 1 !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            padding: 10px 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 1px !important;
+        }
+
+        .nav-cat {
+            font-size: 0.65rem !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+            color: rgba(255, 255, 255, 0.4) !important;
+            padding: 14px 18px 4px 18px !important;
+            margin: 0 !important;
+            line-height: 1.2 !important;
+        }
+
+        /* ── Unified Navigation Rows ── */
+        .nav-item {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            padding: 8px 14px !important;
+            margin: 1px 8px !important;
+            border-radius: 6px !important;
+            color: rgba(255, 255, 255, 0.72) !important;
+            font-size: 0.84rem !important;
+            font-weight: 500 !important;
+            cursor: pointer !important;
+            transition: background 0.15s ease, color 0.15s ease !important;
+            border: none !important;
+            background: transparent !important;
+            text-align: left !important;
+            width: auto !important;
+            min-height: 38px !important;
+            line-height: 1.3 !important;
+            box-sizing: border-box !important;
+        }
+
+        .nav-item .nav-icon {
+            width: 18px !important;
+            text-align: center !important;
+            font-size: 0.88rem !important;
+            color: rgba(255, 255, 255, 0.55) !important;
+            flex-shrink: 0 !important;
+            transition: color 0.15s ease !important;
+        }
+
+        .nav-item:hover {
+            color: #ffffff !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            transform: none !important;
+        }
+
+        .nav-item:hover .nav-icon {
+            color: rgba(255, 255, 255, 0.85) !important;
+            transform: none !important;
+        }
+
+        /* Single Disciplined Active State */
+        .nav-item.active {
+            color: #ffffff !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+            font-weight: 600 !important;
+            border-left: 3px solid var(--gold, #D4AF37) !important;
+            border-radius: 0 6px 6px 0 !important;
+            box-shadow: none !important;
+        }
+
+        .nav-item.active .nav-icon {
+            color: #ffffff !important;
+        }
+
+        /* Restrained Badges */
+        .nav-badge-quiet {
+            margin-left: auto !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: rgba(255, 255, 255, 0.75) !important;
+            font-size: 0.68rem !important;
+            font-weight: 500 !important;
+            padding: 1px 7px !important;
+            border-radius: 10px !important;
+            line-height: 1.4 !important;
+        }
+
+        .nav-badge-pending {
+            margin-left: auto !important;
+            background: rgba(239, 68, 68, 0.15) !important;
+            color: #fca5a5 !important;
+            font-size: 0.68rem !important;
+            font-weight: 500 !important;
+            padding: 1px 7px !important;
+            border-radius: 10px !important;
+            line-height: 1.4 !important;
+        }
+
+        /* Sign Out Item */
+        .nav-item.nav-logout {
+            margin-top: 2px !important;
+        }
+
+        .nav-item.nav-logout:hover {
+            background: rgba(239, 68, 68, 0.12) !important;
+            color: #fca5a5 !important;
+        }
+
+        .nav-item.nav-logout:hover .nav-icon {
+            color: #ef4444 !important;
+        }
+
+        /* ── Integrated User Profile Footer ── */
+        .sidebar-footer {
+            background: transparent !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+            padding: 12px 16px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            transition: background 0.15s ease !important;
+            cursor: pointer !important;
+            box-shadow: none !important;
+        }
+
+        .sidebar-footer:hover {
+            background: rgba(255, 255, 255, 0.04) !important;
+        }
+
+        .footer-avatar {
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 50% !important;
+            background: rgba(255, 255, 255, 0.12) !important;
+            color: #ffffff !important;
+            display: grid !important;
+            place-items: center !important;
+            font-weight: 600 !important;
+            font-size: 0.8rem !important;
+            flex-shrink: 0 !important;
+            box-shadow: none !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        }
+
+        .footer-avatar img {
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 50% !important;
+            object-fit: cover !important;
+        }
+
+        .footer-info {
+            min-width: 0 !important;
+            flex: 1 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            line-height: 1.25 !important;
+        }
+
+        .footer-info strong,
+        .footer-name {
+            color: #ffffff !important;
+            font-size: 0.82rem !important;
+            font-weight: 600 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        .footer-info span,
+        .footer-id {
+            color: rgba(255, 255, 255, 0.45) !important;
+            font-size: 0.72rem !important;
+            font-family: monospace !important;
+            margin-top: 1px !important;
+        }
+
+        .footer-action {
+            color: rgba(255, 255, 255, 0.3) !important;
+            font-size: 0.75rem !important;
+            display: flex !important;
+            align-items: center !important;
+            margin-left: auto !important;
+        }
+
+                /* ── SUBJECTS (GOOGLE CLASSROOM STYLE) GRID & CLASSROOM VIEW ── */
+        .subjects-classroom-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (min-width: 1200px) {
+            .subjects-classroom-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (min-width: 1440px) {
+            .subjects-classroom-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (min-width: 768px) and (max-width: 1199px) {
+            .subjects-classroom-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 767px) {
+            .subjects-classroom-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .subject-classroom-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+            transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s ease, border-color 0.2s ease;
+            cursor: pointer;
+            position: relative;
+            outline: none;
+            user-select: none;
+        }
+
+        .subject-classroom-card:hover, .subject-classroom-card:focus-visible {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
+            border-color: #cbd5e1;
+        }
+
+        .subject-card-banner {
+            position: relative;
+            height: 136px;
+            padding: 16px 18px 12px;
+            color: #ffffff;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .subject-banner-pattern {
+            position: absolute;
+            right: -10px;
+            bottom: -15px;
+            font-size: 5.5rem;
+            opacity: 0.12;
+            color: #ffffff;
+            pointer-events: none;
+            line-height: 1;
+            transform: rotate(-10deg);
+        }
+
+        .subject-banner-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .subject-code-pill {
+            background: rgba(255, 255, 255, 0.22);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .subject-units-pill {
+            font-size: 0.7rem;
+            font-weight: 600;
+            opacity: 0.92;
+        }
+
+        .subject-banner-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            line-height: 1.25;
+            margin-top: 6px;
+            margin-bottom: 3px;
+            color: #ffffff;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 1;
+        }
+
+        .subject-banner-sub {
+            font-size: 0.76rem;
+            opacity: 0.9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: relative;
+            z-index: 1;
+        }
+
+        .subject-instructor-avatar {
+            position: absolute;
+            right: 18px;
+            bottom: -20px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.85rem;
+            color: #1e293b;
+            z-index: 2;
+        }
+
+        .subject-card-body {
+            padding: 22px 18px 14px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .subject-instructor-name {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .subject-activity-box {
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+            border-radius: 8px;
+            padding: 9px 11px;
+            margin-top: auto;
+            transition: background 0.15s ease;
+        }
+
+        .subject-classroom-card:hover .subject-activity-box {
+            background: #f1f5f9;
+        }
+
+        .activity-box-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            margin-bottom: 2px;
+        }
+
+        .activity-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .act-announcement .activity-label { color: #0284c7; }
+        .act-material .activity-label { color: #059669; }
+        .act-none .activity-label { color: #64748b; }
+
+        .activity-date {
+            font-size: 0.68rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .activity-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #1e293b;
+            line-height: 1.3;
+        }
+
+        .activity-preview {
+            font-size: 0.72rem;
+            color: #64748b;
+            margin-top: 2px;
+            line-height: 1.25;
+        }
+
+        .subject-card-footer {
+            padding: 10px 18px;
+            border-top: 1px solid #f1f5f9;
+            background: #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .subject-counters {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .subject-counter-badge {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .subject-open-action {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #006A4E;
+            display: inline-flex;
+            align-items: center;
+            transition: transform 0.15s ease;
+        }
+
+        .subject-classroom-card:hover .subject-open-action {
+            transform: translateX(2px);
+        }
+
+        /* ── SUBJECT CLASSROOM VIEW ── */
+        .classroom-hero-banner {
+            border-radius: 14px;
+            padding: 24px 28px;
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 22px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+        }
+
+        .classroom-hero-watermark {
+            position: absolute;
+            right: 15px;
+            bottom: -20px;
+            font-size: 9rem;
+            opacity: 0.12;
+            color: #ffffff;
+            pointer-events: none;
+            line-height: 1;
+            transform: rotate(-10deg);
+        }
+
+        .hero-chip {
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .classroom-panel-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            height: 100%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        }
+
+        .classroom-announcement-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        .classroom-announcement-card:hover {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        /* ── COURSE MATERIALS (LMS) ENHANCED UI TOKENS ── */
+        .materials-hero-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+            border: 1px solid #dcfce7;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 6px rgba(0, 106, 78, 0.04);
+        }
+
+        .materials-stats-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+            margin-top: 18px;
+        }
+
+        .materials-stat-box {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .materials-stat-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        .mat-stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .mat-stat-green { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .mat-stat-blue { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        .mat-stat-amber { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+
+        .subject-filter-scroller {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+            scrollbar-width: thin;
+        }
+
+        .subject-pill-btn {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 999px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .subject-pill-btn:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #1e293b;
+        }
+
+        .subject-pill-btn.active {
+            background: #006A4E;
+            border-color: #006A4E;
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(0, 106, 78, 0.25);
+        }
+
+        .material-card-pro {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px 18px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .material-card-pro:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            border-color: #cbd5e1;
+        }
+
+        .file-tile-box {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+
+        .material-card-pro:hover .file-tile-box {
+            transform: scale(1.06);
+        }
+
+        .file-tile-pdf { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
+        .file-tile-ppt { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
+        .file-tile-doc { background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; }
+        .file-tile-xls { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
+        .file-tile-zip { background: #faf5ff; color: #9333ea; border: 1px solid #f3e8ff; }
+        .file-tile-default { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+
+        .file-pill-tag {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2.5px 8px;
+            border-radius: 6px;
+        }
+
+        .file-pill-pdf { background: #fee2e2; color: #991b1b; }
+        .file-pill-ppt { background: #ffedd5; color: #9a3412; }
+        .file-pill-doc { background: #dbeafe; color: #1e40af; }
+        .file-pill-xls { background: #d1fae5; color: #065f46; }
+        .file-pill-zip { background: #f3e8ff; color: #6b21a8; }
+        .file-pill-default { background: #f1f5f9; color: #334155; }
+
+        .material-table-view {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .mat-table-row:hover {
+            background: #f8fafc;
+        }
+
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        .hover-underline:hover {
+            text-decoration: underline !important;
+        }
     </style>
 </head>
 
@@ -2043,56 +2818,88 @@
             <!-- Mobile Backdrop Overlay -->
             <div class="sidebar-backdrop" :class="{ show: isMobileMenuOpen }" @click="isMobileMenuOpen = false"></div>
 
-            <!-- Shared Workstation Glassmorphic Sidebar Navigation -->
+            <!-- Institutional University Student Portal Navigation Sidebar -->
             <aside class="sidebar" :class="{ 'mobile-open': isMobileMenuOpen }">
+                <!-- Portal & University Identity -->
                 <div class="brand">
-                    <img src="../school-website/assets/images/logo-removebg-preview.png" alt="GNCP Seal"
-                        class="brand-logo">
-                    <div>
-                        <h1>Go-on National College</h1>
-                        <p>STUDENT PORTAL</p>
+                    <img src="../school-website/assets/images/logo-removebg-preview.png" alt="GNCP Seal" class="brand-logo">
+                    <div class="brand-text-block">
+                        <h1 class="brand-title">Go-on National College</h1>
+                        <div class="brand-subtitle">Student Portal</div>
                     </div>
                 </div>
 
+                <!-- Student Academic Context -->
+                <div class="sidebar-student-context" v-if="currentStudent">
+                    <div class="student-context-main">
+                        <span class="student-program" :title="profile.program">{{ profile.program || 'Undergraduate' }}</span>
+                        <span class="student-status-tag">Enrolled</span>
+                    </div>
+                    <div class="student-meta">
+                        <span>{{ profile.assignedSection || corData?.schedule?.[0]?.section || 'Section TBD' }}</span>
+                        <span class="meta-dot">&middot;</span>
+                        <span>{{ profile.yearLevel || '1st Year' }}</span>
+                    </div>
+                </div>
+
+                <!-- Navigation Groups -->
                 <nav class="nav-body">
-                    <div class="nav-cat">Student Workstation</div>
+                    <div class="nav-cat">Academic</div>
                     <button class="nav-item" :class="{ active: activeTab === 'announcements' }"
                         @click="activeTab = 'announcements'; isMobileMenuOpen = false">
-                        <i class="fa-solid fa-bullhorn text-warning"></i> Campus Feed &amp; Bulletins
+                        <i class="fa-solid fa-bullhorn nav-icon"></i>
+                        <span>Campus Bulletins</span>
+                        <span v-if="announcements && announcements.length > 0" class="nav-badge-quiet">{{ announcements.length }}</span>
                     </button>
                     <button class="nav-item" :class="{ active: activeTab === 'dashboard' }"
                         @click="activeTab = 'dashboard'; isMobileMenuOpen = false">
-                        <i class="fa-solid fa-chart-line"></i> Dashboard Overview
+                        <i class="fa-solid fa-gauge-high nav-icon"></i>
+                        <span>Dashboard Overview</span>
                     </button>
                     <button class="nav-item" :class="{ active: activeTab === 'courses' }"
                         @click="activeTab = 'courses'; isMobileMenuOpen = false">
-                        <i class="fa-solid fa-file-invoice"></i> My Enrolled Classes (COR)
+                        <i class="fa-solid fa-calendar-check nav-icon"></i>
+                        <span>My Enrolled Classes (COR)</span>
                     </button>
-                    <button class="nav-item" :class="{ active: activeTab === 'documents' }"
-                        @click="activeTab = 'documents'; isMobileMenuOpen = false">
-                        <i class="fa-solid fa-folder-open text-info"></i> Documents &amp; Undertakings
-                        <span v-if="missingDocsCount > 0" class="badge bg-danger rounded-pill ms-auto px-2 py-1" style="font-size: 0.68rem;">{{ missingDocsCount }}</span>
+                    <button class="nav-item" :class="{ active: activeTab === 'materials' || activeTab === 'subjects' }"
+                        @click="activeTab = 'subjects'; closeSubject(); isMobileMenuOpen = false">
+                        <i class="fa-solid fa-graduation-cap nav-icon"></i>
+                        <span>Subjects</span>
                     </button>
 
-                    <div class="nav-cat mt-3">Account Security</div>
+                    <div class="nav-cat mt-2">Records</div>
+                    <button class="nav-item" :class="{ active: activeTab === 'documents' }"
+                        @click="activeTab = 'documents'; isMobileMenuOpen = false">
+                        <i class="fa-solid fa-folder-closed nav-icon"></i>
+                        <span>Documents &amp; Undertakings</span>
+                        <span v-if="missingDocsCount > 0" class="nav-badge-pending">{{ missingDocsCount }} pending</span>
+                    </button>
+
+                    <div class="nav-cat mt-2">Account</div>
                     <button class="nav-item" :class="{ active: activeTab === 'profile' }"
                         @click="activeTab = 'profile'; isMobileMenuOpen = false">
-                        <i class="fa-solid fa-user-circle"></i> My Profile
+                        <i class="fa-solid fa-user nav-icon"></i>
+                        <span>My Student Profile</span>
                     </button>
                     <button class="nav-item nav-logout" @click="handleLogout(); isMobileMenuOpen = false">
-                        <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                        <i class="fa-solid fa-arrow-right-from-bracket nav-icon"></i>
+                        <span>Sign Out</span>
                     </button>
                 </nav>
 
-                <div class="sidebar-footer" v-if="currentStudent" @click="activeTab = 'profile'; isMobileMenuOpen = false" style="cursor: pointer;" title="View My Profile">
+                <!-- Integrated Account Profile Area -->
+                <div class="sidebar-footer" v-if="currentStudent" @click="activeTab = 'profile'; isMobileMenuOpen = false" title="View My Profile">
                     <div class="footer-avatar">
                         <img v-if="profile.photo && !avatarLoadError" :src="formattedProfilePhoto(profile.photo)"
                             @error="onAvatarError" alt="Avatar">
                         <span v-else>{{ (profile.name || 'S').substring(0,2).toUpperCase() }}</span>
                     </div>
                     <div class="footer-info">
-                        <strong>{{ profile.name || 'Student Account' }}</strong>
-                        <span>{{ profile.id || 'STUDENT' }}</span>
+                        <div class="footer-name">{{ profile.name || 'Student Account' }}</div>
+                        <div class="footer-id">{{ profile.id || 'STUDENT' }}</div>
+                    </div>
+                    <div class="footer-action">
+                        <i class="fa-solid fa-chevron-right"></i>
                     </div>
                 </div>
             </aside>
@@ -2294,6 +3101,12 @@
                                             <div class="d-flex align-items-center gap-2 bulletin-header-right" style="flex-wrap: wrap;">
                                                 <span v-if="parseInt(post.is_pinned)" class="bulletin-pinned-badge">
                                                     <i class="fa-solid fa-thumbtack text-warning me-1"></i> Pinned Memo
+                                                </span>
+                                                <span v-if="post.section_code" class="bulletin-tag" style="background: #e0f2fe; color: #0369a1; border-color: #bae6fd;">
+                                                    <i class="fa-solid fa-users me-1"></i> Section {{ post.section_code }}
+                                                </span>
+                                                <span v-if="post.subject_code" class="bulletin-tag" style="background: #f0fdf4; color: #15803d; border-color: #bbf7d0;">
+                                                    <i class="fa-solid fa-book me-1"></i> {{ post.subject_code }}
                                                 </span>
                                                 <span class="bulletin-tag" :class="'bulletin-tag-' + (post.category || 'GENERAL')">
                                                     {{ post.category }}
@@ -2546,7 +3359,12 @@
                                         </template>
                                         <template v-else>
                                             <tr v-for="item in (corData ? corData.schedule : [])" :key="item.code" class="table-row-enter">
-                                                <td class="font-monospace fw-bold">{{ item.code }}</td>
+                                                <td class="font-monospace fw-bold">
+                                                    <a href="javascript:void(0)" @click="viewSubjectMaterials(item.code)" class="text-success text-decoration-none d-inline-flex align-items-center gap-1" title="View Course Materials in LMS">
+                                                        <span>{{ item.code }}</span>
+                                                        <i class="fa-solid fa-book-bookmark text-success d-print-none" style="font-size: 0.72rem;"></i>
+                                                    </a>
+                                                </td>
                                                 <td>{{ item.description }}</td>
                                                 <td class="text-center font-monospace">{{ item.units }}</td>
                                                 <td>{{ item.type }}</td>
@@ -2730,6 +3548,392 @@
                             </div>
 
                             </div>
+                        </div>
+                    </template>
+
+                    <!-- ══ TAB: SUBJECTS & LMS CLASSROOM HUB (GOOGLE CLASSROOM STYLE) ══════ -->
+                    <template v-if="activeTab === 'subjects' || activeTab === 'materials'">
+                        <div class="subjects-hub-layout">
+
+                            <!-- ── STATE 1: ALL ENROLLED SUBJECTS GRID (When no subject is opened) ── -->
+                            <div v-if="!currentSubject">
+                                <!-- Subjects Desk Header -->
+                                <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+                                    <div>
+                                        <h4 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2 flex-wrap" style="font-size: 1.35rem;">
+                                            <span>Enrolled Subjects</span>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace px-2.5 py-1" style="font-size: 0.72rem;">
+                                                <i class="fa-solid fa-users me-1"></i>Section {{ profile.assignedSection || corData?.schedule?.[0]?.section || 'BSIT-1A' }}
+                                            </span>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2.5 py-1" style="font-size: 0.72rem;">
+                                                {{ activePeriod?.semester || '1st Semester' }} &bull; {{ activePeriod?.academic_year || 'A.Y. 2026-2027' }}
+                                            </span>
+                                        </h4>
+                                        <p class="text-muted fs-7 mb-0">
+                                            Select an enrolled subject below to open your virtual classroom, view professor bulletins, and access official course materials.
+                                        </p>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <!-- Search Input -->
+                                        <div class="input-group input-group-sm" style="max-width: 260px;">
+                                            <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                                            <input type="text" class="form-control border-start-0" v-model="subjectSearch" placeholder="Search subjects...">
+                                            <button v-if="subjectSearch" class="btn btn-outline-secondary border-start-0" type="button" @click="subjectSearch = ''">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </div>
+                                        <!-- Refresh Button -->
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2.5 py-1.5 fw-semibold"
+                                            @click="fetchLearningMaterials(); fetchAnnouncements()" :disabled="isLoadingMaterials" title="Refresh Classrooms &amp; Materials">
+                                            <i class="fa-solid fa-arrows-rotate me-1" :class="{ 'fa-spin': isLoadingMaterials }"></i>
+                                            <span class="d-none d-sm-inline">Refresh</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Error Banner (if any) -->
+                                <div v-if="subjectsLoadingError" class="alert alert-danger alert-dismissible fade show border-0 rounded-3 mb-4" role="alert">
+                                    <i class="fa-solid fa-triangle-exclamation me-2"></i>{{ subjectsLoadingError }}
+                                    <button type="button" class="btn-close" @click="subjectsLoadingError = ''" aria-label="Close"></button>
+                                </div>
+
+                                <!-- Loading State -->
+                                <div v-if="isLoadingMaterials && enrolledSubjectsList.length === 0" class="text-center py-5">
+                                    <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
+                                        <span class="visually-hidden">Loading subjects...</span>
+                                    </div>
+                                    <p class="text-muted fs-7 mt-3">Loading your enrolled subjects &amp; classrooms...</p>
+                                </div>
+
+                                <!-- Empty State: No Enrolled Subjects -->
+                                <div v-else-if="!enrolledSubjectsList || enrolledSubjectsList.length === 0" class="card border-0 shadow-sm rounded-4 text-center py-5 px-4 bg-white">
+                                    <div class="mb-3">
+                                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-muted" style="width: 72px; height: 72px; font-size: 2rem;">
+                                            <i class="fa-solid fa-graduation-cap"></i>
+                                        </div>
+                                    </div>
+                                    <h5 class="fw-bold text-dark mb-1">No Subjects Yet</h5>
+                                    <p class="text-muted fs-7 mb-3 mx-auto" style="max-width: 440px;">
+                                        Your enrolled subjects will appear here once your registration and enrollment are completed.
+                                    </p>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary px-3" @click="fetchDashboardData">
+                                            <i class="fa-solid fa-arrows-rotate me-1"></i> Refresh Enrollment
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Empty State: Search Query Yielded No Results -->
+                                <div v-else-if="filteredSubjects.length === 0" class="card border-0 shadow-sm rounded-4 text-center py-5 px-4 bg-white">
+                                    <div class="mb-3">
+                                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-muted" style="width: 64px; height: 64px; font-size: 1.75rem;">
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                        </div>
+                                    </div>
+                                    <h5 class="fw-bold text-dark mb-1">No Subjects Found</h5>
+                                    <p class="text-muted fs-7 mb-3 mx-auto" style="max-width: 400px;">
+                                        No enrolled subject matches "<strong class="text-dark">{{ subjectSearch }}</strong>". Try searching with a different subject code or keyword.
+                                    </p>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" @click="subjectSearch = ''">
+                                            <i class="fa-solid fa-xmark me-1"></i> Clear Search
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Google Classroom-Style Subjects Grid -->
+                                <div v-else class="subjects-classroom-grid">
+                                    <div v-for="subj in filteredSubjects" :key="subj.code"
+                                        class="subject-classroom-card"
+                                        @click="openSubject(subj)"
+                                        tabindex="0"
+                                        role="button"
+                                        :aria-label="'Open ' + subj.name">
+
+                                        <!-- Visual Academic Banner -->
+                                        <div class="subject-card-banner" :style="{ background: 'linear-gradient(135deg, ' + subj.theme.primary + ' 0%, ' + subj.theme.secondary + ' 100%)' }">
+                                            <!-- Subtle Academic Geometric Watermark Icon -->
+                                            <div class="subject-banner-pattern">
+                                                <i class="fa-solid" :class="subj.theme.icon"></i>
+                                            </div>
+
+                                            <!-- Top Row: Code Pill & Units -->
+                                            <div class="subject-banner-top">
+                                                <span class="subject-code-pill">{{ subj.code }}</span>
+                                                <span class="subject-units-pill">{{ subj.units }} Units &bull; {{ subj.type }}</span>
+                                            </div>
+
+                                            <!-- Center: Subject Name -->
+                                            <div class="subject-banner-title" :title="subj.name">
+                                                {{ subj.name }}
+                                            </div>
+
+                                            <!-- Bottom: Section & Schedule -->
+                                            <div class="subject-banner-sub">
+                                                <span>{{ subj.section }}</span>
+                                                <span v-if="subj.timeStr && subj.timeStr !== 'Schedule TBA'">&bull; {{ subj.timeStr }}</span>
+                                            </div>
+
+                                            <!-- Floating Professor Avatar Initials Badge -->
+                                            <div class="subject-instructor-avatar" :title="subj.instructor">
+                                                <span>{{ subj.initials }}</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Card Body: Professor & Recent Activity -->
+                                        <div class="subject-card-body">
+                                            <!-- Professor Name -->
+                                            <div class="subject-instructor-name">
+                                                <i class="fa-solid fa-chalkboard-user text-muted"></i>
+                                                <span class="text-truncate">{{ subj.instructor }}</span>
+                                            </div>
+
+                                            <!-- Recent Activity Preview Box -->
+                                            <div class="subject-activity-box" :class="'act-' + subj.latestActivity.type">
+                                                <div class="activity-box-header">
+                                                    <span class="activity-label">
+                                                        <i v-if="subj.latestActivity.type === 'announcement'" class="fa-solid fa-bullhorn me-1"></i>
+                                                        <i v-else-if="subj.latestActivity.type === 'material'" class="fa-solid fa-file-lines me-1"></i>
+                                                        <i v-else class="fa-solid fa-circle-check me-1"></i>
+                                                        {{ subj.latestActivity.label }}
+                                                    </span>
+                                                    <span v-if="subj.latestActivity.date" class="activity-date">{{ subj.latestActivity.date }}</span>
+                                                </div>
+                                                <div class="activity-title text-truncate" :title="subj.latestActivity.title">
+                                                    {{ subj.latestActivity.title }}
+                                                </div>
+                                                <div v-if="subj.latestActivity.preview" class="activity-preview text-truncate">
+                                                    {{ subj.latestActivity.preview }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Card Footer: Counters & Open Action -->
+                                        <div class="subject-card-footer">
+                                            <div class="subject-counters">
+                                                <span class="subject-counter-badge" title="Course Materials">
+                                                    <i class="fa-solid fa-folder me-1 text-muted"></i>{{ subj.materialsCount }}
+                                                </span>
+                                                <span class="subject-counter-badge" title="Class Announcements">
+                                                    <i class="fa-solid fa-bullhorn me-1 text-muted"></i>{{ subj.announcementsCount }}
+                                                </span>
+                                                <span v-if="subj.room && subj.room !== 'TBA'" class="subject-counter-badge" title="Assigned Classroom">
+                                                    <i class="fa-solid fa-location-dot me-1 text-muted"></i>{{ subj.room }}
+                                                </span>
+                                            </div>
+                                            <div class="subject-open-action">
+                                                <span>Open Subject</span>
+                                                <i class="fa-solid fa-arrow-right ms-1"></i>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ── STATE 2: SUBJECT CLASSROOM VIEW (When a subject is clicked) ── -->
+                            <div v-else class="subject-classroom-view">
+                                <!-- Navigation Back Bar & Breadcrumb -->
+                                <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-3 py-1 rounded-3" @click="closeSubject">
+                                            <i class="fa-solid fa-arrow-left me-1"></i> All Subjects
+                                        </button>
+                                        <div class="d-flex align-items-center gap-1.5 fs-7">
+                                            <span class="text-muted">Subjects</span>
+                                            <span class="text-muted">/</span>
+                                            <span class="fw-bold text-dark">{{ currentSubject.code }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2.5 py-1"
+                                            @click="fetchLearningMaterials(); fetchAnnouncements()" :disabled="isLoadingMaterials" title="Refresh Classroom">
+                                            <i class="fa-solid fa-arrows-rotate me-1" :class="{ 'fa-spin': isLoadingMaterials }"></i> Refresh
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Subject Hero Banner -->
+                                <div class="classroom-hero-banner" :style="{ background: 'linear-gradient(135deg, ' + currentSubject.theme.primary + ' 0%, ' + currentSubject.theme.secondary + ' 100%)' }">
+                                    <div class="classroom-hero-watermark">
+                                        <i class="fa-solid" :class="currentSubject.theme.icon"></i>
+                                    </div>
+                                    
+                                    <div class="position-relative z-1">
+                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                            <span class="badge bg-white bg-opacity-25 text-white font-monospace px-2.5 py-1 fs-7">
+                                                {{ currentSubject.code }}
+                                            </span>
+                                            <span class="badge bg-black bg-opacity-20 text-white font-monospace px-2.5 py-1 fs-7">
+                                                Section {{ currentSubject.section }}
+                                            </span>
+                                        </div>
+
+                                        <h3 class="fw-bold text-white mb-2" style="font-size: 1.65rem; text-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                                            {{ currentSubject.name }}
+                                        </h3>
+
+                                        <!-- Metadata Chips Row -->
+                                        <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
+                                            <span class="hero-chip">
+                                                <i class="fa-solid fa-chalkboard-user me-1.5 opacity-75"></i>
+                                                Instructor: {{ currentSubject.instructor }}
+                                            </span>
+                                            <span class="hero-chip" v-if="currentSubject.timeStr && currentSubject.timeStr !== 'Schedule TBA'">
+                                                <i class="fa-regular fa-clock me-1.5 opacity-75"></i>
+                                                {{ currentSubject.timeStr }}
+                                            </span>
+                                            <span class="hero-chip" v-if="currentSubject.room && currentSubject.room !== 'TBA'">
+                                                <i class="fa-solid fa-location-dot me-1.5 opacity-75"></i>
+                                                Room: {{ currentSubject.room }}
+                                            </span>
+                                            <span class="hero-chip">
+                                                <i class="fa-solid fa-layer-group me-1.5 opacity-75"></i>
+                                                {{ currentSubject.units }} Units &bull; {{ currentSubject.type }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Classroom Dual-Section Grid: Announcements (Left) & Course Materials (Right) -->
+                                <div class="row g-4">
+                                    
+                                    <!-- ── SECTION 1: ANNOUNCEMENTS ── -->
+                                    <div class="col-lg-5 col-12">
+                                        <div class="classroom-panel-card">
+                                            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                                                <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style="font-size: 1.05rem;">
+                                                    <i class="fa-solid fa-bullhorn text-primary"></i>
+                                                    <span>Class Announcements</span>
+                                                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-0.5 fs-8">
+                                                        {{ currentSubjectAnnouncements.length }}
+                                                    </span>
+                                                </h5>
+                                            </div>
+
+                                            <!-- Empty State: Announcements -->
+                                            <div v-if="currentSubjectAnnouncements.length === 0" class="text-center py-4 px-3 bg-light rounded-3">
+                                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white shadow-xs text-muted mb-2" style="width: 48px; height: 48px; font-size: 1.25rem;">
+                                                    <i class="fa-regular fa-comment-dots"></i>
+                                                </div>
+                                                <h6 class="fw-bold text-dark mb-1">No Announcements Yet</h6>
+                                                <p class="text-muted fs-8 mb-0">Your professor hasn't posted any announcements for this subject.</p>
+                                            </div>
+
+                                            <!-- Announcements List -->
+                                            <div v-else class="classroom-announcements-list">
+                                                <div v-for="ann in currentSubjectAnnouncements" :key="'class-ann-' + ann.id" class="classroom-announcement-card">
+                                                    <div class="d-flex align-items-start justify-content-between gap-2 mb-1.5">
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold fs-8" style="width: 30px; height: 30px;">
+                                                                <i class="fa-solid fa-user-tie"></i>
+                                                            </div>
+                                                            <div>
+                                                                <div class="fw-bold text-dark fs-7 line-height-1 mb-0.5">{{ ann.authorName || 'Professor' }}</div>
+                                                                <div class="text-muted fs-8">{{ ann.createdAt ? new Date(ann.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent' }}</div>
+                                                            </div>
+                                                        </div>
+                                                        <span v-if="ann.is_pinned" class="badge bg-warning-subtle text-warning border border-warning-subtle fs-8">
+                                                            <i class="fa-solid fa-thumbtack me-1"></i>Pinned
+                                                        </span>
+                                                    </div>
+                                                    <h6 class="fw-bold text-dark fs-7 mb-1 mt-2">{{ ann.title }}</h6>
+                                                    <p class="text-secondary fs-7 mb-0 text-break" style="white-space: pre-line;">{{ ann.content }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- ── SECTION 2: COURSE MATERIALS ── -->
+                                    <div class="col-lg-7 col-12">
+                                        <div class="classroom-panel-card">
+                                            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom flex-wrap gap-2">
+                                                <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style="font-size: 1.05rem;">
+                                                    <i class="fa-solid fa-folder-open text-success"></i>
+                                                    <span>Course Materials</span>
+                                                    <span class="badge bg-success-subtle text-success rounded-pill px-2 py-0.5 fs-8">
+                                                        {{ currentSubjectMaterials.length }}
+                                                    </span>
+                                                </h5>
+
+                                                <!-- Search inside subject materials if multiple -->
+                                                <div v-if="currentSubject.materialsCount > 2" class="input-group input-group-sm" style="max-width: 220px;">
+                                                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                                                    <input type="text" class="form-control border-start-0" v-model="materialsSearch" placeholder="Filter materials...">
+                                                </div>
+                                            </div>
+
+                                            <!-- Empty State: Course Materials -->
+                                            <div v-if="currentSubjectMaterials.length === 0" class="text-center py-5 px-3 bg-light rounded-3">
+                                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white shadow-xs text-muted mb-2" style="width: 48px; height: 48px; font-size: 1.25rem;">
+                                                    <i class="fa-regular fa-folder-open"></i>
+                                                </div>
+                                                <h6 class="fw-bold text-dark mb-1">No Course Materials Uploaded</h6>
+                                                <p class="text-muted fs-7 mb-0">Lecture presentations, syllabi, and reference modules shared by your professor will appear here.</p>
+                                            </div>
+
+                                            <!-- Materials List -->
+                                            <div v-else class="row g-3">
+                                                <div v-for="mat in currentSubjectMaterials" :key="'subj-mat-' + mat.id" class="col-12">
+                                                    <div class="material-card-pro">
+                                                        <div class="d-flex align-items-start gap-3">
+                                                            <!-- File Type Tile Icon -->
+                                                            <div class="file-tile-box" :class="'file-tile-' + (mat.file_type || 'default')">
+                                                                <i v-if="mat.file_type === 'pdf'" class="fa-solid fa-file-pdf"></i>
+                                                                <i v-else-if="mat.file_type === 'ppt' || mat.file_type === 'pptx'" class="fa-solid fa-file-powerpoint"></i>
+                                                                <i v-else-if="mat.file_type === 'doc' || mat.file_type === 'docx'" class="fa-solid fa-file-word"></i>
+                                                                <i v-else-if="mat.file_type === 'xls' || mat.file_type === 'xlsx'" class="fa-solid fa-file-excel"></i>
+                                                                <i v-else-if="mat.file_type === 'zip' || mat.file_type === 'rar'" class="fa-solid fa-file-zipper"></i>
+                                                                <i v-else class="fa-solid fa-file-lines"></i>
+                                                            </div>
+
+                                                            <!-- Material Info -->
+                                                            <div class="flex-grow-1 min-w-0">
+                                                                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                                                    <span class="file-pill-tag" :class="'file-pill-' + (mat.file_type || 'default')">
+                                                                        {{ (mat.file_type || 'PDF').toUpperCase() }}
+                                                                    </span>
+                                                                    <span class="badge bg-light text-muted border font-monospace" style="font-size: 0.68rem;">
+                                                                        {{ mat.file_size_format || mat.fileSizeFormat || 'Document' }}
+                                                                    </span>
+                                                                </div>
+
+                                                                <h6 class="fw-bold text-dark mb-1 text-truncate" :title="mat.title">
+                                                                    {{ mat.title }}
+                                                                </h6>
+                                                                <p v-if="mat.description" class="text-muted fs-8 mb-2 line-clamp-2" :title="mat.description">
+                                                                    {{ mat.description }}
+                                                                </p>
+
+                                                                <!-- Metadata Footer -->
+                                                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-2 border-top">
+                                                                    <div class="d-flex align-items-center gap-3 text-muted fs-8">
+                                                                        <span :title="'Uploaded by ' + (mat.professor_name || 'Professor')">
+                                                                            <i class="fa-solid fa-chalkboard-user me-1"></i>{{ mat.professor_name || 'Professor' }}
+                                                                        </span>
+                                                                        <span :title="mat.published_at">
+                                                                            <i class="fa-regular fa-clock me-1"></i>{{ mat.published_at ? new Date(mat.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent' }}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <!-- Direct Download Button -->
+                                                                    <button type="button" class="btn btn-sm btn-success px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-xs"
+                                                                        @click="downloadMaterial(mat)">
+                                                                        <i class="fa-solid fa-download"></i>
+                                                                        <span>Download</span>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
                         </div>
                     </template>
 
@@ -3527,9 +4731,9 @@
     </div><!-- /#app -->
 
     <!-- Modular System Architecture Scripts -->
-    <script src="assets/js/models/StudentModel.js?v=<?= time() ?>"></script>
-    <script src="assets/js/services/StudentApiService.js?v=<?= time() ?>"></script>
-    <script src="assets/js/controllers/StudentPortalController.js?v=20260822_swal"></script>
+    <script src="assets/js/models/StudentModel.js?v=20260930_lms_v4"></script>
+    <script src="assets/js/services/StudentApiService.js?v=20260930_lms_v4"></script>
+    <script src="assets/js/controllers/StudentPortalController.js?v=20260930_lms_v4"></script>
     <script>
         window.app = Vue.createApp(StudentPortalController).mount('#app');
     </script>

@@ -106,6 +106,20 @@ const { createApp, ref, reactive, computed, onMounted } = Vue;
                         icon: "fas fa-id-card",
                         url: "stations/it-center/",
                         roles: ["SUPER_ADMIN", "ADMIN", "IT_CENTER"]
+                    },
+                    {
+                        name: "Academic Scheduler Station",
+                        description: "Manage class cohorts, subject section matrices, and schedules",
+                        icon: "fas fa-calendar-alt",
+                        url: "stations/scheduler/",
+                        roles: ["SUPER_ADMIN", "ADMIN", "SCHEDULER"]
+                    },
+                    {
+                        name: "Faculty Professor Portal",
+                        description: "Access class sections, weekly timetable, LMS materials, and announcements",
+                        icon: "fas fa-chalkboard-teacher",
+                        url: "stations/professor/",
+                        roles: ["SUPER_ADMIN", "ADMIN", "PROFESSOR"]
                     }
                 ];
 
@@ -117,18 +131,22 @@ const { createApp, ref, reactive, computed, onMounted } = Vue;
                     if (role === 'MEDICAL') return _bp + '/stations/medical-checkup/';
                     if (role === 'CASHIER') return _bp + '/stations/payment-processing/';
                     if (role === 'IT_CENTER') return _bp + '/stations/it-center/';
+                    if (role === 'SCHEDULER') return _bp + '/stations/scheduler/';
+                    if (role === 'PROFESSOR') return _bp + '/stations/professor/';
                     if (role === 'DEVELOPER') return _bp + '/monitoring/';
                     return _bp + '/admin/';
                 };
 
                 const roleAllowedWorkstations = {
-                    'SUPER_ADMIN': ['admin', 'registrar', 'stations/tlc-helpdesk', 'stations/medical-checkup', 'stations/payment-processing', 'stations/it-center', 'monitoring'],
-                    'ADMIN':       ['admin', 'registrar', 'stations/tlc-helpdesk', 'stations/medical-checkup', 'stations/payment-processing', 'stations/it-center', 'monitoring'],
+                    'SUPER_ADMIN': ['admin', 'registrar', 'stations/tlc-helpdesk', 'stations/medical-checkup', 'stations/payment-processing', 'stations/it-center', 'stations/scheduler', 'stations/professor', 'monitoring'],
+                    'ADMIN':       ['admin', 'registrar', 'stations/tlc-helpdesk', 'stations/medical-checkup', 'stations/payment-processing', 'stations/it-center', 'stations/scheduler', 'stations/professor', 'monitoring'],
                     'REGISTRAR':   ['registrar'],
                     'HELPDESK':    ['stations/tlc-helpdesk'],
                     'MEDICAL':     ['stations/medical-checkup'],
                     'CASHIER':     ['stations/payment-processing'],
                     'IT_CENTER':   ['stations/it-center'],
+                    'SCHEDULER':   ['stations/scheduler'],
+                    'PROFESSOR':   ['stations/professor'],
                     'DEVELOPER':   ['monitoring']
                 };
 

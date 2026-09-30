@@ -36,6 +36,14 @@ CREDENTIALS = {
     "ADMIN": {
         "username": os.environ.get("GNCP_ADMIN_USER", "admin"),
         "password": os.environ.get("GNCP_ADMIN_PASS", "admin12345")
+    },
+    "SCHEDULER": {
+        "username": os.environ.get("GNCP_SCHEDULER_USER", "scheduler"),
+        "password": os.environ.get("GNCP_SCHEDULER_PASS", "Gncp#2026!")
+    },
+    "PROFESSOR": {
+        "username": os.environ.get("GNCP_PROFESSOR_USER", "alan.turing"),
+        "password": os.environ.get("GNCP_PROFESSOR_PASS", "Gncp#2026!")
     }
 }
 
@@ -51,6 +59,8 @@ PAGES = {
     "CASHIER":              f"{BASE_URL}/stations/payment-processing/index.html",
     "IT_CENTER":            f"{BASE_URL}/stations/it-center/index.html",
     "ADMIN":                f"{BASE_URL}/admin/index.html",
+    "SCHEDULER":            f"{BASE_URL}/stations/scheduler/index.html",
+    "PROFESSOR":            f"{BASE_URL}/stations/professor/index.html",
     "STUDENT_PORTAL":       f"{BASE_URL}/student-portal/index.html",
     "STUDENT_PORTAL_LOGIN": f"{BASE_URL}/student-portal/login.html",
     "STUDENT_FORGOT_PASS":  f"{BASE_URL}/student-portal/forgot-password.html"

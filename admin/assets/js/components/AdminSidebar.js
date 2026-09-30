@@ -161,6 +161,12 @@ const AdminSidebar = {
                 </div>
 
                 <div class="nav-category-wrapper">
+                    <button class="nav-cat-header nav-item-top" :class="{ active: view === 'professors' }" @click="selectView('professors')">
+                        <span><i class="fa-solid fa-user-tie"></i> Faculty Professors</span>
+                    </button>
+                </div>
+
+                <div class="nav-category-wrapper">
                     <button class="nav-cat-header nav-item-top" :class="{ active: view === 'student_accounts' }" @click="selectView('student_accounts')">
                         <span><i class="fa-solid fa-id-card"></i> Student Portal Accounts</span>
                     </button>

@@ -36,7 +36,12 @@ const handleFetchResponse = async (res) => {
         window.handle401SessionExpired();
         return { success: false, error: 'Session expired. Please log in.' };
     }
-    const text = await res.text();
+    let text = '';
+    try {
+        text = await res.text();
+    } catch (e) {
+        return { success: false, error: 'Failed to read response from server.' };
+    }
     try {
         const json = JSON.parse(text);
         if (json && (json.code === 401 || (json.error && typeof json.error === 'string' && json.error.includes('Authentication required')))) {
@@ -45,8 +50,11 @@ const handleFetchResponse = async (res) => {
         }
         return json;
     } catch (e) {
-        console.error('Invalid JSON response from server:', text);
-        return { success: false, error: 'Server returned an invalid format. Check console logs for details.' };
+        if (!res.ok) {
+            return { success: false, error: `Server response code ${res.status}.` };
+        }
+        console.warn('Non-JSON response from server:', text ? text.substring(0, 100) : '');
+        return { success: false, error: 'Server returned an invalid format.' };
     }
 };
 
@@ -59,14 +67,25 @@ const get = (action, params = {}) => {
             .join('&');
         if (qs) url += `&${qs}`;
     }
-    return fetch(url, { credentials: 'include' }).then(handleFetchResponse);
+    return fetch(url, { credentials: 'include' })
+        .then(handleFetchResponse)
+        .catch(err => {
+            console.warn(`[AdminAPI] GET ${action} failed:`, err.message || err);
+            return { success: false, error: 'Network request failed. Please check your connection.' };
+        });
 };
+
 const post = (action, body) => fetch(`${API}?action=${action}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     body: JSON.stringify(body)
-}).then(handleFetchResponse);
+})
+    .then(handleFetchResponse)
+    .catch(err => {
+        console.warn(`[AdminAPI] POST ${action} failed:`, err.message || err);
+        return { success: false, error: 'Network request failed. Please check your connection.' };
+    });
 
 const app = createApp({
     components: {
@@ -763,6 +782,7 @@ const app = createApp({
             if (['periods','sections'].includes(view.value)) return 'School Terms & Sections';
             if (['classOfferings','students','fees'].includes(view.value)) return 'Schedules & Billing';
             if (view.value === 'student_accounts') return 'Student Management';
+            if (view.value === 'professors') return 'Faculty & Instruction';
             return 'Staff Accounts';
         });
         const viewTitle = computed(() => ({
@@ -771,11 +791,13 @@ const app = createApp({
             periods:'Enrollment Semesters', sections:'Class Sections', classOfferings:'Create Class Schedules',
             students:'Student Records', fees:'Tuition & Misc Fees',
             operators:'Staff Logins (Operators)',
+            professors:'Faculty Professor Accounts',
             student_accounts:'Student Portal Accounts'
         }[view.value] || ''));
         const addLabel = computed(() => ({
             departments_programs:'Program', subjects:'Subject', curriculum:'Entry',
-            periods:'Period', sections:'Section', classOfferings:'Class Offering', fees:'Fee', operators:'Operator'
+            periods:'Period', sections:'Section', classOfferings:'Class Offering', fees:'Fee', operators:'Operator',
+            professors:'Professor'
         }[view.value] || ''));
         const searchPlaceholder = computed(() => `Search ${viewTitle.value.toLowerCase()}…`);
 
@@ -1257,6 +1279,12 @@ const app = createApp({
             if (v === 'operators') {
                 filterUserStatus.value = 'ALL';
                 fetchOperators(false);
+            }
+            if (v === 'professors') {
+                filterProfStatus.value = 'ALL';
+                filterProfDept.value = 'ALL';
+                fetchProfessors(false);
+                fetchDepartments();
             }
         };
 
@@ -2660,6 +2688,220 @@ const app = createApp({
             });
         };
 
+        // ── PROFESSOR / TEACHER ACCOUNT MANAGEMENT ────────────────────────
+        const professors = ref([]);
+        const isLoadingProfessors = ref(false);
+        const filterProfStatus = ref('ALL');
+        const filterProfDept = ref('ALL');
+        const searchProfQuery = ref('');
+        const isProfessorModalOpen = ref(false);
+        const isSubmittingProfessor = ref(false);
+        const professorForm = reactive({
+            id: null,
+            user_id: null,
+            name: '',
+            username: '',
+            email: '',
+            employee_id: '',
+            department_id: '',
+            password: '',
+            status: 'ACTIVE'
+        });
+
+        const fetchProfessors = (forceRefresh = false) => {
+            isLoadingProfessors.value = true;
+            get('professors').then(r => {
+                if (r && r.success && Array.isArray(r.data)) {
+                    professors.value = r.data;
+                } else {
+                    professors.value = [];
+                }
+            }).catch(e => {
+                console.error('[Admin] Failed to fetch professors:', e);
+                professors.value = [];
+            }).finally(() => {
+                isLoadingProfessors.value = false;
+            });
+        };
+
+        const fetchDepartments = () => {
+            get('departments').then(r => {
+                if (r && r.success && Array.isArray(r.data)) {
+                    departments.value = r.data;
+                } else {
+                    departments.value = [];
+                }
+            }).catch(e => {
+                console.error('[Admin] Failed to fetch departments:', e);
+                departments.value = [];
+            });
+        };
+
+        const filteredProfessors = computed(() => {
+            let list = professors.value;
+            if (filterProfStatus.value !== 'ALL') {
+                list = list.filter(p => (p.status || 'ACTIVE').toUpperCase() === filterProfStatus.value);
+            }
+            if (filterProfDept.value !== 'ALL') {
+                list = list.filter(p => p.department_name === filterProfDept.value || p.department_code === filterProfDept.value);
+            }
+            if (searchProfQuery.value.trim()) {
+                const q = searchProfQuery.value.toLowerCase().trim();
+                list = list.filter(p =>
+                    (p.name && p.name.toLowerCase().includes(q)) ||
+                    (p.username && p.username.toLowerCase().includes(q)) ||
+                    (p.email && p.email.toLowerCase().includes(q)) ||
+                    (p.employee_id && p.employee_id.toLowerCase().includes(q))
+                );
+            }
+            return list;
+        });
+
+        const openCreateProfessorModal = () => {
+            Object.assign(professorForm, {
+                id: null,
+                user_id: null,
+                name: '',
+                username: '',
+                email: '',
+                employee_id: '',
+                department_id: departments.value[0]?.id || '',
+                password: '',
+                status: 'ACTIVE'
+            });
+            isProfessorModalOpen.value = true;
+        };
+
+        const openEditProfessorModal = (p) => {
+            Object.assign(professorForm, {
+                id: p.id,
+                user_id: p.user_id,
+                name: p.name,
+                username: p.username,
+                email: p.email || '',
+                employee_id: p.employee_id || '',
+                department_id: p.department_id || '',
+                password: '',
+                status: p.status || 'ACTIVE'
+            });
+            isProfessorModalOpen.value = true;
+        };
+
+        const closeProfessorModal = () => {
+            if (isSubmittingProfessor.value) return;
+            isProfessorModalOpen.value = false;
+        };
+
+        const submitSaveProfessor = () => {
+            if (!professorForm.name || !professorForm.username) {
+                Swal.fire({
+                    title: 'Missing Required Fields',
+                    text: 'Full Name and Username are required.',
+                    icon: 'warning',
+                    confirmButtonColor: '#006A4E'
+                });
+                return;
+            }
+
+            isSubmittingProfessor.value = true;
+            post('save_user', {
+                user: {
+                    id: professorForm.user_id,
+                    name: professorForm.name,
+                    username: professorForm.username,
+                    email: professorForm.email,
+                    employee_id: professorForm.employee_id,
+                    department_id: professorForm.department_id,
+                    password: professorForm.password,
+                    role: 'PROFESSOR',
+                    status: professorForm.status
+                }
+            }).then(r => {
+                isSubmittingProfessor.value = false;
+                if (r && r.success) {
+                    closeProfessorModal();
+                    fetchProfessors(true);
+                    Swal.fire({
+                        title: professorForm.id ? 'Professor Updated!' : 'Professor Created!',
+                        text: `${professorForm.name} account has been ${professorForm.id ? 'updated' : 'provisioned'} successfully.`,
+                        icon: 'success',
+                        confirmButtonColor: '#006A4E'
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Operation Failed',
+                        text: (r && (r.message || r.error)) ? (r.message || r.error) : 'Failed to save professor account.',
+                        icon: 'error',
+                        confirmButtonColor: '#006A4E'
+                    });
+                }
+            }).catch(e => {
+                isSubmittingProfessor.value = false;
+                Swal.fire({
+                    title: 'Server Error',
+                    text: 'Unable to communicate with the server.',
+                    icon: 'error',
+                    confirmButtonColor: '#006A4E'
+                });
+            });
+        };
+
+        const toggleProfessorStatus = (p, newStatus) => {
+            post('update_user_status', { id: p.user_id || p.id, status: newStatus }).then(r => {
+                if (r && r.success) {
+                    p.status = newStatus;
+                    fetchProfessors(true);
+                    Swal.fire({
+                        title: 'Status Updated',
+                        text: `Professor account is now ${newStatus}.`,
+                        icon: 'success',
+                        confirmButtonColor: '#006A4E',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Update Failed',
+                        text: (r && r.error) ? r.error : 'Failed to update status.',
+                        icon: 'error',
+                        confirmButtonColor: '#006A4E'
+                    });
+                }
+            });
+        };
+
+        const resetProfessorPassword = (p) => {
+            Swal.fire({
+                title: 'Reset Password?',
+                text: `Reset password for ${p.name}? A temporary password will be generated.`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#006A4E',
+                cancelButtonColor: '#6B7280',
+                confirmButtonText: 'Yes, Reset'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                post('reset_user_password', { id: p.user_id || p.id }).then(r => {
+                    if (r && r.success) {
+                        const tempPass = r.data?.tempPassword || 'Gncp#2026!';
+                        Swal.fire({
+                            title: 'Password Reset Successful!',
+                            html: `Temporary Password:<br><code style="font-size:1.2rem;color:#006A4E;background:#e6f4ed;padding:6px 14px;border-radius:6px;display:inline-block;margin-top:6px;font-weight:bold;">${tempPass}</code>`,
+                            icon: 'success',
+                            confirmButtonColor: '#006A4E'
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Reset Failed',
+                            text: (r && r.error) ? r.error : 'Failed to reset password.',
+                            icon: 'error',
+                            confirmButtonColor: '#006A4E'
+                        });
+                    }
+                });
+            });
+        };
+
         // ── IN-APP ACCOUNT PROFILE & SECURITY MANAGEMENT ──────────────────────
         const user = ref({ name: '', email: '', username: '', role: '', avatar: null });
         const pass = ref({ current: '', newPass: '', confirm: '' });
@@ -2936,7 +3178,13 @@ const app = createApp({
             user, pass, saving, updatingPass, showCurrentPass, showNewPass, fileInput,
             initials, formattedAvatar, avatarFailed, onAvatarError,
             passStrengthLevel, passStrengthLabel, passStrengthColor, passStrengthWidth,
-            checkPassStrength, triggerFileInput, onFileSelected, saveStaffProfile, updatePassword, loadProfile
+            checkPassStrength, triggerFileInput, onFileSelected, saveStaffProfile, updatePassword, loadProfile,
+
+            // Faculty Professors Management
+            professors, isLoadingProfessors, filterProfStatus, filterProfDept, searchProfQuery,
+            isProfessorModalOpen, isSubmittingProfessor, professorForm, filteredProfessors,
+            fetchProfessors, fetchDepartments, openCreateProfessorModal, openEditProfessorModal,
+            closeProfessorModal, submitSaveProfessor, toggleProfessorStatus, resetProfessorPassword
         };
     }
 });

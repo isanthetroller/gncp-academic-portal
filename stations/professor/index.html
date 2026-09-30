@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>Faculty Professor Workstation | Go-on National College</title>
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="../../shared/libs/fonts/fonts.css">
+    <link rel="stylesheet" href="../../shared/libs/font-awesome/css/all.min.css">
+    <link href="../../shared/libs/bootstrap.min.css" rel="stylesheet">
+    <!-- Workstation Theme -->
+    <link rel="stylesheet" href="../../shared/css/admin_workstation_theme.css?v=20260825_light">
+    <link rel="stylesheet" href="../../shared/css/sidebar.css?v=10">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="../../shared/libs/sweetalert2.all.min.js"></script>
+    <script src="../../shared/js/PasswordChangeGuard.js"></script>
+</head>
+<body>
+    <div id="app" class="professor-shell" v-cloak>
+        <template v-if="currentUser">
+            <!-- Unified Employee Sidebar -->
+            <employee-sidebar 
+                station-name="Go-on National College" 
+                station-tag="FACULTY PROFESSOR"
+                :nav-groups="[
+                    {
+                        title: 'Teaching & Classes',
+                        items: [
+                            { id: 'dashboard', label: 'Dashboard Overview', icon: 'fa-gauge' },
+                            { id: 'my_sections', label: 'My Class Sections', icon: 'fa-users-rectangle' },
+                            { id: 'my_subjects', label: 'Handled Subjects', icon: 'fa-book-bookmark' },
+                            { id: 'schedule_grid', label: 'Weekly Timetable', icon: 'fa-calendar-week' }
+                        ]
+                    },
+                    {
+                        title: 'Learning Management (LMS)',
+                        items: [
+                            { id: 'personal_drive', label: 'Personal File Drive', icon: 'fa-hard-drive' },
+                            { id: 'published_materials', label: 'Published Materials', icon: 'fa-share-nodes' },
+                            { id: 'announcements', label: 'Class Announcements', icon: 'fa-bullhorn' }
+                        ]
+                    },
+                    {
+                        title: 'Account & Settings',
+                        items: [
+                            { id: 'profile', label: 'My Faculty Profile', icon: 'fa-user-tie' }
+                        ]
+                    }
+                ]"
+                :current-view="currentView"
+                :current-user="currentUser"
+                base-path="../../"
+                @set-view="setView"
+                @logout="handleLogout">
+            </employee-sidebar>
+
+            <!-- Main Panel -->
+            <main class="main-panel">
+                <!-- Top Bar -->
+                <header class="top-bar">
+                    <div class="top-bar-left">
+                        <span class="eyebrow">FACULTY PORTAL</span>
+                        <span class="top-bar-divider">|</span>
+                        <h2>{{ greeting }}, {{ currentUser ? currentUser.name : 'Professor' }}!</h2>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span v-if="professorProfile && professorProfile.professor" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-semibold" style="font-size:0.78rem">
+                            <i class="fa-solid fa-id-badge me-1"></i> {{ professorProfile.professor.employee_id }} &bull; {{ professorProfile.professor.department_name }}
+                        </span>
+                    </div>
+                </header>
+
+                <div class="page-body">
+                    <!-- VIEW 1: DASHBOARD -->
+                    <div v-if="currentView === 'dashboard'">
+                        <div class="stat-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon-box stat-icon-green"><i class="fa-solid fa-users-rectangle"></i></div>
+                                <div>
+                                    <div class="stat-value">{{ professorProfile ? professorProfile.totalSections : sections.length }}</div>
+                                    <div class="stat-label">Assigned Sections</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon-box stat-icon-gold"><i class="fa-solid fa-book-open"></i></div>
+                                <div>
+                                    <div class="stat-value">{{ professorProfile ? professorProfile.totalSubjects : subjects.length }}</div>
+                                    <div class="stat-label">Subjects Handled</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon-box stat-icon-blue"><i class="fa-solid fa-graduation-cap"></i></div>
+                                <div>
+                                    <div class="stat-value">{{ professorProfile ? professorProfile.totalUnits.toFixed(1) : '0.0' }}</div>
+                                    <div class="stat-label">Total Teaching Units</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon-box stat-icon-purple"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                                <div>
+                                    <div class="stat-value">{{ professorProfile ? professorProfile.totalFiles : driveFiles.length }}</div>
+                                    <div class="stat-label">Drive Documents</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Teaching Schedule Quick Peek -->
+                        <div class="content-card mb-4">
+                            <div class="card-header-bar">
+                                <div class="card-header-title"><i class="fa-solid fa-calendar-day text-success"></i> My Teaching Classes Overview</div>
+                                <button type="button" class="btn-action btn-outline-action" @click="setView('schedule_grid')">
+                                    <i class="fa-solid fa-calendar-week me-1"></i> Full Weekly Timetable
+                                </button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="prof-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Subject</th>
+                                            <th>Section</th>
+                                            <th>Units</th>
+                                            <th>Days &amp; Time Window</th>
+                                            <th>Room</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="sub in subjects" :key="sub.id">
+                                            <td class="fw-bold">{{ sub.subject }} <div class="text-muted font-monospace" style="font-size:0.75rem;">{{ sub.code }}</div></td>
+                                            <td><span class="badge bg-light text-dark border">{{ sub.sectionCode }}</span></td>
+                                            <td>{{ sub.totalUnits.toFixed(1) }} Units</td>
+                                            <td><span class="fw-semibold">{{ sub.days }}</span> &bull; {{ sub.time }}</td>
+                                            <td><span class="badge bg-secondary-subtle text-secondary">{{ sub.room }}</span></td>
+                                        </tr>
+                                        <tr v-if="subjects.length === 0">
+                                            <td colspan="5" class="text-center text-muted p-4">No active subject assignments found for your account.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 2: MY SECTIONS -->
+                    <div v-if="currentView === 'my_sections'">
+                        <div class="content-card">
+                            <div class="card-header-bar">
+                                <div class="card-header-title"><i class="fa-solid fa-users-rectangle text-success"></i> Assigned Cohort Sections</div>
+                                <span class="badge bg-secondary-subtle text-secondary">{{ sections.length }} section(s)</span>
+                            </div>
+                            <div class="p-3">
+                                <div class="row g-3">
+                                    <div v-for="sec in sections" :key="sec.sectionCode" class="col-md-6 col-lg-4">
+                                        <div class="p-3 bg-white border rounded-3 h-100 shadow-sm d-flex flex-direction-column justify-content-between">
+                                            <div>
+                                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                                    <span class="badge bg-success-subtle text-success fs-6 font-monospace px-2.5 py-1">{{ sec.sectionCode }}</span>
+                                                    <span class="badge bg-light text-muted border">{{ sec.enrolledStudents }} Students</span>
+                                                </div>
+                                                <h6 class="fw-bold text-dark mb-1">{{ sec.program }}</h6>
+                                                <div class="text-muted mb-3" style="font-size:0.8rem;">
+                                                    {{ sec.yearLevel }} &bull; {{ sec.academicPeriod }}
+                                                </div>
+
+                                                <div class="border-top pt-2">
+                                                    <div class="fw-semibold text-muted mb-1" style="font-size:0.75rem; text-transform:uppercase;">Handled Subjects:</div>
+                                                    <ul class="list-unstyled mb-0" style="font-size:0.82rem;">
+                                                        <li v-for="s in sec.subjects" :key="s.id" class="mb-1 text-dark">
+                                                            <i class="fa-solid fa-book-bookmark text-success me-1"></i>
+                                                            <strong>{{ s.subject }}</strong>
+                                                            <div class="text-muted ms-3" style="font-size:0.75rem;">{{ s.days }} {{ s.time }} &bull; {{ s.room }}</div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-if="sections.length === 0" class="col-12 text-center text-muted p-5">
+                                        <i class="fa-solid fa-users-slash fa-2x mb-2 text-secondary"></i>
+                                        <div>No assigned sections found for your faculty account.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 3: HANDLED SUBJECTS -->
+                    <div v-if="currentView === 'my_subjects'">
+                        <div class="content-card">
+                            <div class="card-header-bar">
+                                <div class="card-header-title"><i class="fa-solid fa-book-bookmark text-success"></i> Handled Subjects Catalog</div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="prof-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Subject Code</th>
+                                            <th>Subject Title</th>
+                                            <th>Section</th>
+                                            <th>Units</th>
+                                            <th>Schedule Window</th>
+                                            <th>Room</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="sub in subjects" :key="sub.id">
+                                            <td><code class="text-success fw-bold">{{ sub.code }}</code></td>
+                                            <td class="fw-bold">{{ sub.subject }}</td>
+                                            <td><span class="badge bg-light text-dark border">{{ sub.sectionCode }}</span></td>
+                                            <td>{{ sub.totalUnits.toFixed(1) }}</td>
+                                            <td>{{ sub.days }} &bull; {{ sub.time }}</td>
+                                            <td><span class="badge bg-secondary-subtle text-secondary">{{ sub.room }}</span></td>
+                                        </tr>
+                                        <tr v-if="subjects.length === 0">
+                                            <td colspan="6" class="text-center text-muted p-4">No subjects currently assigned.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 4: WEEKLY TIMETABLE GRID -->
+                    <div v-if="currentView === 'schedule_grid'">
+                        <div class="content-card">
+                            <div class="card-header-bar">
+                                <div class="card-header-title"><i class="fa-solid fa-calendar-week text-success"></i> Master Weekly Timetable (7:00 AM – 7:00 PM)</div>
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                                    <i class="fa-solid fa-utensils me-1"></i> Lunch Period: 12:00 PM – 1:00 PM
+                                </span>
+                            </div>
+                            <div class="timetable-grid">
+                                <div v-for="(slots, dayName) in weeklySchedule" :key="dayName" class="timetable-day-col">
+                                    <div class="timetable-day-head">{{ dayName }}</div>
+                                    <div v-if="slots && slots.length > 0">
+                                        <div v-for="slot in slots" :key="slot.id" class="timetable-slot-card">
+                                            <div class="timetable-slot-time"><i class="fa-regular fa-clock me-1"></i>{{ slot.time }}</div>
+                                            <div class="timetable-slot-title">{{ slot.subject }}</div>
+                                            <div class="timetable-slot-meta">
+                                                <span class="badge bg-light text-dark border me-1">{{ slot.sectionCode }}</span>
+                                                <span>{{ slot.room }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-else class="text-center py-4 text-muted" style="font-size:0.75rem;">
+                                        No Classes
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 5: PERSONAL FILE DRIVE -->
+                    <div v-if="currentView === 'personal_drive'">
+                        <div class="content-card">
+                            <div class="card-header-bar">
+                                <div class="card-header-title"><i class="fa-solid fa-hard-drive text-success"></i> My Personal File Drive</div>
+                                <button type="button" class="btn-action btn-primary-action" @click="isUploadModalOpen = true">
+                                    <i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload File to Drive
+                                </button>
+                            </div>
+                            <div class="p-4">
+                                <div class="alert alert-light border rounded-3 py-2 px-3 mb-4 text-muted" style="font-size:0.82rem;">
+                                    <i class="fa-solid fa-shield-halved text-success me-1"></i>
+                                    Secure storage for lecture slides, syllabi, and assignment PDFs. Uploaded files remain private in your drive until explicitly published to student section(s).
+                                </div>
+
+                                <div class="row g-3">
+                                    <div v-for="file in driveFiles" :key="file.id" class="col-md-6 col-lg-3">
+                                        <div class="drive-file-card h-100">
+                                            <div>
+                                                <div class="file-icon" :class="file.fileType === 'pdf' ? 'file-pdf' : file.fileType.includes('ppt') ? 'file-ppt' : 'file-doc'">
+                                                    <i :class="file.fileType === 'pdf' ? 'fa-solid fa-file-pdf' : file.fileType.includes('ppt') ? 'fa-solid fa-file-powerpoint' : 'fa-solid fa-file-word'"></i>
+                                                </div>
+                                                <h6 class="fw-bold text-dark text-truncate mb-1" :title="file.filename">{{ file.filename }}</h6>
+                                                <div class="text-muted mb-3" style="font-size:0.75rem;">
+                                                    {{ file.fileSizeFormat }} &bull; {{ file.uploadedAt.substring(0, 10) }}
+                                                </div>
+                                                <div v-if="file.isPublished" class="mb-3">
+                                                    <span class="badge bg-success-subtle text-success" style="font-size:0.7rem;">
+                                                        <i class="fa-solid fa-share-nodes me-1"></i> Published in LMS
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex gap-2 pt-2 border-top">
+                                                <button type="button" class="btn-action btn-gold-action flex-fill justify-content-center" @click="openPublishModal(file)">
+                                                    <i class="fa-solid fa-share me-1"></i> Publish
+                                                </button>
+                                                <a :href="'../../api/index.php?action=professor/download_file&fileId=' + file.id" class="btn-action btn-outline-action px-2" title="Download File">
+                                                    <i class="fa-solid fa-download"></i>
+                                                </a>
+                                                <button type="button" class="btn-action btn-outline-action px-2 text-danger" title="Delete File" @click="deleteDriveFile(file)">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-if="driveFiles.length === 0" class="col-12 text-center text-muted p-5">
+                                        <i class="fa-solid fa-folder-open fa-2x mb-2 text-secondary"></i>
+                                        <div>Your Personal File Drive is empty. Upload course presentations or PDF materials to get started.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 6: PUBLISHED LMS MATERIALS -->
+                    <div v-if="currentView === 'published_materials'">
+                        <div class="content-card">
+                            <div class="card-header-bar">
+                                <div class="card-header-title"><i class="fa-solid fa-share-nodes text-success"></i> Active Student LMS Material Postings</div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="prof-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Material Title</th>
+                                            <th>Source File</th>
+                                            <th>Subject</th>
+                                            <th>Target Cohort Sections</th>
+                                            <th>Date Published</th>
+                                            <th class="text-end">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="mat in publishedMaterials" :key="mat.id">
+                                            <td>
+                                                <div class="fw-bold text-dark">{{ mat.title }}</div>
+                                                <div class="text-muted" style="font-size:0.78rem;">{{ mat.description }}</div>
+                                            </td>
+                                            <td>
+                                                <i class="fa-solid fa-file me-1 text-secondary"></i>
+                                                <span class="text-dark">{{ mat.filename }}</span>
+                                                <span class="text-muted ms-1" style="font-size:0.75rem;">({{ mat.fileSizeFormat }})</span>
+                                            </td>
+                                            <td><code>{{ mat.subjectCode || 'General' }}</code></td>
+                                            <td>
+                                                <span v-for="sec in mat.sections" :key="sec" class="badge bg-light text-dark border me-1">{{ sec }}</span>
+                                            </td>
+                                            <td>{{ mat.publishedAt.substring(0, 16) }}</td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn-action btn-outline-action text-danger" @click="unpublishMaterial(mat)">
+                                                    <i class="fa-solid fa-ban me-1"></i> Unpublish
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="publishedMaterials.length === 0">
+                                            <td colspan="6" class="text-center text-muted p-4">No learning materials have been published to student portals yet.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 7: CLASS ANNOUNCEMENTS -->
+                    <div v-if="currentView === 'announcements'">
+                        <div class="content-card">
+                            <div class="card-header-bar">
+                                <div class="card-header-title"><i class="fa-solid fa-bullhorn text-success"></i> Section-Targeted Class Announcements</div>
+                                <button type="button" class="btn-action btn-primary-action" @click="openAnnModal">
+                                    <i class="fa-solid fa-plus me-1"></i> Post Announcement
+                                </button>
+                            </div>
+                            <div class="p-3">
+                                <div v-for="ann in announcements" :key="ann.id" class="p-3 bg-white border rounded-3 mb-3 shadow-sm">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <h6 class="fw-bold text-dark mb-0">{{ ann.title }}</h6>
+                                        <button type="button" class="btn btn-sm btn-outline-danger border-0" @click="deleteAnnouncement(ann)">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                    <div class="mb-2 text-secondary" style="font-size:0.85rem;" v-html="ann.content"></div>
+                                    <div class="d-flex align-items-center gap-2 pt-2 border-top">
+                                        <span class="text-muted fw-semibold" style="font-size:0.75rem;">TARGET SECTIONS:</span>
+                                        <span v-for="s in ann.sections" :key="s" class="badge bg-success-subtle text-success">{{ s }}</span>
+                                        <span class="text-muted ms-auto" style="font-size:0.75rem;">Posted on {{ ann.createdAt }}</span>
+                                    </div>
+                                </div>
+                                <div v-if="announcements.length === 0" class="text-center text-muted p-5">
+                                    <i class="fa-solid fa-bullhorn fa-2x mb-2 text-secondary"></i>
+                                    <div>No class announcements created yet. Click 'Post Announcement' to send updates directly to your sections.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 8: PROFILE -->
+                    <div v-if="currentView === 'profile'">
+                        <div class="content-card p-4">
+                            <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                                <div class="stat-icon-box stat-icon-green" style="width:64px; height:64px; font-size:1.8rem;">
+                                    <i class="fa-solid fa-chalkboard-user"></i>
+                                </div>
+                                <div>
+                                    <h4 class="fw-bold mb-1">{{ currentUser.name }}</h4>
+                                    <span class="badge bg-success font-monospace">{{ currentUser.role }}</span>
+                                    <div class="text-muted mt-1" style="font-size:0.85rem;">{{ currentUser.email }}</div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3" v-if="professorProfile && professorProfile.professor">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold text-muted" style="font-size:0.8rem;">Faculty Employee ID</label>
+                                    <input type="text" class="form-control" :value="professorProfile.professor.employee_id" disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold text-muted" style="font-size:0.8rem;">Assigned Department</label>
+                                    <input type="text" class="form-control" :value="professorProfile.professor.department_name" disabled>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- UPLOAD FILE MODAL -->
+            <div v-if="isUploadModalOpen" class="modal-overlay" @click.self="isUploadModalOpen = false">
+                <div class="modal-dialog-box">
+                    <div class="modal-head">
+                        <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-cloud-arrow-up text-success me-2"></i>Upload File to Personal Drive</h5>
+                        <button type="button" class="btn-close" @click="isUploadModalOpen = false"></button>
+                    </div>
+                    <div class="modal-body-scroll">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" style="font-size:0.85rem;">Choose Academic File (PDF, PPT, PPTX, DOC, DOCX)</label>
+                            <input type="file" class="form-control" accept=".pdf,.ppt,.pptx,.doc,.docx" @change="onFileSelect">
+                            <small class="text-muted">Maximum file size: 25 MB. Executables are strictly rejected.</small>
+                        </div>
+                    </div>
+                    <div class="modal-foot">
+                        <button type="button" class="btn-action btn-outline-action" @click="isUploadModalOpen = false">Cancel</button>
+                        <button type="button" class="btn-action btn-primary-action" :disabled="!selectedFile || isUploading" @click="uploadFileToDrive">
+                            <i class="fa-solid" :class="isUploading ? 'fa-spinner fa-spin' : 'fa-upload'"></i>
+                            {{ isUploading ? 'Uploading...' : 'Save to Drive' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PUBLISH MATERIAL MODAL -->
+            <div v-if="isPublishModalOpen" class="modal-overlay" @click.self="isPublishModalOpen = false">
+                <div class="modal-dialog-box">
+                    <div class="modal-head">
+                        <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-share-nodes text-success me-2"></i>Publish Material to Student Sections</h5>
+                        <button type="button" class="btn-close" @click="isPublishModalOpen = false"></button>
+                    </div>
+                    <div class="modal-body-scroll">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" style="font-size:0.85rem;">Target Subject (Course)</label>
+                            <select class="form-select" v-model="publishForm.subjectCode">
+                                <option v-for="sub in subjects" :key="sub.code" :value="sub.code">{{ sub.code }} — {{ sub.title || sub.name }}</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" style="font-size:0.85rem;">Material Title</label>
+                            <input type="text" class="form-control" v-model="publishForm.title" placeholder="e.g. Chapter 3: Networking Fundamentals">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" style="font-size:0.85rem;">Description / Instructions</label>
+                            <textarea class="form-control" rows="3" v-model="publishForm.description" placeholder="Notes for students..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" style="font-size:0.85rem;">Select Target Section(s)</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <div v-for="sec in sections" :key="sec.sectionCode" class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" :id="'sec-' + sec.sectionCode" :value="sec.sectionCode" v-model="publishForm.sections">
+                                    <label class="form-check-label fw-bold" :for="'sec-' + sec.sectionCode">{{ sec.sectionCode }}</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-foot">
+                        <button type="button" class="btn-action btn-outline-action" @click="isPublishModalOpen = false">Cancel</button>
+                        <button type="button" class="btn-action btn-gold-action" :disabled="isPublishing" @click="submitPublishMaterial">
+                            <i class="fa-solid" :class="isPublishing ? 'fa-spinner fa-spin' : 'fa-share'"></i>
+                            {{ isPublishing ? 'Publishing...' : 'Publish to Student Portals' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ANNOUNCEMENT MODAL -->
+            <div v-if="isAnnModalOpen" class="modal-overlay" @click.self="isAnnModalOpen = false">
+                <div class="modal-dialog-box">
+                    <div class="modal-head">
+                        <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-bullhorn text-success me-2"></i>Post Class Announcement</h5>
+                        <button type="button" class="btn-close" @click="isAnnModalOpen = false"></button>
+                    </div>
+                    <div class="modal-body-scroll">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" style="font-size:0.85rem;">Target Subject (Course)</label>
+                            <select class="form-select" v-model="annForm.subjectCode">
+                                <option value="">General Class Announcement (All My Subjects)</option>
+                                <option v-for="sub in subjects" :key="sub.code" :value="sub.code">{{ sub.code }} — {{ sub.title || sub.name }}</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" style="font-size:0.85rem;">Announcement Title</label>
+                            <input type="text" class="form-control" v-model="annForm.title" placeholder="e.g. Reminder: Quiz 2 Schedule">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" style="font-size:0.85rem;">Message Content</label>
+                            <textarea class="form-control" rows="4" v-model="annForm.content" placeholder="Write announcement..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" style="font-size:0.85rem;">Recipient Cohorts (Select Sections)</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <div v-for="sec in sections" :key="sec.sectionCode" class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" :id="'ann-sec-' + sec.sectionCode" :value="sec.sectionCode" v-model="annForm.sections">
+                                    <label class="form-check-label fw-bold" :for="'ann-sec-' + sec.sectionCode">{{ sec.sectionCode }}</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-foot">
+                        <button type="button" class="btn-action btn-outline-action" @click="isAnnModalOpen = false">Cancel</button>
+                        <button type="button" class="btn-action btn-primary-action" :disabled="isPublishingAnn" @click="submitAnnouncement">
+                            <i class="fa-solid" :class="isPublishingAnn ? 'fa-spinner fa-spin' : 'fa-bullhorn'"></i>
+                            {{ isPublishingAnn ? 'Posting...' : 'Post Announcement' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toast -->
+            <transition name="fade">
+                <div v-if="toast.show" 
+                     style="position:fixed; bottom:24px; right:24px; z-index:99999; padding:12px 20px; border-radius:10px; font-weight:600; font-size:0.88rem; box-shadow:0 8px 24px rgba(0,0,0,0.15);"
+                     :style="toast.type === 'success' ? 'background:#006A4E; color:#fff;' : 'background:#dc2626; color:#fff;'">
+                    <i class="fa-solid me-2" :class="toast.type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'"></i>
+                    {{ toast.message }}
+                </div>
+            </transition>
+        </template>
+    </div>
+
+    <!-- Script Imports -->
+    <script src="../../shared/libs/bootstrap.bundle.min.js"></script>
+    <script src="../../shared/libs/vue.global.js"></script>
+    <script src="../../shared/js/SessionExpirationGuard.js"></script>
+    <script src="../../shared/js/components/EmployeeSidebar.js"></script>
+    <script src="assets/js/app.js"></script>
+</body>
+</html>

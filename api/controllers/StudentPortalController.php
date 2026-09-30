@@ -123,6 +123,74 @@ class StudentPortalController {
         return $ctrl->uploadDocument($data);
     }
 
+    public function getLearningMaterials(array $params = []): array {
+        $caller = requireAuth(['STUDENT', 'ADMIN', 'SUPER_ADMIN']);
+        $studentId = $params['studentId'] ?? ($params['id'] ?? ($caller['identity'] ?? ''));
+        return StudentPortalService::getLearningMaterials($this->pdo, $studentId);
+    }
+
+    public function downloadMaterial(array $params = []) {
+        $caller = requireAuth(['STUDENT', 'ADMIN', 'SUPER_ADMIN']);
+        $studentId = $caller['identity'] ?? '';
+        $fileId = (int)($params['fileId'] ?? ($params['id'] ?? 0));
+
+        if ($fileId <= 0) {
+            http_response_code(400);
+            die("Invalid file ID requested.");
+        }
+
+        // Verify that this file belongs to a material published to this student's section
+        $secCode = StudentPortalService::getStudentAssignedSection($this->pdo, $studentId);
+        $role = strtoupper($caller['role'] ?? '');
+
+        if ($role === 'STUDENT' && !empty($secCode)) {
+            $chkStmt = $this->pdo->prepare("
+                SELECT COUNT(*) FROM `lms_materials` m
+                JOIN `lms_material_sections` ms ON m.id = ms.material_id
+                WHERE m.file_id = :fid AND (ms.section_code = :sec1 OR :sec2 LIKE CONCAT('%', ms.section_code, '%'))
+            ");
+            $chkStmt->execute(['fid' => $fileId, 'sec1' => $secCode, 'sec2' => $secCode]);
+            $count = (int)$chkStmt->fetchColumn();
+            if ($count === 0) {
+                http_response_code(403);
+                die("Unauthorized: This learning material is not accessible to your assigned section ($secCode).");
+            }
+        }
+
+        $fStmt = $this->pdo->prepare("SELECT * FROM `professor_files` WHERE id = :id LIMIT 1");
+        $fStmt->execute(['id' => $fileId]);
+        $file = $fStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$file) {
+            http_response_code(404);
+            die("File record not found.");
+        }
+
+        $fullPath = __DIR__ . '/../../../uploads/professor_drive/' . $file['stored_filename'];
+        if (!file_exists($fullPath)) {
+            http_response_code(404);
+            die("Physical file missing from storage.");
+        }
+
+        while (ob_get_level()) { ob_end_clean(); }
+
+        header('Content-Description: File Transfer');
+        header('Content-Type: ' . $file['mime_type']);
+        header('Content-Disposition: attachment; filename="' . addslashes($file['filename']) . '"');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . filesize($fullPath));
+        readfile($fullPath);
+        exit;
+    }
+
+    public function getAnnouncements(array $params = []): array {
+        $caller = requireAuth(['STUDENT', 'ADMIN', 'SUPER_ADMIN']);
+        $studentId = $params['studentId'] ?? ($params['id'] ?? ($caller['identity'] ?? ''));
+        return StudentPortalService::getStudentAnnouncements($this->pdo, $studentId);
+    }
+
     public function logout(): array {
         initSession();
         $studentSess = $_SESSION['gncp_student'] ?? null;

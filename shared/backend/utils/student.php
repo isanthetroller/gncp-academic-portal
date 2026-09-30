@@ -9,16 +9,22 @@
  */
 if (!function_exists('getCurriculumSubjects')) {
 function getCurriculumSubjects($pdo, $programCode, $yearLevel = '1st Year', $semester = '1st Semester', $curriculumVersion = null) {
+    $normalized = preg_replace('/\s+IN\s+/i', ' ', strtoupper(trim($programCode)));
+    $cleanCode = preg_replace('/[^A-Z0-9 ]/', '', $normalized);
     $aliasMap = [
-        'BSCPE' => 'BS Computer Engineering',
-        'BSCOE' => 'BS Computer Engineering',
-        'BSCS'  => 'BS Computer Science',
-        'BSIT'  => 'BS Information Technology',
-        'BSN'   => 'BS Nursing',
-        'BSBA'  => 'BS Business Administration'
+        'BSCPE'                     => 'BS Computer Engineering',
+        'BSCOE'                     => 'BS Computer Engineering',
+        'BSCS'                      => 'BS Computer Science',
+        'BSIT'                      => 'BS Information Technology',
+        'BSN'                       => 'BS Nursing',
+        'BSBA'                      => 'BS Business Administration',
+        'BS COMPUTER ENGINEERING'   => 'BS Computer Engineering',
+        'BS COMPUTER SCIENCE'       => 'BS Computer Science',
+        'BS INFORMATION TECHNOLOGY' => 'BS Information Technology',
+        'BS NURSING'                => 'BS Nursing',
+        'BS BUSINESS ADMINISTRATION'=> 'BS Business Administration'
     ];
-    $cleanCode = strtoupper(trim($programCode));
-    $programName = $aliasMap[$cleanCode] ?? null;
+    $programName = $aliasMap[$cleanCode] ?? $aliasMap[strtoupper(trim($programCode))] ?? null;
 
     if (!$programName) {
         $stmt = $pdo->prepare("SELECT name FROM `programs` WHERE `code` = :code OR `name` = :name");
@@ -28,10 +34,11 @@ function getCurriculumSubjects($pdo, $programCode, $yearLevel = '1st Year', $sem
 
     $versionClause = "";
     $params = [
-        'progName' => $programName,
-        'progCode' => $programCode,
-        'year'     => $yearLevel,
-        'sem'      => $semester
+        'progName'  => $programName,
+        'progCode'  => $programCode,
+        'cleanProg' => preg_replace('/\s+IN\s+/i', ' ', $programCode),
+        'year'      => $yearLevel,
+        'sem'       => $semester
     ];
 
     if (!empty($curriculumVersion)) {
@@ -42,7 +49,7 @@ function getCurriculumSubjects($pdo, $programCode, $yearLevel = '1st Year', $sem
     $sql = "SELECT s.code, s.title, s.lecture_units, s.lab_units, (s.lecture_units + s.lab_units) AS units, s.lab_fee, s.prerequisites, c.curriculum_version 
             FROM `curriculum` c
             JOIN `subjects` s ON (c.subject = s.title OR c.subject = s.code)
-            WHERE (c.program = :progName OR c.program = :progCode) AND c.year_level = :year AND c.semester = :sem" . $versionClause . "
+            WHERE (c.program = :progName OR c.program = :progCode OR c.program = :cleanProg) AND c.year_level = :year AND c.semester = :sem" . $versionClause . "
             GROUP BY s.code
             ORDER BY s.code ASC";
 
@@ -56,7 +63,7 @@ function getCurriculumSubjects($pdo, $programCode, $yearLevel = '1st Year', $sem
         $sqlFallback = "SELECT s.code, s.title, s.lecture_units, s.lab_units, (s.lecture_units + s.lab_units) AS units, s.lab_fee, s.prerequisites, c.curriculum_version 
                         FROM `curriculum` c
                         JOIN `subjects` s ON (c.subject = s.title OR c.subject = s.code)
-                        WHERE (c.program = :progName OR c.program = :progCode) AND c.year_level = :year AND c.semester = :sem
+                        WHERE (c.program = :progName OR c.program = :progCode OR c.program = :cleanProg) AND c.year_level = :year AND c.semester = :sem
                         GROUP BY s.code
                         ORDER BY s.code ASC";
         $stmtFB = $pdo->prepare($sqlFallback);

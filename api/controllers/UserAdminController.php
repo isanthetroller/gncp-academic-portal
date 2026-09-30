@@ -8,8 +8,10 @@ require_once __DIR__ . '/../../shared/backend/utils/session_guard.php';
 
 class UserAdminController {
     private $userModel;
+    private $pdo;
 
     public function __construct(PDO $pdo) {
+        $this->pdo = $pdo;
         $this->userModel = new UserModel($pdo);
     }
 
@@ -18,9 +20,28 @@ class UserAdminController {
         return ['success' => true, 'data' => $this->userModel->getAllUsers()];
     }
 
+    public function getProfessors(): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN', 'SCHEDULER', 'REGISTRAR']);
+        $stmt = $this->pdo->query("
+            SELECT p.*, d.code as department_code, d.name as department_name, u.username, u.avatar,
+                   (SELECT COUNT(*) FROM `subject_sections` ss WHERE ss.professor_id = p.id) as assigned_classes_count
+            FROM `professors` p
+            JOIN `departments` d ON p.department_id = d.id
+            JOIN `station_users` u ON p.user_id = u.id
+            ORDER BY p.name ASC
+        ");
+        return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+    }
+
+    public function getDepartments(): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN', 'SCHEDULER', 'REGISTRAR']);
+        $stmt = $this->pdo->query("SELECT * FROM `departments` ORDER BY name ASC");
+        return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+    }
+
     public function saveUser(array $payload): array {
         requireAuth(['ADMIN', 'SUPER_ADMIN']);
-        $userData = $payload['user'] ?? [];
+        $userData = $payload['user'] ?? $payload;
         $userData['username'] = strtolower(trim($userData['username'] ?? ''));
         $userData['name'] = trim($userData['name'] ?? '');
         $userData['role'] = strtoupper(trim($userData['role'] ?? ''));
@@ -39,7 +60,11 @@ class UserAdminController {
             return ['success' => false, 'message' => 'Invalid email address format provided.', 'code' => 400];
         }
 
-        $allowedRoles = ['REGISTRAR', 'HELPDESK', 'MEDICAL', 'CASHIER', 'IT_CENTER', 'ADMIN'];
+        if ($userData['role'] === 'TEACHER') {
+            $userData['role'] = 'PROFESSOR';
+        }
+
+        $allowedRoles = ['REGISTRAR', 'HELPDESK', 'MEDICAL', 'CASHIER', 'IT_CENTER', 'ADMIN', 'PROFESSOR', 'SCHEDULER'];
         if (!in_array($userData['role'], $allowedRoles, true)) {
             return ['success' => false, 'message' => 'Invalid station role selected.', 'code' => 400];
         }
@@ -51,6 +76,32 @@ class UserAdminController {
 
         try {
             $userId = $this->userModel->createUser($userData);
+
+            // If creating a PROFESSOR, ensure child record in professors table
+            if ($userData['role'] === 'PROFESSOR') {
+                $deptId = (int)($userData['department_id'] ?? 1);
+                if ($deptId <= 0) {
+                    $deptCode = trim($userData['department'] ?? 'CCS');
+                    $dStmt = $this->pdo->prepare("SELECT id FROM `departments` WHERE code = :c OR name = :n LIMIT 1");
+                    $dStmt->execute(['c' => $deptCode, 'n' => $deptCode]);
+                    $deptId = (int)($dStmt->fetchColumn() ?: 1);
+                }
+
+                $empId = trim($userData['employee_id'] ?? ('FAC-' . date('Y') . '-' . str_pad((string)$userId, 3, '0', STR_PAD_LEFT)));
+                $pStmt = $this->pdo->prepare("
+                    INSERT INTO `professors` (`user_id`, `employee_id`, `name`, `department_id`, `email`, `status`)
+                    VALUES (:uid, :empid, :name, :deptid, :email, :st)
+                    ON DUPLICATE KEY UPDATE `name`=VALUES(`name`), `department_id`=VALUES(`department_id`), `email`=VALUES(`email`), `status`=VALUES(`status`)
+                ");
+                $pStmt->execute([
+                    'uid'    => $userId,
+                    'empid'  => $empId,
+                    'name'   => $userData['name'],
+                    'deptid' => $deptId,
+                    'email'  => $userData['email'] ?: null,
+                    'st'     => $userData['status']
+                ]);
+            }
             
             // Dispatch credentials email via Gmail/SMTP EmailService
             $mailResult = ['success' => false, 'message' => 'No email provided.'];
@@ -86,6 +137,19 @@ class UserAdminController {
             }
             return ['success' => false, 'message' => 'Failed to create operator account. Please verify user details and try again.', 'code' => 500];
         }
+    }
+
+    public function updateUserStatus(array $payload): array {
+        requireAuth(['ADMIN', 'SUPER_ADMIN']);
+        $id = $payload['id'] ?? null;
+        $status = strtoupper(trim($payload['status'] ?? 'ACTIVE'));
+        if (!$id) {
+            return ['success' => false, 'message' => 'User ID is required.', 'code' => 400];
+        }
+        $this->userModel->updateUserStatus((int)$id, $status);
+        $pStmt = $this->pdo->prepare("UPDATE `professors` SET `status` = :st WHERE `user_id` = :uid OR `id` = :pid");
+        $pStmt->execute(['st' => $status, 'uid' => (int)$id, 'pid' => (int)$id]);
+        return ['success' => true, 'message' => "User status updated to {$status}."];
     }
 
     public function resetOperatorPassword(array $payload): array {

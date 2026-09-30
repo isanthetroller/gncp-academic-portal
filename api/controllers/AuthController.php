@@ -78,6 +78,9 @@ class AuthController {
             'CASHIER'     => 'stations/payment-processing/',
             'IT_CENTER'   => 'stations/it-center/',
             'DEVELOPER'   => 'monitoring/',
+            'SCHEDULER'   => 'stations/scheduler/',
+            'PROFESSOR'   => 'stations/professor/',
+            'TEACHER'     => 'stations/professor/',
         ];
         $redirectUrl = $redirectUrlMap[$role] ?? '';
 

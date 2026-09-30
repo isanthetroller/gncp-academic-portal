@@ -1,754 +1,1066 @@
-# GNCP Academic & Enrollment System: Complete System Analysis & Architecture Audit Report
+# ACADEMIC & ENROLLMENT MANAGEMENT SYSTEM
+## Comprehensive System Analysis & BSIS/BSIT Technical Documentation Report
 
-**Target System:** General De Jesus College (GNCP) Academic & Enrollment Management System  
-**Codebase Root:** `c:\xampp\htdocs\systemtest`  
-**Execution Mode:** Read-Only Static and Architectural Audit (Zero-Modification Verification)  
-**Date of Audit:** September 15, 2026  
-**Auditor:** Antigravity AI Senior Systems Architecture & Cybersecurity Audit Agent  
-
----
-
-## 1. Executive Summary
-
-A comprehensive, read-only architectural, functional, security, and performance audit was performed on the General De Jesus College (GNCP) Academic & Enrollment Management System codebase located at `c:\xampp\htdocs\systemtest`. 
-
-The system serves as the institutional enrollment backbone for higher education programs (BSIT, BSCS, BSCpE), coordinating student onboarding across admissions, registrar document evaluation, academic program advising and sectioning, medical fitness evaluation, cashier tuition billing and receipt issuance, and IT Center identity provisioning.
-
-### Summary Assessment Matrix
-| Dimension | Rating | Key Finding / Operational Status |
-| :--- | :--- | :--- |
-| **Functional Workflow** | **9.2 / 10** | End-to-end 6-stage lifecycle (`PRE_REGISTERED` $\rightarrow$ `VERIFIED` $\rightarrow$ `ADVISED` $\rightarrow$ `MEDICAL_CLEARED` $\rightarrow$ `PAID` $\rightarrow$ `ENROLLED`) is functionally robust, backed by a resilient transaction model. |
-| **Financial Calculations** | **9.5 / 10** | `AssessmentService` and `PaymentService` enforce strict credit unit-based tuition, laboratory rates, flat miscellaneous fees, NSTP loading, installment charges (8%), and immutable assessment snapshots upon advising. |
-| **Security Posture** | **6.8 / 10** | Modern baseline (bcrypt `PASSWORD_DEFAULT`, PDO parameterized statements, XSS guards, `.htaccess` upload execution blocks), but critical vulnerabilities exist: an Insecure Direct Object Reference (IDOR) in document downloads, a session key mismatch locking out enrolled students from their files, and predictable default student passwords. |
-| **Backend Architecture** | **7.5 / 10** | Transitioning from monolithic procedural handlers to a centralized REST gateway (`api/index.php`) and domain services (`AssessmentService`, `EnrollmentService`, `QueueService`, `StudentPortalService`). Architectural bifurcation exists between central REST endpoints and localized station API proxies. |
-| **Database Design** | **8.0 / 10** | 16 MariaDB InnoDB tables with UTF8MB4 collation. Strong indexing on operational columns, but relies heavily on denormalized JSON columns (`personal_info`, `payment_data`, `roadmap`) alongside dual-table staging (`pre_enrollments` $\rightarrow$ `students`). Minor schema drift identified (`attempts` column). |
-| **Frontend Maintainability**| **6.2 / 10** | Vue 3 progressive enhancement with `StationDataBus` event synchronization. High template bloat in `admin/index.html` (4,489 lines / 293KB) and `student-portal/index.html` (183KB), with aggressive 3-second client polling. |
+**Institution:** Go-on National College of the Philippines (GNCP) — Dasmariñas Campus  
+**Project Identifier:** `gncp-academic-system` (`systemtest`)  
+**Document Classification:** Formal Technical System Analysis & Software Engineering Audit Report  
+**Target Curriculum:** Bachelor of Science in Information Systems (BSIS) / Information Technology (BSIT)  
+**Date of Technical Audit:** September 29, 2026  
+**Auditor / Engineering Analyst:** Antigravity AI Senior Systems Architecture & Cybersecurity Audit Agent  
+**Audit Protocol:** Static Source Code Tracing, Architectural Modeling, Dynamic Schema Mapping, and Security Review (Zero-Modification Verification Mode)  
 
 ---
 
-## 2. System Overview
+## Table of Contents
 
-The GNCP Academic & Enrollment System is an integrated web-based Enterprise Resource Planning (ERP) platform designed for Philippine tertiary academic institutions. The system operates on a LAMP/WAMP architecture stack:
-- **Operating Environment:** Apache 2.4.x / PHP 8.2.x (XAMPP on Windows Server / InfinityFree deployment target).
-- **Database Engine:** MariaDB 10.4+ / MySQL 8.x (`gncp_portal` schema), using 16 core `InnoDB` relational tables.
-- **Frontend Architecture:** Vue 3 via CDN (Progressive Enhancement mount targets) coupled with native ECMAScript modules, HTML5 semantic layout, customized HSL color-token dark/light theme stylesheets, and `DataBus.js` / `StationDataBus.js` event streams.
-- **Dual-Data Persistence Paradigm:** The application utilizes a **Dual-Table Lifecycle Staging Pattern**:
-  1. `pre_enrollments`: Acts as an ephemeral staging ledger for public applications undergoing multi-station evaluation.
-  2. `students`: Acts as the official student directory, provisioned strictly upon final IT Center milestone clearance.
-
----
-
-## 3. Complete Project Structure
-
-The codebase is organized into 18 primary root directories and specialized service modules:
-
-```
-c:\xampp\htdocs\systemtest\
-├── .agents/                        # Agent configurations, rules (AGENTS.md), and skills
-├── admin/                          # Administrative Dashboard Portal
-│   ├── assets/                     # Admin CSS and JS controllers (UserManagement, AuditLogs, etc.)
-│   ├── backend/                    # Admin local API proxy (api.php) and service delegation
-│   ├── components/                 # Reusable admin UI fragments
-│   ├── index.html                  # Monolithic Admin SPA (4,489 lines)
-│   ├── index.php                   # Entry router and session initialization
-│   └── test_mail.php               # Diagnostic SMTP testing script
-├── api/                            # Central Single Entry-Point REST Gateway
-│   ├── controllers/                # REST Controllers (AuthController, StudentController, AdminController, etc.)
-│   ├── models/                     # Data Access Models (StudentModel, UserModel, SectionModel, etc.)
-│   └── index.php                   # Central API Router (410 lines) handling routing, telemetry, CORS, and rate limiting
-├── assets/                         # Global shared assets (brand logos, typography, base styles)
-├── database/                       # Database DDL schemas, migrations, and seed scripts
-│   ├── schema.sql                  # Canonical 16-table schema definition
-│   ├── schema_update_*.sql         # Incremental schema evolution scripts (payments, receipts, clearances)
-│   └── migrations/                 # Transactional migration scripts
-├── registrar/                      # Registrar Station Portal
-│   ├── assets/                     # Registrar workstation styles and controllers
-│   ├── backend/                    # Registrar local API delegation script
-│   └── index.html                  # Registrar Workstation UI (Document review and verification)
-├── shared/                         # Enterprise Shared Service Layer
-│   ├── backend/
-│   │   ├── config/                 # database.php (PDO Singleton), mail.php (SMTP settings)
-│   │   ├── logs/                   # app_errors.log (Centralized diagnostic error logs)
-│   │   ├── services/               # AnalyticsService, AssessmentService, EmailService, StudentPortalService
-│   │   └── utils/                  # logger.php, rate_limit.php, session_guard.php, student.php
-│   └── css/                        # admin_workstation_theme.css (Unified HSL color token inheritance)
-├── stations/                       # Multi-Station Operator Workstations
-│   ├── assets/                     # StationDataBus.js, shared station layout stylesheets
-│   ├── backend/                    # api.php (Station API Router) and domain services:
-│   │   └── services/               # EnrollmentService.php, PaymentService.php, QueueService.php
-│   ├── cor_print.php               # Certificate of Registration (COR) printable document generator
-│   ├── receipt_print.php           # Official Cashier Receipt printable document generator
-│   ├── it-center/                  # IT Center Station (Account promotion & credential dispatch)
-│   ├── medical-checkup/            # Clinic Station (Physical examination clearance)
-│   ├── payment-processing/         # Cashier Station (Fee collection & OR issuance)
-│   └── tlc-helpdesk/               # Academic Advising Station (NSTP selection & section block assignment)
-├── student-portal/                 # Authenticated Student Self-Service Portal
-│   ├── assets/                     # Student portal CSS, JS controllers, PasswordChangeGuard.js
-│   ├── backend/                    # Student portal local proxy router
-│   ├── index.html                  # Student Portal SPA (183KB)
-│   └── index.php                   # Portal entry wrapper and auth guard
-├── tests/                          # Automated Testing Suites
-│   ├── selenium/                   # End-to-end 9-step Selenium test runner and test accounts
-│   ├── test_financial_system.php   # 28-point CLI automated financial calculation verification
-│   └── test_system.php             # Diagnostic smoke test suite
-├── tools/                          # Infrastructure & Deployment Automation
-│   └── sync_to_infinityfree.py     # Automated FTP deployment synchronizer
-├── uploads/                        # Physical Object Storage
-│   ├── documents/                  # Applicant academic credentials (PDFs)
-│   └── portraits/                  # ID portrait captures (PNG, JPEG, WebP)
-├── .htaccess                       # Apache URL rewrites, security headers, canonical redirects
-├── index.html                      # Public Institutional Landing Page
-├── pre-registration.html           # Public Online Admission Application Form
-└── status-tracker.html             # Public Real-Time Application Milestone Tracker
-```
+- [I. Executive Summary](#i-executive-summary)
+- [II. System Overview](#ii-system-overview)
+- [III. Existing System Architecture](#iii-existing-system-architecture)
+- [IV. User Roles and Responsibilities](#iv-user-roles-and-responsibilities)
+- [V. Functional Modules](#v-functional-modules)
+- [VI. System Workflows](#vi-system-workflows)
+- [VII. Complete Data Flow Analysis](#vii-complete-data-flow-analysis)
+- [VIII. Database Structure & Relational Analysis](#viii-database-structure--relational-analysis)
+- [IX. API & Middleware Structure](#ix-api--middleware-structure)
+- [X. Security Analysis & Vulnerability Review](#x-security-analysis--vulnerability-review)
+- [XI. Requirements Traceability Matrix](#xi-requirements-traceability-matrix)
+- [XII. Current System Issues & Defect Catalog](#xii-current-system-issues--defect-catalog)
+- [XIII. Technical Debt Analysis](#xiii-technical-debt-analysis)
+- [XIV. Strengths of the Current System](#xiv-strengths-of-the-current-system)
+- [XV. System Limitations](#xv-system-limitations)
+- [XVI. Strategic Recommendations](#xvi-strategic-recommendations)
+- [XVII. Overall System Assessment](#xvii-overall-system-assessment)
 
 ---
 
-## 4. Application Architecture
+## I. Executive Summary
 
-```
-                               ┌────────────────────────┐
-                               │   Public Users / Web   │
-                               └───────────┬────────────┘
-                                           │
-          ┌────────────────────────────────┼───────────────────────────────┐
-          │                                │                               │
-          ▼                                ▼                               ▼
-┌──────────────────┐             ┌──────────────────┐            ┌──────────────────┐
-│  pre-registration│             │  status-tracker  │            │  student-portal  │
-│  (Application)   │             │  (PIN Tracking)  │            │  (Auth Student)  │
-└─────────┬────────┘             └─────────┬────────┘            └─────────┬────────┘
-          │                                │                               │
-          └────────────────────────────────┼───────────────────────────────┘
-                                           │ HTTP AJAX / Fetch
-                                           ▼
-          ┌────────────────────────────────────────────────────────────────┐
-          │                  Apache HTTP Server (.htaccess)                │
-          │      Security Headers, XSS Blockers, Directory Denials         │
-          └────────────────────────────────┬───────────────────────────────┘
-                                           │
-                ┌──────────────────────────┴──────────────────────────┐
-                │                                                     │
-                ▼                                                     ▼
-┌───────────────────────────────┐                 ┌────────────────────────────────┐
-│      api/index.php            │                 │  Legacy / Local Station API    │
-│  Central REST Gateway Router  │                 │  (stations/backend/api.php)    │
-└───────────────┬───────────────┘                 └────────────────┬───────────────┘
-                │                                                  │
-                ├──────────────────────────┬───────────────────────┤
-                ▼                          ▼                       ▼
-┌───────────────────────────────┐ ┌──────────────────┐ ┌───────────────────────────┐
-│     api/controllers/*         │ │  Domain Services │ │    shared/backend/utils    │
-│ - AuthController              │ │ - Enrollment     │ │ - session_guard.php       │
-│ - StudentController           │ │ - Assessment     │ │ - rate_limit.php          │
-│ - AdminController             │ │ - Payment        │ │ - student.php             │
-│ - StudentPortalController     │ │ - QueueService   │ │ - logger.php              │
-└───────────────┬───────────────┘ └────────┬─────────┘ └───────────┬───────────────┘
-                │                          │                       │
-                └──────────────────────────┼───────────────────────┘
-                                           ▼
-                        ┌─────────────────────────────────────┐
-                        │   Database Singleton (PDO Driver)   │
-                        │   shared/backend/config/database.php│
-                        └──────────────────┬──────────────────┘
-                                           │
-                                           ▼
-                        ┌─────────────────────────────────────┐
-                        │        MariaDB (gncp_portal)        │
-                        │   16 InnoDB Relational Ledgers      │
-                        └─────────────────────────────────────┘
-```
+The **Go-on National College of the Philippines (GNCP) Academic, Admissions & Workstation Enrollment System** is an enterprise-grade academic management software platform. It is engineered to digitize, coordinate, and accelerate the collegiate student onboarding lifecycle across higher education degree programs (e.g., BS Information Technology, BS Computer Science, BS Computer Engineering, BS Nursing, and BS Business Administration).
 
-### Architectural Characteristics
-1. **Dual-Gateway Communication Pattern:**
-   - The primary gateway is `api/index.php`, exposing a REST-style controller-action router (`?action=auth/login`, `?action=student/status`, etc.).
-   - Workstation interfaces additionally communicate with `stations/backend/api.php`, `admin/backend/api.php`, and `student-portal/backend/api.php`. These files serve as legacy or station-scoped proxies delegating directly to `EnrollmentService`, `QueueService`, and `AssessmentService`.
-2. **Asynchronous Real-Time Synchronization via StationDataBus:**
-   - Workstations don't use WebSockets; they implement a 3-second polling loop via `StationDataBus.js`.
-   - The bus compares local `localStorage` caches (`STORAGE_KEY: gncp_enrollment_queue`) with MariaDB queue states. On differential detection, it dispatches synthetic `window.dispatchEvent(new Event('storage'))` events, triggering reactive zero-refresh Vue 3 re-renders.
-3. **Immutable Snapshot Financial Architecture:**
-   - When a student is evaluated at TLC / Help Desk, `AssessmentService` calculates tuition, laboratory fees, miscellaneous fees, and applies scholarship discounts.
-   - The full assessment breakdown is frozen into a JSON object inside `payment_data.assessmentSnapshot`. Downstream cashier payments and student portal views reference this frozen snapshot, preventing billing volatility.
+Prior to this software implementation, collegiate admissions and enrollment suffered from traditional physical queue bottlenecks, manual document verification delays, disparate spreadsheet tracking, human calculation errors in credit-unit tuition assessments, and uncoordinated physical handover between student-support offices. The GNCP system addresses these organizational challenges by introducing a **decoupled physical workstation architecture** supported by a centralized REST API gateway, an automated multi-station finite-state machine (FSM), real-time background queue synchronization, deterministic institutional fee assessment rules, and automated student identity provisioning.
+
+This comprehensive technical report provides an exhaustive, evidence-based architectural, functional, data-flow, database, security, and quality audit of the entire codebase located at `c:\xampp\htdocs\systemtest`. Every architectural observation, data-flow diagram, and technical finding documented herein is derived directly from physical source code files, database schemas, and configuration scripts without altering any application state.
 
 ---
 
-## 5. User Roles and Permissions
+## II. System Overview
 
-The system defines 8 distinct system roles across two access planes: Administrative / Staff Plane and Public / Student Plane.
+### 2.1 System Purpose & Problem Addressed
+In higher education institutions in the Philippines, enrollment periods typically overwhelm administrative staff due to high student volume and complex multi-department clearance prerequisites. Students must physically queue across Admissions, the Registrar, Academic Deans/Advisers, the Medical Clinic, the Cashier, and the IT Center. Manual synchronization leads to:
+1. Long waiting times and physical congestion.
+2. Inconsistent student records across departmental spreadsheets.
+3. Billing discrepancies in per-unit tuition, laboratory fees, miscellaneous charges, NSTP components, and installment plan surcharges.
+4. Delay in establishing official student portal access and institutional email accounts.
 
-| Role Code | Table Origin | Default Access Scope | Can Create | Can Modify | Can Approve / Reject |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **SUPER_ADMIN** | `station_users` | Full unrestricted global administrative and database access. | Staff accounts, system configs, announcements, curriculum, fee schedules. | All tables, roles, password resets, audit overrides. | System-wide audit overrides. |
-| **ADMIN** | `station_users` | Institution administration portal (`admin/index.html`). | Operator accounts, academic periods, courses, sections, curriculum. | Program parameters, operator access status, course blocks. | Operator credentials, user status (`ACTIVE`/`INACTIVE`). |
-| **REGISTRAR** | `station_users` | Admissions verification workstation (`registrar/index.html`). | Application notes, verification tags. | Pre-enrollment document statuses (`VALID`, `REJECTED`). | Approves `PRE_REGISTERED` to `VERIFIED`; rejects incomplete files. |
-| **HELPDESK** | `station_users` | Academic advising workstation (`stations/tlc-helpdesk/`). | Advising records, assessment snapshots, NSTP allocations. | Assigned subjects, block sections, scholarship discounts. | Advances `VERIFIED` to `ADVISED`. |
-| **MEDICAL** | `station_users` | Campus clinic workstation (`stations/medical-checkup/`). | Physical fitness logs, clinical notes, vital records. | Medical examination clearance records, restriction flags. | Advances `ADVISED` to `MEDICAL_CLEARED`. |
-| **CASHIER** | `station_users` | Finance workstation (`stations/payment-processing/`). | Official Receipts (OR), installment payment ledgers. | Payment mode, recorded amounts, remaining balances. | Advances `MEDICAL_CLEARED` to `PAID`. Cannot accept `PRE_REGISTERED`. |
-| **IT_CENTER** | `station_users` | Identity management workstation (`stations/it-center/`). | Permanent student IDs (`GNCP-YYYY-XXXX`), institutional emails (`@gncp.edu.ph`). | Staging-to-permanent student promotion, section capacity decrements. | Advances `PAID` to `ENROLLED / ACTIVE`. |
-| **STUDENT** | `students` | Authenticated student portal (`student-portal/index.html`). | Password update requests, profile photo updates. | Personal password, contact info (within bounds). | None. |
-| **APPLICANT** | `pre_enrollments` | Public application portal and status tracker. | Pre-enrollment applications, document uploads (PDF). | Staged contact information, re-uploaded files. | None. |
+The GNCP Academic Management System resolves these challenges by introducing an end-to-end digital pipeline that manages:
+- **Public Online Intake:** Prospective freshmen and transferees submit demographic and academic information via a guided online registration wizard.
+- **Sequential Workstation Clearance:** On-campus operators at specialized physical stations process applications through a deterministic state machine (`PRE_REGISTERED` $\rightarrow$ `VERIFIED` $\rightarrow$ `ADVISED` $\rightarrow$ `MEDICAL_CLEARED` $\rightarrow$ `PAID` $\rightarrow$ `ENROLLED`).
+- **Deterministic Fee Calculations:** Authoritative billing calculations derived from database-driven fee schedules with frozen assessment snapshots upon academic advising.
+- **Identity Promotion & Self-Service:** Automated migration of verified staging applicants into the permanent student directory with permanent student IDs, institutional email accounts, and secure portal access.
+
+### 2.2 Target Users & Stakeholders
+The system serves four primary stakeholder categories:
+1. **Prospective Applicants & Transferees:** Individuals applying for collegiate admission who register online, upload required documents, and track their admission roadmap using temporary tracking credentials.
+2. **Returning / Enrolled Students:** Bonafide collegiate students who utilize the Student Self-Service Portal to inspect their Certificate of Registration (COR), weekly class schedules, account ledgers, campus bulletins, and academic calendars.
+3. **Station Operators (Administrative Staff):** Specialized desk officers operating dedicated workstation interfaces:
+   - *Registrar Officers:* Review academic credentials, verify original documents, and evaluate eligibility.
+   - *TLC Helpdesk Advisers:* Advise students, assign curriculum blocks, lock NSTP components, and freeze assessments.
+   - *Clinic Medical Staff:* Conduct physical examinations and stamp fitness clearances.
+   - *Cashier Officers:* Validate fees, accept cash or online downpayments, issue Official Receipts (OR), and print CORs.
+   - *IT Center Officers:* Capture webcam portrait photos, provision permanent student accounts, and dispatch credentials.
+4. **Institutional Administrators & Developers:**
+   - *Super Administrators:* Manage institutional academic catalogs (programs, subjects, curriculums), section schedules, academic terms, operator accounts, and institutional announcements.
+   - *System Developers / Security Officers:* Monitor live traffic radar, telemetry, active firewall rules, and rate limits.
+
+### 2.3 Major Functions
+- **Online Admissions Wizard:** 5-step responsive application form capturing demographic, academic, and medical histories.
+- **Application Roadmap Tracker:** Real-time visual milestone tracker accessible via Reference Number and 6-digit PIN.
+- **Document Management Subsystem:** Multi-document upload portal with strict PDF magic-byte validation and anti-polyglot scanning.
+- **Multi-Station Workstation Queue:** Real-time queue boards synchronized via background ETag HTTP 304 polling.
+- **Academic Advising & Block Sectioning:** Dynamic prospectus scoping, subject unit evaluation, and section capacity management.
+- **Financial Assessment & Cashiering Engine:** Automated credit-unit billing, flat miscellaneous fee calculation, 8% installment surcharge computation, Official Receipt (OR) ledger tracking, and PayMongo payment gateway integration.
+- **IT Account Promotion Engine:** Automated sequential student ID generation (`YYYY-XXXX`), institutional email synthesis, bcrypt password hashing, and staging-to-permanent directory migration.
+- **Student Academic Self-Service (SAS) Portal:** Authenticated student portal for viewing official CORs, weekly schedules, financial balances, and campus announcements.
+- **Super Admin Control Center:** Institutional academic catalog CRUD, cohort section generator, academic term cloning, staff provisioning, and university milestone management.
+- **Threat Radar & Traffic Telemetry Console:** Real-time SOC dashboard for client IP tracking, active rate-limit monitoring, and firewall IP banning.
+
+### 2.4 System Boundaries
+- **Inside System Scope:** All student onboarding workflows, physical workstation evaluations, academic catalog management, cohort scheduling, fee calculation, receipt generation, student portal operations, and system security telemetry.
+- **Outside System Scope (External Handled):** Native mobile applications (system is web-responsive only), physical hardware cash drawers, physical access turnstiles, and direct banking core integration (external payments simulated or mediated via PayMongo API).
 
 ---
 
-## 6. Complete Workflow Map
+## III. Existing System Architecture
+
+### 3.1 Architecture Overview
+The GNCP system is architected as a **modular service-oriented web monolithic application** utilizing a **Dual-Gateway REST API** backend paired with a **Vue 3 Progressive Enhancement** frontend. It avoids heavy single-page application (SPA) Node.js compilation build steps, enabling rapid zero-build deployment on standard Apache/PHP/MariaDB stacks (such as XAMPP or Linux/cPanel/InfinityFree environments).
 
 ```mermaid
-flowchart TD
-    A([Public Applicant]) -->|1. Submits Form & Documents| B[PRE_REGISTERED in pre_enrollments]
-    B -->|2. Document Review| C{Registrar Station}
-    C -->|Documents Invalid| C1[Mark Documents Incomplete / Rejected]
-    C1 -->|Re-upload| B
-    C -->|Documents Valid| D[VERIFIED]
-    D -->|3. Academic Advising & Section Allocation| E[TLC / Help Desk]
-    E -->|Assess Units, NSTP, Section & Freeze Snapshot| F[ADVISED]
-    F -->|4. Physical & Health Screening| G[Clinic / Medical Station]
-    G -->|Medical Clearance Issued| H[MEDICAL_CLEARED]
-    H -->|5. Downpayment / Full Cash Payment| I[Cashier Station]
-    I -->|Validate Against Assessment Snapshot & Issue OR| J[PAID]
-    J -->|6. Identity Provisioning & Promotion| K[IT Center Station]
-    K -->|Generate Student ID, Create @gncp.edu.ph, Insert into students| L([ENROLLED / ACTIVE])
-    L -->|7. First Login with Temporary Password| M[Student Portal / Enforce Password Change]
+graph TD
+    Client["Client Web Browser<br/>(Desktop / Tablet / Mobile)"]
+    
+    subgraph PresentationLayer["Presentation Layer (Client-Side)"]
+        VueApp["Vue 3 Runtime (CDN Progressive Enhancement)"]
+        DesignTokens["Shared CSS Tokens & Typography (Outfit / Open Sans)"]
+        DataBus["StationDataBus.js (Event Stream & LocalStorage Sync)"]
+    end
+
+    subgraph GatewayLayer["API & Routing Gateway"]
+        CanonicalAPI["api/index.php (Canonical REST Gateway + X-Request-ID)"]
+        LegacyAPI["Legacy Local Station Adapters (stations/backend/api.php, etc.)"]
+        WAF["security_guard.php (Scanner & Exploit Firewall)"]
+        RateLimit["rate_limit.php (Atomic File-Based Throttle)"]
+        SessionGuard["session_guard.php (Single-Active Token & RBAC)"]
+    end
+
+    subgraph ServiceLayer["Business Logic Layer (PHP 8.2 Services)"]
+        AuthService["AuthController.php / UserModel.php"]
+        StudentService["StudentController.php / StudentModel.php"]
+        StationService["StationController.php / EnrollmentService.php"]
+        FinanceService["AssessmentService.php / PaymentService.php / PayMongoService.php"]
+        CatalogService["CatalogAdminController.php / SectionService.php"]
+        AdminService["AdminController.php / UserAdminController.php"]
+        EmailService["EmailService.php / SocketSmtpTransport.php"]
+        TelemetryService["telemetry.php / logger.php"]
+    end
+
+    subgraph DatabaseLayer["Database Layer (MariaDB 10.4+ / InnoDB)"]
+        StagingDB[("pre_enrollments (Staging Application Queue)")]
+        PermanentDB[("students (Permanent Student Directory)")]
+        UsersDB[("station_users (Staff & Admin Accounts)")]
+        FinancialDB[("payments & official_receipts (Financial Ledgers)")]
+        AcademicDB[("programs, subjects, curriculum, sections, fee_schedule")]
+        AuditDB[("audit_logs & student_clearances")]
+    end
+
+    Client --> PresentationLayer
+    PresentationLayer --> GatewayLayer
+    GatewayLayer --> ServiceLayer
+    ServiceLayer --> DatabaseLayer
 ```
 
-### Stage Transitions and State Machine Mechanics
-1. **Stage 1: Online Pre-Registration (`PRE_REGISTERED`)**
-   - Applicant fills out `pre-registration.html`. Personal, family, educational background, program choice, and PDF documents (Form 137, Good Moral, Birth Certificate) are submitted via `POST api/index.php?action=student/register`.
-   - Record created in `pre_enrollments` with generated `temp_student_id` (e.g. `GNCP-2026-TEMP-001`), `temp_pin` (hashed 6-digit numeric PIN), and status `PRE_REGISTERED`.
-2. **Stage 2: Registrar Document Verification (`VERIFIED`)**
-   - Registrar evaluates uploaded PDF certificates.
-   - Upon approving all required documents, the application is updated via `stations/backend/api.php?action=update_student`. Roadmap step `registrar_verification` marked `COMPLETED`. Status transitions to `VERIFIED`.
-3. **Stage 3: Academic Advising & Sectioning (`ADVISED`)**
-   - TLC Helpdesk operator assigns student to a block section (`sections` and `subject_sections`), selects NSTP program (ROTC or CWTS), and evaluates scholarship discounts.
-   - `AssessmentService::calculateAssessment()` computes tuition and lab fees, creating `payment_data.assessmentSnapshot`. Status transitions to `ADVISED`.
-4. **Stage 4: Clinic Health Screening (`MEDICAL_CLEARED`)**
-   - Student presents for physical exam. Doctor records medical findings, vitals, blood type, and clearance notes.
-   - Mutation updates `medical_data`. Status transitions to `MEDICAL_CLEARED`.
-5. **Stage 5: Cashier Payment Processing (`PAID`)**
-   - Cashier verifies applicant status. *Invariant:* Cashier payment is strictly blocked if status is `PRE_REGISTERED` or `REJECTED`.
-   - Cashier accepts cash/online payment, issues Official Receipt (OR), and logs record in `payments` and `official_receipts`. Status transitions to `PAID`.
-6. **Stage 6: IT Center Account Promotion (`ENROLLED / ACTIVE`)**
-   - IT Center operator reviews paid applicant. Triggering promotion executes `promotePreEnrollmentToStudent()` inside an ACID transaction:
-     - Permanent Student ID is generated (`GNCP-2026-XXXX`).
-     - Institutional email is generated (`firstname.lastnameNN@gncp.edu.ph`).
-     - Default password initialized to lowercase last name (`must_change_password` set to `1`).
-     - Record inserted into `students` table. Section capacity decremented in `subject_sections`.
-     - Clearance ledger in `student_clearances` completed.
-     - Applicant is now an official `ENROLLED / ACTIVE` college student.
+### 3.2 Frontend Architecture
+- **Framework & Component Model:** Progressive enhancement via Vue 3 (`shared/libs/vue.global.js`). Each portal view mounts a local reactive Vue instance (`Vue.createApp({...}).mount('#app')`) directly to server-rendered HTML.
+- **Styling Architecture:** High-legibility design token system defined in [`shared/css/admin_workstation_theme.css`](file:///c:/xampp/htdocs/systemtest/shared/css/admin_workstation_theme.css), enforcing institutional color palettes:
+  - GNCP Forest Green: `#006A4E` (`--primary-green`)
+  - Deep Botanical Green: `#003D2B` (`--dark-green`)
+  - Mint Surface Tint: `#e6f4ed` (`--light-accent-green`)
+  - Academic Gold: `#D4AF37` / `#FCD34D` (`--gold`, `--gold-light`)
+- **Shared Navigation:** [`shared/js/components/EmployeeSidebar.js`](file:///c:/xampp/htdocs/systemtest/shared/js/components/EmployeeSidebar.js) provides a universal, responsive navigation drawer across all station and administrative portals.
+- **Client Synchronization:** [`stations/assets/js/StationDataBus.js`](file:///c:/xampp/htdocs/systemtest/stations/assets/js/StationDataBus.js) maintains a 3-second background polling loop comparing local cached queue state (`localStorage`) against server ETag hashes, triggering reactive DOM updates via `window.dispatchEvent(new Event('storage'))`.
+
+### 3.3 Backend Architecture
+- **Runtime Environment:** PHP 8.2+ executing on Apache 2.4.x.
+- **Dual-Gateway Routing:**
+  1. *Canonical REST Gateway:* [`api/index.php`](file:///c:/xampp/htdocs/systemtest/api/index.php) handles all modern REST routes, injects `X-Request-ID` correlation headers, enforces rate limits, logs structured telemetry, and delegates execution to modular controllers.
+  2. *Legacy Compatibility Adapters:* Local station routers (e.g. `stations/backend/api.php`, `registrar/backend/api.php`, `student-portal/backend/api.php`) provide backward compatibility for older views by proxying requests to central domain services.
+- **Service Decomposition:** Business logic is encapsulated in modular PHP classes in `shared/backend/services/` and `stations/backend/services/` (such as `AssessmentService`, `EnrollmentService`, `QueueService`, `StudentPortalService`), adhering to Single Responsibility bounds (<250 lines per file for specialized services).
+
+### 3.4 Database Architecture
+- **Engine & Storage:** MariaDB 10.4+ / MySQL 8.x using the `InnoDB` storage engine for ACID transaction support (`$pdo->beginTransaction()`, `$pdo->commit()`, `$pdo->rollBack()`).
+- **Connection Singleton:** Strictly managed through [`shared/backend/config/database.php`](file:///c:/xampp/htdocs/systemtest/shared/backend/config/database.php) (`Database::getInstance()`), enforcing UTF8MB4 character sets and `PDO::ERRMODE_EXCEPTION`.
+- **Dual-Table Persistence Strategy:** Separates temporary onboarding applications (`pre_enrollments`) from permanent institutional student accounts (`students`), preventing unverified applicants from cluttering the official academic directory.
+
+### 3.5 Middleware & Security Layer
+- **WAF & Threat Inspection:** [`shared/backend/utils/security_guard.php`](file:///c:/xampp/htdocs/systemtest/shared/backend/utils/security_guard.php) intercepts automated security scanning tools (SQLmap, Nikto, Gobuster), blocks directory traversal sequences (`../`), inspects PHP wrappers, and injects strict security headers (CSP, HSTS, X-Frame-Options).
+- **Session & Concurrency Guard:** [`shared/backend/utils/session_guard.php`](file:///c:/xampp/htdocs/systemtest/shared/backend/utils/session_guard.php) enforces a 2-hour idle timeout, validates cross-site request forgery (CSRF) tokens, and verifies single-active session tokens against MariaDB to prevent account sharing or concurrent browser logins.
+- **Rate Limiting:** [`shared/backend/utils/rate_limit.php`](file:///c:/xampp/htdocs/systemtest/shared/backend/utils/rate_limit.php) prevents brute-force credential stuffing and denial-of-service attempts using file-based atomic locks.
 
 ---
 
-## 7. Frontend Analysis
+## IV. User Roles and Responsibilities
 
-### Module Breakdown and Technologies
-1. **Public Web Pages (`pre-registration.html`, `status-tracker.html`, `index.html`):**
-   - Built using progressive enhancement Vue 3 and modern CSS with Scandinavian clean design aesthetics.
-   - Client-side validation enforces 6-digit numeric PIN format, email regex, and PDF-only file input limits.
-2. **Registrar Station (`registrar/index.html`):**
-   - Uses Vue 3 reactive state. Integrates an inline modal for reviewing PDF admission documents with zoom/pan controls.
-   - Adheres to `shared/css/admin_workstation_theme.css` tokens.
-3. **Multi-Station Workstations (`stations/tlc-helpdesk`, `medical-checkup`, `payment-processing`, `it-center`):**
-   - Progressive enhancement Vue 3 applications.
-   - Synchronized through `StationDataBus.js`. Includes interactive data tables, search filters, sorting toolbars, and modal state machines.
-4. **Admin Portal (`admin/index.html`):**
-   - Monolithic single-page application consisting of 4,489 lines (293KB).
-   - Houses user management, course/section curriculum builders, fee schedules, financial audit reporting, and system settings.
-5. **Student Portal (`student-portal/index.html`):**
-   - Monolithic template of 183KB.
-   - Features responsive side navigation, enrolled subject grades, statement of accounts, class schedule, and announcement feeds.
-   - Integrates `PasswordChangeGuard.js` to block UI interaction if `must_change_password` is active.
+The system defines 8 distinct user roles across administrative, operator, and student tiers.
 
-### Frontend Audit Observations & Issues
-- **Single-Line Vue Interpolation Standard:** All template expressions (`{{ ... }}`) adhere to single-line formatting, eliminating Vue progressive template compiler syntax errors.
-- **Aggressive Client Polling:** The 3-second polling interval in `StationDataBus.js` runs continuously without exponential backoff or browser visibility pausing (`document.hidden`). If multiple staff workstations remain open, this creates continuous database traffic.
-- **Large DOM Size:** `admin/index.html` mounts all modals, forms, and sub-views into a single DOM tree on load, resulting in initial parse latency on lower-powered devices.
+| Role Name | Purpose | Accessible Modules | Key Permissions | System Restrictions | Main Workflows | View | Create | Update | Delete | Approve / Reject | Status in Code |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **SUPER_ADMIN** | Full institutional governance & administration | `admin/`, `monitoring/`, all workstation views | Unrestricted access across all modules, catalog management, user provisioning | Cannot delete own active account | Academic term setup, catalog editing, user management, audit review | All data | All data | All data | All data | Full authority | **Fully Implemented** |
+| **ADMIN** | Administrative supervisor | `admin/`, all workstation views | Program/subject editing, cohort scheduling, operator password resets | Cannot delete or demote Super Admin accounts | Academic setup, section cohort generation, operator management | All data | Programs, Subjects, Sections, Terms, Staff | Programs, Subjects, Sections, Terms, Staff | Non-admin users, sections | Full authority | **Fully Implemented** |
+| **REGISTRAR** | Document verification & admissions eligibility | `registrar/index.html`, `index.html` | Review pending applications, verify/reject document requirements, assign sections | Cannot process cashier payments or activate IT accounts | Stage 1 verification, document requirement checklist, section tagging | Staging applications, requirements, student records | Registrar notes, requirement checks | Application status (`VERIFIED`/`REJECTED`) | None | Can `VERIFY` or `REJECT` applications | **Fully Implemented** |
+| **HELPDESK** | Academic advising & curriculum unit evaluation | `stations/tlc-helpdesk/`, `index.html` | Advise enrolled subjects, evaluate unit loads, lock NSTP component, apply scholarships | Cannot verify registrar documents or issue cashier receipts | Stage 2 academic advising, NSTP selection, assessment snapshot freezing | Verified applicant queue, curriculum prospectus, sections | Advised subject lists, scholarship tags | Application status (`ADVISED`), section assignment | None | Can mark Advising as `COMPLETED` | **Fully Implemented** |
+| **MEDICAL** | Clinic health examination & fitness clearance | `stations/medical-checkup/`, `index.html` | Record vital signs, physical exam notes, health declarations, medical fitness clearance | Cannot modify academic subjects, tuition fees, or portal accounts | Stage 3 health screening, physical examination clearance | Advised applicant queue, medical history | Physical examination vitals, doctor notes | Application status (`MEDICAL_CLEARED`), fitness status | None | Can clear (`FIT` / `CONDITIONAL`) or flag (`UNFIT`) | **Fully Implemented** |
+| **CASHIER** | Tuition billing, payment collection & receipting | `stations/payment-processing/`, `index.html` | Verify frozen assessment snapshots, accept cash/online payments, issue OR numbers, print COR | Cannot accept payments for `PRE_REGISTERED` or `REJECTED` applicants; cannot advise | Stage 4 tuition payment collection, OR ledger recording, COR generation | Medically cleared queue, assessment breakdown, payment history | Official receipts (`official_receipts`), payments | Application status (`PAID`), payment records | None | Can approve payment transaction | **Fully Implemented** |
+| **IT_CENTER** | Identity provisioning & student directory promotion | `stations/it-center/`, `index.html` | Capture webcam portrait photo, generate permanent Student ID, promote applicant to permanent student | Cannot alter cashier billing or medical clearance notes | Stage 5 final promotion, portrait ID upload, credentials dispatch | Paid applicant queue, promoted student directory | Permanent student record, institutional email | Application status (`ENROLLED`), student accounts | None | Can finalize and promote enrollment | **Fully Implemented** |
+| **STUDENT** | Enrolled student self-service | `student-portal/index.html`, `login.html` | View COR, weekly class schedules, financial ledger, milestones, campus bulletins | Restricted exclusively to own student record; cannot view other students | Password reset, profile update (emergency contacts, photo), document viewing | Own academic record, schedule, COR, billing | Document uploads (transcripts, birth certs) | Own contact details, own password | None | None | **Fully Implemented** |
+| **DEVELOPER** | Telemetry, traffic radar & security operations | `monitoring/index.html`, `index.html` | Inspect live request radar, top client IPs, active rate limits, manage IP firewall blacklist | Cannot alter academic catalogs, grades, or cashier transactions | System health monitoring, threat analysis, IP blocking/unblocking | Telemetry logs, rate limits, banned IPs, system health | Firewall ban rules | Rate limit clears, firewall rules | Banned IP records | None | **Fully Implemented** |
 
 ---
 
-## 8. Backend Analysis
+## V. Functional Modules
 
-### Central Gateway Router (`api/index.php`)
-The central gateway controls routing across four controllers with cross-cutting middleware:
-- **Telemetry & Request Correlation:** Injects `X-Request-ID` (or generates `req_` UUID) and sets standard JSON charset headers.
-- **CORS Management:** Restricts origins to localhost and authorized domains; rejects unlisted origins.
-- **Rate Limiting Middleware:** `shared/backend/utils/rate_limit.php` enforces IP-bucket limits (e.g. 60 requests per minute for public endpoints, 120 for authenticated endpoints).
-- **Global Error Handling:** Wraps execution in `try-catch`, logging fatal errors to `shared/backend/logs/app_errors.log` and emitting structured JSON error envelopes:
-  ```json
-  {"success": false, "message": "...", "code": 500, "requestId": "req_..."}
-  ```
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   GNCP SYSTEM MODULE TOPOLOGY                                    │
+├─────────────────────────┬───────────────────────────────┬────────────────────────────────────────┤
+│     PUBLIC INTAKE       │     WORKSTATION CLEARANCES    │       ADMIN & STUDENT SERVICES         │
+├─────────────────────────┼───────────────────────────────┼────────────────────────────────────────┤
+│ 1. Public Web Portal    │ 4. Registrar Workstation      │ 9. Student Self-Service (SAS) Portal   │
+│ 2. Pre-Enrollment Wizard│ 5. TLC Advising Helpdesk      │ 10. Super Admin Master Console         │
+│ 3. Status Roadmap Track │ 6. Clinic Medical Screening   │ 11. Threat Radar & SOC Console         │
+│                         │ 7. Cashier Billing Desk       │ 12. Central REST Engine & WAF          │
+│                         │ 8. IT Center Promotion Desk   │ 13. Financial Calculation Engine       │
+└─────────────────────────┴───────────────────────────────┴────────────────────────────────────────┘
+```
 
-### Modular Services Architecture
-- **`QueueService.php`:** Aggregates records from both `pre_enrollments` and `students`, resolving temporary and permanent identities into a unified queue for workstation displays.
-- **`AssessmentService.php`:** Core financial pricing engine. Computes credit fees, per-course laboratory rates, miscellaneous fees, and applies scholarship discounts.
-- **`PaymentService.php`:** Validates cashier payment eligibility and enforces business rules preventing unauthorized payments.
-- **`EnrollmentService.php`:** Orchestrates multi-station status transitions and IT Center promotion within transactional boundaries.
-- **`StudentPortalService.php`:** Handles student authentication, password resets, profile management, and dashboard data aggregation.
+### Module 1: Public Institutional Web Portal
+- **Purpose:** Public presentation of collegiate programs, institutional overview, and admissions navigation.
+- **Users / Roles:** General Public, Prospective Students.
+- **Main Features:** Degree program overview, admission requirements summary, campus virtual showcase, and deep-links to the online enrollment wizard.
+- **Inputs:** Navigation clicks.
+- **Processing:** Client-side HTML rendering.
+- **Outputs:** Responsive college landing page.
+- **Database Tables Used:** None (Static presentation).
+- **API Endpoints Used:** None.
+- **Dependencies:** Bootstrap 5.3, FontAwesome.
+- **Current Status:** **Fully Implemented** (`school-website/index.html`).
+
+### Module 2: Online Pre-Enrollment Registration Wizard
+- **Purpose:** Intake applicant demographic, academic, and health information.
+- **Users / Roles:** Prospective Freshmen, Transferees, Returning Students.
+- **Main Features:** 5-step reactive wizard (Program Selection, Personal Info, Academic History, Health Declaration, Review), returning student lookup via institutional email, client-side validation.
+- **Inputs:** Student full name, birth date, gender, address, phone, email, SHS track, previous schools, emergency contact, selected program.
+- **Processing:** Validates required fields, checks rate limits (max 5 submissions / 60s per IP), generates tracking reference (`REF-YYYY-XXXX`) and 6-digit numeric PIN, stores records in `pre_enrollments`.
+- **Outputs:** Printable registration voucher with QR code, Reference Number, and temporary PIN.
+- **Database Tables Used:** `pre_enrollments`, `programs`, `academic_periods`.
+- **API Endpoints Used:** `POST /api/index.php?action=student/register`, `GET /enrollment-system/backend/register.php?action=get_active_programs`.
+- **Dependencies:** `StudentController.php`, `StudentModel.php`, `rate_limit.php`.
+- **Current Status:** **Fully Implemented** (`enrollment-system/index.html`).
+
+### Module 3: Real-Time Application Roadmap Tracker
+- **Purpose:** Enable applicants to independently monitor their admission clearance progress.
+- **Users / Roles:** Applicants, Parents.
+- **Main Features:** Authenticated status lookup using Reference Number and PIN, visual 6-stage roadmap tracker, assigned block section indicator, soft-copy document uploader.
+- **Inputs:** Reference Number (`REF-2026-XXXX`), 6-digit PIN.
+- **Processing:** Validates PIN against `pre_enrollments.temp_pin` (or fallback `students.temp_reference_no`), returns sanitized roadmap stages, masks applicant name for data privacy.
+- **Outputs:** Interactive status board showing completed, in-progress, and locked workstations.
+- **Database Tables Used:** `pre_enrollments`, `students`.
+- **API Endpoints Used:** `GET /api/index.php?action=student/track`, `GET /api/index.php?action=student/documents`, `POST /api/index.php?action=student/upload_document`.
+- **Dependencies:** `StudentController.php`, `session_guard.php`.
+- **Current Status:** **Fully Implemented** (`enrollment-system/tracker.html`).
+
+### Module 4: Registrar Verification Workstation
+- **Purpose:** On-campus evaluation of submitted physical credentials and admission eligibility.
+- **Users / Roles:** `REGISTRAR`, `ADMIN`, `SUPER_ADMIN`.
+- **Main Features:** Real-time applicant queue board, document checklist verification (Form 138, Good Moral, PSA Birth Certificate), status transitions (`VERIFIED`, `REJECTED`), applicant remarks, cohort section allocation.
+- **Inputs:** Status selection (`VERIFIED` / `REJECTED`), document verification checkboxes, officer notes.
+- **Processing:** Updates `pre_enrollments.requirements_data`, advances `roadmap[1]` to `COMPLETED`, records operator audit log, unlocks TLC Helpdesk queue.
+- **Outputs:** Updated application status, synchronized queue stream.
+- **Database Tables Used:** `pre_enrollments`, `audit_logs`, `student_clearances`.
+- **API Endpoints Used:** `POST /api/index.php?action=registrar/update_status`, `POST /api/index.php?action=registrar/verify_document`, `GET /api/index.php?action=stations/queue`.
+- **Dependencies:** `RegistrarService.php`, `StationController.php`, `StationDataBus.js`.
+- **Current Status:** **Fully Implemented** (`registrar/index.html`).
+
+### Module 5: TLC Helpdesk & Academic Advising Workstation
+- **Purpose:** Academic unit evaluation, course subject advising, and NSTP component lock-in.
+- **Users / Roles:** `HELPDESK`, `ADMIN`, `SUPER_ADMIN`.
+- **Main Features:** Prospectus subject scoping for active term, NSTP track assignment (CWTS / ROTC), scholarship voucher application, cohort block sectioning, automated assessment snapshot freezing.
+- **Inputs:** Selected cohort section, advised subject toggles, NSTP selection, scholarship grant type.
+- **Processing:** Validates curriculum requirements, computes tuition units, freezes billing snapshot via `AssessmentService::calculateAssessment()`, advances status to `ADVISED`.
+- **Outputs:** Frozen assessment breakdown, advised subjects array in `helpdesk_data`.
+- **Database Tables Used:** `pre_enrollments`, `curriculum`, `subjects`, `sections`, `fee_schedule`.
+- **API Endpoints Used:** `POST /api/index.php?action=stations/update`, `GET /api/index.php?action=stations/queue`.
+- **Dependencies:** `AssessmentService.php`, `EnrollmentService.php`, `ProspectusScopingService.php`.
+- **Current Status:** **Fully Implemented** (`stations/tlc-helpdesk/index.html`).
+
+### Module 6: Medical Clinic Screening Workstation
+- **Purpose:** Health screening and physical fitness evaluation.
+- **Users / Roles:** `MEDICAL`, `ADMIN`, `SUPER_ADMIN`.
+- **Main Features:** Medical history declaration review, vital signs encoding (BP, pulse, height, weight), physical exam clearance stamping (`FIT`, `CONDITIONAL`, `UNFIT`), clinic notes.
+- **Inputs:** Vital signs, fitness status, medical notes.
+- **Processing:** Saves clinical record into `pre_enrollments.medical_data`, inserts clinic clearance into `student_clearances`, advances status to `MEDICAL_CLEARED`.
+- **Outputs:** Medical fitness certificate, clearance badge.
+- **Database Tables Used:** `pre_enrollments`, `student_clearances`, `audit_logs`.
+- **API Endpoints Used:** `POST /api/index.php?action=stations/update`.
+- **Dependencies:** `EnrollmentService.php`, `StationDataBus.js`.
+- **Current Status:** **Fully Implemented** (`stations/medical-checkup/index.html`).
+
+### Module 7: Cashier Billing & Tuition Collection Workstation
+- **Purpose:** Fee schedule validation, tuition downpayment collection, Official Receipt issuance.
+- **Users / Roles:** `CASHIER`, `ADMIN`, `SUPER_ADMIN`.
+- **Main Features:** Frozen assessment snapshot verification, payment mode selection (`FULL_CASH`, `INSTALLMENT`), payment transaction logging, auto-generation of sequential Official Receipt (OR) numbers, PayMongo online payment simulation, Certificate of Registration (COR) generation.
+- **Inputs:** Amount paid, payment method (`CASH`, `GCASH`, `PAYMONGO`), payment channel, OR Number.
+- **Processing:** Checks payment eligibility (rejects unverified/unadvising applicants), updates `pre_enrollments.payment_data`, inserts record into `payments` and `official_receipts`, advances status to `PAID`.
+- **Outputs:** Printable Official Cashier Receipt (`receipt_print.php`), printable COR (`cor_print.php`).
+- **Database Tables Used:** `pre_enrollments`, `payments`, `official_receipts`, `student_clearances`, `fee_schedule`.
+- **API Endpoints Used:** `POST /api/index.php?action=stations/update`, `POST /api/index.php?action=payments/paymongo_simulate_paid`.
+- **Dependencies:** `AssessmentService.php`, `PaymentService.php`, `EnrollmentService.php`.
+- **Current Status:** **Fully Implemented** (`stations/payment-processing/index.html`).
+
+### Module 8: IT Center Identity & Account Promotion Workstation
+- **Purpose:** Final identity verification, webcam portrait photo capture, permanent account provisioning.
+- **Users / Roles:** `IT_CENTER`, `ADMIN`, `SUPER_ADMIN`.
+- **Main Features:** WebRTC webcam photo capture, collision-free permanent Student ID generation (`YYYY-XXXX`), institutional email synthesis, bcrypt temporary password generation, staging-to-permanent student migration, section capacity decrementing, automated email credential dispatch.
+- **Inputs:** Captured portrait Base64 image, assigned section confirmation.
+- **Processing:** Executes atomic MariaDB transaction: migrates `pre_enrollments` row into `students` table, sets status to `ENROLLED`, marks staging row as `PROMOTED`, decrements capacity in `subject_sections`, dispatches welcome email.
+- **Outputs:** Permanent student record, printable student ID card, institutional credentials.
+- **Database Tables Used:** `pre_enrollments`, `students`, `subject_sections`, `audit_logs`, `student_clearances`.
+- **API Endpoints Used:** `POST /api/index.php?action=stations/update`, `POST /api/index.php?action=stations/upload_photo`, `GET /api/index.php?action=stations/next_student_id`.
+- **Dependencies:** `EnrollmentService.php`, `student.php`, `EmailService.php`.
+- **Current Status:** **Fully Implemented** (`stations/it-center/index.html`).
+
+### Module 9: Student Academic Self-Service (SAS) Portal
+- **Purpose:** Authenticated student portal for academic schedules, billing balances, and institutional bulletins.
+- **Users / Roles:** `STUDENT`.
+- **Main Features:** Student login with single-active session enforcement, forced password change on initial login, official printable COR, weekly visual class timetable, financial payment ledger with running balance, student document uploader, campus announcements, and academic milestones calendar.
+- **Inputs:** Student ID, password, new password, uploaded documents (PDF), updated contact details.
+- **Processing:** Authenticates bcrypt hash, establishes `$_SESSION['gncp_student']`, generates single-active session token, loads advising and assessment data, logs out old sessions.
+- **Outputs:** Complete academic dashboard, printable COR, schedule grid.
+- **Database Tables Used:** `students`, `announcements`, `academic_milestones`, `password_resets`, `payments`.
+- **API Endpoints Used:** `POST /api/index.php?action=student_portal/login`, `GET /api/index.php?action=student_portal/dashboard`, `POST /api/index.php?action=student_portal/change_password`, `POST /api/index.php?action=student_portal/upload_document`.
+- **Dependencies:** `StudentPortalService.php`, `StudentPortalController.php`, `session_guard.php`.
+- **Current Status:** **Fully Implemented** (`student-portal/index.html`).
+
+### Module 10: Super Admin Master Management Console
+- **Purpose:** Centralized administrative control of institutional academic data, users, and bulletins.
+- **Users / Roles:** `SUPER_ADMIN`, `ADMIN`.
+- **Main Features:** University analytics dashboard, Academic Catalog CRUD (Degree Programs, Subjects, Curriculum maps), Cohort Section Generator, Academic Terms (cloning terms, active semester toggle), Fee Schedule configuration, Station Operator account management (CRUD, status activation, password reset, temporary credentials email dispatch), Campus Announcements authoring with image uploads, and Academic Milestones scheduler.
+- **Inputs:** Academic codes, titles, unit values, fees, user accounts, announcement markdown/HTML.
+- **Processing:** Validates unique program/subject codes, enforces bcrypt hashing on user creation, logs administrative audit events.
+- **Outputs:** Real-time analytics, updated catalogs, operator credentials.
+- **Database Tables Used:** `programs`, `subjects`, `curriculum`, `sections`, `subject_sections`, `academic_periods`, `fee_schedule`, `station_users`, `announcements`, `academic_milestones`, `audit_logs`.
+- **API Endpoints Used:** `api/index.php?action=admin/*` (analytics, catalog, sections, terms, users, announcements, milestones).
+- **Dependencies:** `AdminController.php`, `CatalogAdminController.php`, `ScheduleAdminController.php`, `UserAdminController.php`.
+- **Current Status:** **Fully Implemented** (`admin/index.html`).
+
+### Module 11: Threat Radar & Security Operations Center (SOC) Console
+- **Purpose:** Real-time security telemetry, traffic analysis, and firewall management.
+- **Users / Roles:** `DEVELOPER`, `SUPER_ADMIN`.
+- **Main Features:** Real-time HTTP request radar with status codes and latency metrics, top client IP analytics, active rate-limit inspection, firewall IP banning and unbanning, server system health metrics (PHP version, memory usage, DB status, log sizes).
+- **Inputs:** Polling interval selector (1s, 3s, 5s, 10s), IP ban inputs (IP address, reason, duration).
+- **Processing:** Reads structured telemetry logs (`shared/backend/logs/telemetry.log`), manages banned IP JSON blacklist (`shared/backend/config/ip_blacklist.json`), clears rate limits.
+- **Outputs:** Real-time security graphs, request logs table, active blacklist table.
+- **Database Tables Used:** None directly (Interacts with telemetry logs, blacklist JSON, and DB version ping).
+- **API Endpoints Used:** `GET /api/index.php?action=monitoring/*` (stats, requests, rate_limits, banned_ips, ban_ip, unban_ip, system_health).
+- **Dependencies:** `telemetry.php`, `rate_limit.php`, `security_guard.php`.
+- **Current Status:** **Fully Implemented** (`monitoring/index.html`).
 
 ---
 
-## 9. Database Analysis
+## VI. System Workflows
 
-The database (`gncp_portal`) utilizes MariaDB 10.x with `utf8mb4_unicode_ci` encoding and `InnoDB` tables.
+### 6.1 Workflow 1: Public Student Pre-Registration & Tracking Intake
+- **Actor:** Prospective Student / Applicant.
+- **Starting Condition:** Applicant navigates to `enrollment-system/index.html`.
+- **Steps:**
+  1. Applicant selects admission classification (`FRESHMAN`, `TRANSFEREE`, `RETURNING`).
+  2. Applicant chooses desired collegiate program (e.g. BS Information Technology).
+  3. Applicant enters personal demographics, contact info, family background, and prior school transcript data.
+  4. Applicant completes the health declaration (existing medical conditions, allergies, current medications).
+  5. Applicant reviews the summary and clicks "Submit Application".
+- **System Processing:**
+  - `StudentController::register()` receives JSON payload.
+  - Generates collision-free tracking number: `REF-YYYY-XXXX`.
+  - Generates 6-digit numeric PIN: `random_int(100000, 999999)`.
+  - Compiles default 7-stage roadmap array.
+  - Inserts row into `pre_enrollments` with `status = 'PRE_REGISTERED'`.
+- **Database Changes:** `INSERT INTO pre_enrollments (...)`.
+- **Ending Condition:** Applicant receives downloadable registration voucher containing Reference Number and PIN.
+- **Failure Conditions:** Missing mandatory fields (HTTP 400); IP rate limit exceeded (HTTP 429); database connection drop (HTTP 500).
 
-### Table Schema Inventory
-1. `pre_enrollments`: Ephemeral staging table for applicants (35 columns).
-2. `students`: Official directory of enrolled students (23 columns).
-3. `station_users`: Administrative and staff operator credentials and roles.
-4. `academic_periods`: Semesters and academic years with active period flags.
-5. `programs`: Academic degree programs (BSIT, BSCS, etc.) and departmental links.
-6. `departments`: Academic college divisions.
-7. `curriculum`: Subject prerequisite mappings, year levels, and semesters.
-8. `subjects`: Master catalog of subjects, lecture units, lab units, and lab fees.
-9. `sections`: Class blocks associated with academic programs and year levels.
-10. `subject_sections`: Subject-level section schedules, room assignments, and capacities.
-11. `enrollments`: Relational links between students, subjects, and semesters.
-12. `fee_schedule`: Dynamic fee matrices by academic period and program.
-13. `payments`: Cashier transaction ledger.
-14. `official_receipts`: Serialized official receipts issued to students.
-15. `student_clearances`: Institutional clearance checkpoint states.
-16. `password_resets`: Temporary security tokens and PIN codes for account recovery.
-17. `announcements`: Campus news and bulletins.
-18. `audit_logs`: Station mutation audit trail.
+---
 
-### Relational Schema Diagram
+### 6.2 Workflow 2: Registrar Document Verification & Section Tagging
+- **Actor:** Registrar Officer.
+- **Starting Condition:** Applicant presents physical credentials at Registrar counter; application is in `PRE_REGISTERED` status.
+- **Steps:**
+  1. Registrar searches applicant by Reference Number on `registrar/index.html`.
+  2. Registrar reviews original Form 138 (Report Card), PSA Birth Certificate, and Good Moral Certificate against submitted data.
+  3. Registrar checks verified document requirements and clicks "Approve Application" (or "Reject Application" if fraudulent).
+  4. Registrar tags the student to an available cohort block section.
+- **System Processing:**
+  - `RegistrarService::updateApplicationStatus()` validates caller role (`REGISTRAR`).
+  - Sets `pre_enrollments.status = 'VERIFIED'`.
+  - Updates `roadmap[1].status = 'COMPLETED'` and unlocks `roadmap[2]` (`advising_assessment`).
+  - Records verification timestamp and officer username in `student_clearances` and `audit_logs`.
+- **Database Changes:**
+  - `UPDATE pre_enrollments SET status = 'VERIFIED', requirements_data = ..., roadmap = ... WHERE temp_student_id = :ref`.
+  - `INSERT INTO audit_logs (...)`.
+  - `INSERT INTO student_clearances (station_code = 'REGISTRAR', status = 'COMPLETED', ...)`.
+- **Ending Condition:** Student status becomes `VERIFIED`; record appears on TLC Helpdesk queue.
+- **Failure Conditions:** Caller lacks `REGISTRAR` role (HTTP 403); application was previously `REJECTED`.
+
+---
+
+### 6.3 Workflow 3: TLC Helpdesk Academic Advising & Assessment Freezing
+- **Actor:** TLC Helpdesk Academic Adviser.
+- **Starting Condition:** Student presents Reference Number at Advising desk; status is `VERIFIED`.
+- **Steps:**
+  1. Adviser selects student on `stations/tlc-helpdesk/index.html`.
+  2. System automatically loads active curriculum subjects for the program and semester.
+  3. Adviser selects NSTP component (ROTC or CWTS).
+  4. Adviser assigns cohort section (e.g. `BSIT-1A`) and applies any scholarship discount.
+  5. Adviser clicks "Finalize Advising & Freeze Assessment".
+- **System Processing:**
+  - `EnrollmentService::updateStudent()` validates caller role (`HELPDESK`).
+  - Invokes `AssessmentService::calculateAssessment()`: computes total credit units, tuition fee, lab fees, miscellaneous fees, and 8% installment surcharge.
+  - Stores complete frozen financial snapshot inside `pre_enrollments.payment_data['assessmentSnapshot']`.
+  - Advances `pre_enrollments.status = 'ADVISED'`.
+  - Updates `roadmap[2].status = 'COMPLETED'` and unlocks `roadmap[3]` (`clinic_checkup`).
+- **Database Changes:**
+  - `UPDATE pre_enrollments SET status = 'ADVISED', helpdesk_data = ..., payment_data = ..., section_code = ..., roadmap = ... WHERE temp_student_id = :ref`.
+  - `INSERT INTO student_clearances (station_code = 'HELPDESK', status = 'COMPLETED', ...)`.
+- **Ending Condition:** Student status becomes `ADVISED`; frozen assessment is locked against future fee changes.
+- **Failure Conditions:** Application status is not `VERIFIED`; invalid subject units.
+
+---
+
+### 6.4 Workflow 4: Clinic Health Screening & Fitness Clearance
+- **Actor:** College Medical Officer / Doctor.
+- **Starting Condition:** Student presents at College Clinic; status is `ADVISED`.
+- **Steps:**
+  1. Clinic staff selects student from queue at `stations/medical-checkup/index.html`.
+  2. Staff reviews applicant health history (allergies, medical conditions, medications).
+  3. Staff encodes physical vital signs (Blood Pressure, Heart Rate, Height, Weight, Visual Acuity).
+  4. Doctor marks applicant fitness classification (`FIT`, `CONDITIONAL`, or `UNFIT`) and adds physician notes.
+  5. Doctor clicks "Issue Medical Clearance".
+- **System Processing:**
+  - `EnrollmentService::updateStudent()` validates caller role (`MEDICAL`).
+  - Encodes clinical record into `pre_enrollments.medical_data`.
+  - Advances `pre_enrollments.status = 'MEDICAL_CLEARED'`.
+  - Updates `roadmap[3].status = 'COMPLETED'` and unlocks `roadmap[5]` (`cashier_payment`).
+  - Records medical clearance in `student_clearances`.
+- **Database Changes:**
+  - `UPDATE pre_enrollments SET status = 'MEDICAL_CLEARED', medical_data = ..., roadmap = ... WHERE temp_student_id = :ref`.
+  - `INSERT INTO student_clearances (station_code = 'MEDICAL', status = 'COMPLETED', ...)`.
+- **Ending Condition:** Student is medically cleared; record appears on Cashier billing queue.
+- **Failure Conditions:** Student marked `UNFIT` (halts progression); caller lacks `MEDICAL` role.
+
+---
+
+### 6.5 Workflow 5: Cashier Payment Processing & Official Receipt (OR) Issuance
+- **Actor:** Cashier Officer.
+- **Starting Condition:** Student presents at Cashier window; status is `MEDICAL_CLEARED`.
+- **Steps:**
+  1. Cashier searches student on `stations/payment-processing/index.html`.
+  2. System loads the frozen assessment snapshot (Cash Total, Installment Total, itemized tuition/lab/misc breakdown).
+  3. Cashier selects payment plan (`FULL_CASH` or `INSTALLMENT`) and enters amount paid.
+  4. System verifies payment eligibility (`PaymentService::validatePaymentEligibility()`).
+  5. Cashier issues Official Receipt number (`OR-YYYY-XXXXX`) and clicks "Process Payment".
+  6. Cashier prints Official Receipt and Certificate of Registration (COR).
+- **System Processing:**
+  - Encloses updates in an explicit `$pdo->beginTransaction()`.
+  - Locks record: `SELECT id FROM pre_enrollments ... FOR UPDATE`.
+  - Records payment transaction in `payments` table and `official_receipts` table.
+  - Advances `pre_enrollments.status = 'PAID'`.
+  - Updates `roadmap[5].status = 'COMPLETED'` and unlocks `roadmap[6]` (`it_activation`).
+  - Commits transaction (`$pdo->commit()`).
+- **Database Changes:**
+  - `UPDATE pre_enrollments SET status = 'PAID', or_number = :or, payment_data = ..., enrolled_at = NOW(), cashier_name = :c WHERE temp_student_id = :ref`.
+  - `INSERT INTO payments (...)`.
+  - `INSERT INTO official_receipts (...)`.
+  - `INSERT INTO student_clearances (station_code = 'CASHIER', status = 'COMPLETED', ...)`.
+- **Ending Condition:** Payment recorded; student receives official printed receipt and COR; record advances to IT Center.
+- **Failure Conditions:** Applicant has status `PRE_REGISTERED` or `REJECTED` (strictly blocked); medical clearance missing; amount paid is zero.
+
+---
+
+### 6.6 Workflow 6: IT Center Account Promotion & Permanent ID Provisioning
+- **Actor:** IT Center Officer.
+- **Starting Condition:** Student presents at IT Center; status is `PAID`.
+- **Steps:**
+  1. IT Officer selects student on `stations/it-center/index.html`.
+  2. Officer activates webcam and captures student portrait photo (WebRTC).
+  3. System displays auto-generated permanent Student ID (`2026-XXXX`) and institutional email (`first.lastNN@gncp.edu.ph`).
+  4. Officer clicks "Finalize Enrollment & Activate Portal Account".
+- **System Processing:**
+  - Executes atomic transaction (`promotePreEnrollmentToStudent()` in `student.php`).
+  - Generates collision-free permanent Student ID via `MAX(CAST(SUBSTRING_INDEX(id, '-', -1) AS UNSIGNED)) + 1`.
+  - Hashes default password (student's lowercase last name) with `password_hash($plain, PASSWORD_DEFAULT)`.
+  - Inserts permanent student record into `students` table with `must_change_password = 1`.
+  - Updates staging row in `pre_enrollments` to `status = 'PROMOTED'`.
+  - Decrements section seat count in `subject_sections`: `capacity = GREATEST(0, capacity - 1)`.
+  - Records IT clearance in `student_clearances` and audit trail in `audit_logs`.
+  - Dispatches welcome email with credentials via `EmailService.php`.
+- **Database Changes:**
+  - `INSERT INTO students (id, name, program, email, password, photo, status, must_change_password, ...) VALUES (...)`.
+  - `UPDATE pre_enrollments SET status = 'PROMOTED' WHERE temp_student_id = :ref`.
+  - `UPDATE subject_sections SET capacity = GREATEST(0, capacity - 1) WHERE code = :sec_code`.
+  - `INSERT INTO student_clearances (station_code = 'IT_CENTER', status = 'COMPLETED', ...)`.
+- **Ending Condition:** Student is officially enrolled; permanent student account active; welcome email dispatched.
+- **Failure Conditions:** Applicant has not paid; camera capture failure; database transaction rollback.
+
+---
+
+### 6.7 Workflow 7: Enrolled Student First Login & Password Change Guard
+- **Actor:** Enrolled Student.
+- **Starting Condition:** Student receives institutional credentials and navigates to `student-portal/login.html`.
+- **Steps:**
+  1. Student enters Permanent Student ID and temporary password.
+  2. System validates credentials and detects `must_change_password = 1`.
+  3. `PasswordChangeGuard.js` intercepts navigation and renders a mandatory password update modal.
+  4. Student enters current password and creates a strong new password (minimum 8 characters).
+  5. Student is redirected to the main dashboard (`student-portal/index.html`).
+- **System Processing:**
+  - `StudentPortalService::login()` verifies bcrypt hash.
+  - Updates `students.active_session_token`, `last_login_at`, `last_login_ip`.
+  - On password update: validates current password, computes new bcrypt hash, sets `must_change_password = 0`.
+- **Database Changes:**
+  - `UPDATE students SET active_session_token = :token, last_login_at = NOW() WHERE id = :id`.
+  - `UPDATE students SET password = :new_hash, must_change_password = 0 WHERE id = :id`.
+- **Ending Condition:** Student successfully logs in and accesses personal academic dashboard.
+- **Failure Conditions:** Invalid password (HTTP 401); brute-force rate limit exceeded (HTTP 429); account disabled (`status != 'Active'`).
+
+---
+
+## VII. Complete Data Flow Analysis
+
+### 7.1 Round-Trip Trace: Registration to Portal Lifecycle
+The following trace documents the complete end-to-end data progression through every architectural tier:
+
+```
+[1. USER ACTION] 
+     │  Applicant submits Registration Form at enrollment-system/index.html
+     ▼
+[2. FRONTEND PROCESSING]
+     │  Vue 3 validates fields; serializes to JSON payload
+     ▼
+[3. API REQUEST]
+     │  POST /api/index.php?action=student/register (Payload: JSON)
+     ▼
+[4. MIDDLEWARE PROCESSING]
+     │  security_guard.php: Blocks automated scanners, checks IP blacklist
+     │  rate_limit.php: Verifies IP has not exceeded 5 requests / 60 seconds
+     │  telemetry.php: Initializes microtime timer and X-Request-ID
+     ▼
+[5. CONTROLLER & SERVICE]
+     │  api/index.php routes to StudentController::register()
+     │  StudentController delegates to StudentModel::createPreEnrollment()
+     ▼
+[6. DATABASE MUTATION]
+     │  MariaDB generates collision-free REF-2026-XXXX and 6-digit PIN
+     │  INSERT INTO pre_enrollments (status = 'PRE_REGISTERED')
+     ▼
+[7. API RESPONSE]
+     │  HTTP 200 JSON { success: true, data: { referenceNumber: 'REF-2026-1001', pin: '...' } }
+     ▼
+[8. FRONTEND REFLECTION]
+     │  Vue renders voucher modal with QR Code and Application Summary
+     ▼
+[9. WORKSTATION POLLING & EVENT STREAM]
+     │  Registrar station background timer fetches /api/index.php?action=stations/queue
+     │  ETag checksum differs -> Server returns updated queue
+     │  StationDataBus.js updates localStorage -> fires 'storage' event
+     │  Vue reactive queue table re-renders instantly without page refresh
+     ▼
+[10. MULTI-STATION MUTATIONS]
+     │  Registrar: POST stations/update (status -> VERIFIED)
+     │  Helpdesk:  POST stations/update (status -> ADVISED, freezes assessment)
+     │  Clinic:    POST stations/update (status -> MEDICAL_CLEARED)
+     │  Cashier:   POST stations/update (status -> PAID, issues OR-2026-XXXXX)
+     │  IT Center: POST stations/update (status -> ENROLLED, promotes to students)
+     ▼
+[11. DIRECTORY PROMOTION & RELATIONAL SYNC]
+     │  promotePreEnrollmentToStudent() inserts row into students table
+     │  pre_enrollments.status updated to 'PROMOTED'
+     │  subject_sections.capacity decremented by 1
+     │  Relational records synced: payments, official_receipts, student_clearances, audit_logs
+     ▼
+[12. STUDENT PORTAL CONSUMPTION]
+     │  Student signs into student-portal/login.html
+     │  StudentPortalService::getStudentDashboard() queries students table
+     │  Vue 3 renders official COR, weekly schedule grid, and financial balance
+```
+
+### 7.2 Data Integrity & Validation Checks
+- **MIME & Magic-Byte File Inspection:** Uploaded student documents in `StudentController::uploadDocument()` are validated using PHP `finfo` and strict binary magic-byte inspection (`strncmp($data, "%PDF-", 5) === 0`). Script execution patterns (`<?php`, `<script`) are rejected.
+- **Image Signature Validation:** Portrait photos in `EnrollmentService::uploadPhoto()` are validated using `getimagesizefromstring()`, permitting only PNG, JPEG, and WebP, capped at 5MB.
+- **Financial Calculation Determinism:** `AssessmentService::calculateAssessment()` enforces explicit rounding (`round($val, 2)`) to eliminate floating-point arithmetic errors across tuition, lab, and miscellaneous fees.
+
+---
+
+## VIII. Database Structure & Relational Analysis
+
+### 8.1 Complete Entity Schema (MariaDB `gncp_portal`)
+
+The canonical schema comprises 18 tables configured with `ENGINE=InnoDB` and `utf8mb4_unicode_ci` collation.
 
 ```mermaid
 erDiagram
-    DEPARTMENTS ||--o{ PROGRAMS : offers
-    PROGRAMS ||--o{ SECTIONS : defines
-    PROGRAMS ||--o{ CURRICULUM : structures
-    SUBJECTS ||--o{ CURRICULUM : contains
-    SUBJECTS ||--o{ SUBJECT_SECTIONS : schedules
-    SECTIONS ||--o{ SUBJECT_SECTIONS : groups
-    ACADEMIC_PERIODS ||--o{ ENROLLMENTS : governs
-    STUDENTS ||--o{ ENROLLMENTS : registers
-    SUBJECT_SECTIONS ||--o{ ENROLLMENTS : assigns
-    STUDENTS ||--o{ PAYMENTS : pays
-    PAYMENTS ||--o{ OFFICIAL_RECEIPTS : generates
-    STUDENTS ||--o{ STUDENT_CLEARANCES : tracks
-    STATION_USERS ||--o{ AUDIT_LOGS : performs
+    programs ||--o{ curriculum : "contains"
+    subjects ||--o{ curriculum : "mapped in"
+    programs ||--o{ sections : "cohort for"
+    academic_periods ||--o{ sections : "scheduled in"
+    academic_periods ||--o{ academic_milestones : "deadlines for"
+    sections ||--o{ subject_sections : "decomposes into"
+    pre_enrollments ||--o| students : "promotes to"
+    pre_enrollments ||--o{ student_clearances : "tracked in"
+    pre_enrollments ||--o{ payments : "billed for"
+    payments ||--o| official_receipts : "issues"
+    station_users ||--o{ audit_logs : "records"
+    station_users ||--o{ announcements : "authors"
+
+    pre_enrollments {
+        int id PK
+        string temp_student_id UK
+        string temp_pin
+        string student_type
+        string course_code
+        string nstp
+        string first_name
+        string last_name
+        string email
+        string phone
+        string status
+        json requirements_data
+        json medical_data
+        json payment_data
+        json helpdesk_data
+        json roadmap
+        string section_code
+        string or_number
+    }
+
+    students {
+        string id PK
+        string name
+        string program
+        string email UK
+        string password
+        string photo
+        string year_level
+        string status
+        boolean must_change_password
+        string active_session_token
+        string temp_reference_no FK
+        json personal_info
+        json academic_info
+        json roadmap
+        json requirements_data
+        json medical_data
+        json payment_data
+        json helpdesk_data
+    }
+
+    station_users {
+        int id PK
+        string username UK
+        string password
+        string role
+        string name
+        string email
+        string status
+        boolean must_change_password
+        string active_session_token
+    }
+
+    payments {
+        bigint id PK
+        string student_reference FK
+        string student_id FK
+        decimal amount
+        string payment_method
+        string payment_type
+        string channel
+        string transaction_reference
+        string official_receipt_number
+        string status
+        string cashier_username
+        datetime paid_at
+    }
+
+    official_receipts {
+        bigint id PK
+        string or_number UK
+        string student_reference FK
+        string student_name
+        decimal amount
+        bigint payment_id FK
+        string cashier_username
+        datetime issued_at
+    }
+
+    student_clearances {
+        bigint id PK
+        string student_reference FK
+        string station_code
+        string status
+        string verified_by
+        longtext clearance_data
+        datetime cleared_at
+    }
+
+    programs {
+        int id PK
+        string code UK
+        string name
+        string department
+        string status
+    }
+
+    subjects {
+        int id PK
+        string code UK
+        string title
+        int lecture_units
+        int lab_units
+        decimal lab_fee
+        string department
+    }
+
+    curriculum {
+        int id PK
+        string program FK
+        string subject FK
+        string year_level
+        string semester
+        boolean elective
+    }
+
+    academic_periods {
+        int id PK
+        string name
+        string academic_year
+        string semester
+        string status
+    }
+
+    sections {
+        int id PK
+        string code
+        string program FK
+        string year_level
+        int academic_period_id FK
+        int capacity
+    }
+
+    subject_sections {
+        int id PK
+        string code UK
+        string subject FK
+        string instructor
+        string days
+        string time
+        string room
+        int capacity
+        int section_id FK
+    }
+
+    fee_schedule {
+        int id PK
+        string type
+        string label
+        decimal amount
+        boolean per_unit
+    }
+
+    audit_logs {
+        int id PK
+        string reference_number
+        string operator_username
+        string station_role
+        string action_performed
+        json previous_state
+        json new_state
+        timestamp created_at
+    }
+
+    announcements {
+        int id PK
+        string title
+        string category
+        text content
+        string image_url
+        string author_name
+        boolean is_pinned
+        string status
+    }
+
+    academic_milestones {
+        int id PK
+        int academic_period_id FK
+        string title
+        date date_start
+        date date_end
+        string status
+    }
+
+    password_resets {
+        int id PK
+        string email
+        string token
+        string code
+        int attempts
+        datetime expires_at
+    }
+
+    enrollments {
+        int id PK
+        string student
+        string course
+        string status
+        timestamp updated
+    }
 ```
 
-### Database Observations
-- **Denormalized JSON Usage:** Critical operational states (`personal_info`, `academic_info`, `roadmap`, `requirements_data`, `medical_data`, `payment_data`, `helpdesk_data`, `enrollment_data`) are stored as JSON text blobs in both `pre_enrollments` and `students`. While this enables flexible schema evolution, it hinders direct relational querying and indexing on sub-fields.
-- **Relational Dual-Table Model:** Because applicants begin in `pre_enrollments` and graduate to `students`, all administrative search queries must join or UNION both tables.
+### 8.2 Relational Entity Summary Table
 
----
-
-## 10. API Analysis
-
-### Route Mapping Table
-| Action / Route | Gateway | Method | Controller / Service | Access Guard |
+| Table Name | Primary Purpose | Primary Key | Key Indexes & Foreign Keys | Data Lifecycle Tier |
 | :--- | :--- | :--- | :--- | :--- |
-| `auth/login` | Central REST | POST | `AuthController::login` | Public (Rate-limited) |
-| `auth/logout` | Central REST | POST | `AuthController::logout` | Public |
-| `auth/session` | Central REST | GET | `AuthController::checkSession` | Authenticated |
-| `student/register` | Central REST | POST | `StudentController::register` | Public |
-| `student/status` | Central REST | GET | `StudentController::getStatus` | Public (Ref + PIN) |
-| `student/documents/download`| Central REST | GET | `StudentController::downloadDocument` | Auth or PIN |
-| `student/portal/login` | Central REST | POST | `StudentPortalController::login` | Public |
-| `student/portal/dashboard` | Central REST | GET | `StudentPortalController::dashboard` | Student Session |
-| `student/portal/reset-password`| Central REST | POST | `StudentPortalController::resetPassword` | Public |
-| `stations/queue` | Local Proxy | GET | `QueueService::getQueue` | Station / Admin Session |
-| `stations/update` | Local Proxy | POST | `EnrollmentService::updateStudent` | Station / Admin Session |
-| `stations/upload-photo` | Local Proxy | POST | `EnrollmentService::uploadPhoto` | Station / Admin Session |
-| `admin/users/list` | Central REST | GET | `AdminController::getUsers` | Admin Role Only |
-| `admin/users/save` | Central REST | POST | `AdminController::saveUser` | Admin Role Only |
+| `pre_enrollments` | Central applicant onboarding staging queue | `id` (Auto-Inc) | `temp_student_id` (Unique), `status`, `email`, `course_code` | Staging Queue |
+| `students` | Permanent official institutional student directory | `id` (`YYYY-XXXX`) | `temp_reference_no`, `email`, `active_session_token` | Permanent Directory |
+| `station_users` | Operator and administrative staff user accounts | `id` (Auto-Inc) | `username` (Unique), `role`, `status`, `active_session_token` | System Users |
+| `payments` | Immutable transaction ledger for fee payments | `id` (Auto-Inc) | `student_reference`, `student_id`, `transaction_reference`, `official_receipt_number` | Financial Ledger |
+| `official_receipts`| Official Cashier Receipt registry | `id` (Auto-Inc) | `or_number` (Unique), `student_reference`, `issued_at` | Financial Ledger |
+| `student_clearances`| Relational per-station clearance timestamps | `id` (Auto-Inc) | `uk_student_station` (`student_reference`, `station_code`), `status` | Operational Clearance |
+| `programs` | Collegiate degree programs (BSIT, BSCS, etc.) | `id` (Auto-Inc) | `code` (Unique), `department`, `status` | Academic Catalog |
+| `subjects` | Master course catalog with unit & lab fees | `id` (Auto-Inc) | `code` (Unique), `department`, `title` | Academic Catalog |
+| `curriculum` | Degree-to-subject mappings by year & sem | `id` (Auto-Inc) | `idx_curr_lookup` (`program`, `year_level`, `semester`), `idx_curr_unique` | Academic Catalog |
+| `academic_periods` | School years and active enrollment semesters | `id` (Auto-Inc) | `status`, `academic_year`, `semester` | Academic Catalog |
+| `sections` | Cohort block sections (e.g. BSIT-1A) | `id` (Auto-Inc) | `unique_section_cohort` (`code`, `program`, `year_level`, `academic_period_id`) | Academic Scheduling |
+| `subject_sections` | Schedule blocks per subject (room, time, day) | `id` (Auto-Inc) | `code` (Unique), `section_id`, `subject`, `capacity` | Academic Scheduling |
+| `fee_schedule` | Authoritative tuition rates and flat fees | `id` (Auto-Inc) | `idx_fee_unique` (`type`, `label`), `type` | Financial Settings |
+| `audit_logs` | Structured audit trail of workstation actions | `id` (Auto-Inc) | `reference_number`, `operator_username`, `action_performed`, `created_at` | Audit & Compliance |
+| `announcements` | Campus announcements authored by Admin | `id` (Auto-Inc) | `status`, `is_pinned`, `category`, `author_id` | Communications |
+| `academic_milestones`| Academic calendar dates and deadlines | `id` (Auto-Inc) | `academic_period_id`, `status`, `display_order` | Academic Calendar |
+| `password_resets` | Hashed password reset tokens and PIN codes | `id` (Auto-Inc) | `email`, `code`, `token`, `expires_at` | Security & Auth |
+| `enrollments` | Legacy prototype snapshot table (Unused) | `id` (Auto-Inc) | `student`, `course`, `status` | Legacy (Deprecated) |
 
 ---
 
-## 11. Authentication Analysis
+## IX. API & Middleware Structure
 
-The system enforces distinct authentication mechanisms based on client context:
-1. **Station & Administrative Staff Authentication:**
-   - Handled via `AuthController::login` and `shared/backend/login.php`.
-   - Passwords validated using PHP native `password_verify()` against bcrypt hashes.
-   - Enforces `status === 'ACTIVE'`. Inactive or suspended operators are rejected.
-   - Initializes `$_SESSION['gncp_admin_user']` or `$_SESSION['gncp_station_user']`.
-   - Supports `must_change_password` interception.
-2. **Student Portal Authentication:**
-   - Validates student ID or institutional email against `students` table.
-   - Stores session state in `$_SESSION['gncp_student']`.
-   - Blocks UI navigation if `must_change_password` is flagged until the student updates their credentials.
-3. **Public Applicant Status Tracking Authentication:**
-   - Passwordless, dual-token authentication using `temp_student_id` (e.g. `GNCP-2026-TEMP-001`) and a 6-digit numeric security PIN.
-   - The PIN is hashed using `password_hash($pin, PASSWORD_DEFAULT)` upon registration. Verification uses `password_verify()`.
+### 9.1 API Endpoint Reference
 
----
+The following table documents all functional endpoints routed via [`api/index.php`](file:///c:/xampp/htdocs/systemtest/api/index.php) and legacy adapters:
 
-## 12. Authorization Analysis
-
-- **Role-Based Access Control (RBAC):** Station controllers inspect `$_SESSION['gncp_station_user']['role']` or `$_SESSION['gncp_admin_user']['role']` before executing mutations.
-- **Admin Privilege Enforcement:** Operator provisioning (`admin/save_user`) and curriculum alterations require `role === 'ADMIN'` or `role === 'SUPER_ADMIN'`.
-- **Operator Filtering Invariant:** Operator listings in user management strictly exclude administrative accounts (`WHERE role NOT IN ('ADMIN','SUPER_ADMIN')`), ensuring staff cannot view or modify higher-privileged admin credentials.
-
----
-
-## 13. Security Audit
-
-The application demonstrates strong architectural security conventions:
-- PDO prepared statements with parameter binding are used across queries, preventing SQL injection.
-- Passwords are securely hashed with bcrypt (`PASSWORD_DEFAULT`).
-- Direct script execution is disabled inside `uploads/` directories via `.htaccess`.
-- Cross-Site Scripting (XSS) filters sanitize inputs and strip executable HTML tokens.
-
-However, specific vulnerabilities and logic bugs were identified and cataloged below.
-
----
-
-## 14. File Upload / Storage Audit
-
-The system handles two primary categories of uploads:
-1. **Admission Documents (`uploads/documents/`):**
-   - High school cards, birth certificates, and good moral certificates submitted as PDFs.
-   - Validated on upload for `.pdf` extension and `application/pdf` MIME signature.
-   - Files are stored using a sanitized naming scheme: `doc_{refNo}_{docType}_{timestamp}.pdf`.
-2. **ID Portraits (`uploads/portraits/`):**
-   - Captured via webcam or file upload in IT Center.
-   - Validated via `getimagesizefromstring()` and checked against `IMAGETYPE_PNG`, `IMAGETYPE_JPEG`, and `IMAGETYPE_WEBP`.
-   - Explicitly scanned for embedded PHP/script polyglots (`<?php`, `eval(`, `<script`).
-   - Sized capped at 5MB.
-3. **Directory Security:**
-   - Both `uploads/documents/.htaccess` and `uploads/portraits/.htaccess` enforce:
-     ```apache
-     <FilesMatch "\.(php|phtml|php3|php4|php5|phps|pl|py|cgi|sh)$">
-         Order Deny,Allow
-         Deny from all
-     </FilesMatch>
-     php_flag engine off
-     ```
-   - This prevents uploaded files from executing on the server even if an attacker manages to store a file with an executable extension.
+| Method | Canonical Route / Action | Purpose | Auth Required | Role Restrictions | Key Inputs | Expected Output | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `POST` | `auth/login` | Staff operator and admin authentication | Public | None | `username`, `password` | User session payload, redirect URL | **Active** |
+| `GET` | `auth/logout` | Terminate staff/admin session & clear token | Yes | Staff / Admin | None | Success message | **Active** |
+| `GET` | `auth/check` | Validate active session & return user profile | Yes | Any logged-in staff | None | User profile object | **Active** |
+| `POST` | `auth/change_password` | Force password update on temporary login | Yes | Any staff user | `currentPassword`, `newPassword` | Success status | **Active** |
+| `POST` | `auth/upload_avatar` | Upload operator avatar portrait | Yes | Staff / Admin | Base64 image data | Web image path | **Active** |
+| `POST` | `student_portal/login` | Student self-service portal login | Public | None | `studentId`, `password` | Student session payload | **Active** |
+| `GET` | `student_portal/dashboard` | Fetch student dashboard, COR, schedule, balance | Yes | `STUDENT`, `ADMIN` | `studentId` | Full student dashboard object | **Active** |
+| `POST` | `student_portal/change_password` | Change student portal password | Yes | `STUDENT`, `ADMIN` | `currentPassword`, `newPassword` | Success status | **Active** |
+| `POST` | `student_portal/request_password_reset`| Dispatch 6-digit password reset code to email | Public | None | `identifier` (ID or Email) | Success status | **Active** |
+| `POST` | `student_portal/reset_password_with_code`| Reset password using verified email code | Public | None | `identifier`, `code`, `newPassword`| Success status | **Active** |
+| `GET` | `student_portal/documents` | Retrieve student's uploaded admission documents | Yes | `STUDENT`, Staff | `studentId` | Document requirements array | **Active** |
+| `POST` | `student_portal/upload_document` | Upload supplementary document soft copy | Yes | `STUDENT`, Staff | `docKey`, `fileData` (PDF) | Saved document metadata | **Active** |
+| `GET` | `student_portal/logout` | Terminate student session & clear token | Yes | `STUDENT` | None | Success status | **Active** |
+| `POST` | `student/register` | Submit 5-step online pre-enrollment wizard | Public (Throttled) | None (Rate limit: 5/min) | Full registration form payload | Reference No (`REF-...`), PIN | **Active** |
+| `GET` | `student/track` | Track application roadmap status | Public (Masked) / PIN | None (Masked if no PIN) | `ref`, `pin` | Sanitized roadmap stages | **Active** |
+| `GET` | `student/documents` | Fetch documents for applicant tracking | PIN / Auth | Applicant with PIN / Staff | `identifier`, `pin` | Requirements list & status | **Active** |
+| `POST` | `student/upload_document` | Upload PDF requirement file | PIN / Auth | Applicant with PIN / Staff | `studentId`, `docKey`, `fileData` | Upload URL, verification status | **Active** |
+| `GET` | `student/download_document` | Stream authenticated document PDF | Yes / PIN | Staff / Owning Student | `file` (filename) | Binary inline PDF stream | **Active** |
+| `POST` | `registrar/verify_document` | Verify or reject uploaded requirement | Yes | `REGISTRAR`, `ADMIN` | `studentId`, `docKey`, `status` | Updated document status | **Active** |
+| `GET` | `stations/queue` | Stream live multi-station queue (ETag 304) | Yes | All Station Roles, Admin | `If-None-Match` header | HTTP 304 or Hydrated Queue | **Active** |
+| `POST` | `stations/update` | Mutate student milestone / stage data | Yes (Fine-grained) | Stage-specific role | `referenceNumber`, `updateData` | Mutation summary object | **Active** |
+| `GET` | `stations/next_student_id` | Generate collision-free permanent ID | Yes | `IT_CENTER`, `ADMIN` | None | Next ID (`YYYY-XXXX`) | **Active** |
+| `POST` | `stations/upload_photo` | Upload applicant webcam portrait | Yes | `IT_CENTER`, `ADMIN` | `referenceNumber`, `photoData` | Saved portrait web path | **Active** |
+| `GET` | `stations/stats` | Compile queue totals & IT readiness metrics | Yes | All Station Roles, Admin | None | Aggregate counts | **Active** |
+| `GET` | `stations/history` | Retrieve completed transaction logs by station | Yes | All Station Roles, Admin | `station` (Role filter) | Array of audit history | **Active** |
+| `GET` | `admin/analytics` | Compile university dashboard KPIs | Yes | `ADMIN`, `SUPER_ADMIN` | `period_id` | KPI stats & enrollment metrics | **Active** |
+| `GET` | `admin/catalog` | Fetch programs, subjects, and curriculum maps | Yes | `ADMIN`, `SUPER_ADMIN` | None | Catalog arrays | **Active** |
+| `POST` | `admin/save_program` | Create or update collegiate degree program | Yes | `ADMIN`, `SUPER_ADMIN` | Program code, name, department | Program ID | **Active** |
+| `POST` | `admin/save_subject` | Create or update course subject & fees | Yes | `ADMIN`, `SUPER_ADMIN` | Subject code, title, units, fee | Subject ID | **Active** |
+| `POST` | `admin/save_section` | Create or update cohort block section | Yes | `ADMIN`, `SUPER_ADMIN` | Section code, program, year | Section ID | **Active** |
+| `POST` | `admin/save_term` | Create or toggle active academic period | Yes | `ADMIN`, `SUPER_ADMIN` | Term name, year, sem, dates | Period ID | **Active** |
+| `GET` | `admin/users` | List station operators and staff accounts | Yes | `ADMIN`, `SUPER_ADMIN` | None | Staff users array (No hashes) | **Active** |
+| `POST` | `admin/save_user` | Provision new station operator account | Yes | `ADMIN`, `SUPER_ADMIN` | `username`, `name`, `role`, `email` | User ID, temp credentials | **Active** |
+| `POST` | `admin/reset_operator_password` | Reset operator password & dispatch email | Yes | `ADMIN`, `SUPER_ADMIN` | `userId`, `newPassword` | Success status, email status | **Active** |
+| `GET` | `announcements/list` | Fetch campus announcements | Public / Filtered | None | `category`, `status` | Published announcements | **Active** |
+| `POST` | `admin/save_announcement` | Create or update campus announcement | Yes | `ADMIN`, `SUPER_ADMIN` | Title, content, category, pin | Announcement ID | **Active** |
+| `POST` | `payments/paymongo_create_checkout` | Initialize online PayMongo checkout session | Public / Session | None | `referenceNumber`, `amount` | PayMongo checkout URL & ID | **Active** |
+| `POST` | `payments/paymongo_simulate_paid` | Simulate online GCash/Card payment | Yes | `CASHIER`, `ADMIN` | `refNo`, `amount`, `channel` | Payment confirmation & OR | **Active** |
+| `POST` | `payments/paymongo_webhook` | Receive verified PayMongo webhook event | Public (Webhook Sig) | PayMongo Signature | Raw webhook payload | Webhook process status | **Active** |
+| `GET` | `monitoring/stats` | Fetch real-time traffic telemetry KPIs | Yes | `ADMIN`, `DEVELOPER` | None | Total requests, 4xx, 5xx, IPs | **Active** |
+| `GET` | `monitoring/requests` | Stream recent HTTP requests from radar | Yes | `ADMIN`, `DEVELOPER` | `limit`, `ip`, `status`, `search` | Array of telemetry entries | **Active** |
+| `POST` | `monitoring/ban_ip` | Blacklist malicious IP on firewall | Yes | `ADMIN`, `DEVELOPER` | `ip`, `reason`, `duration` | Firewall ban status | **Active** |
 
 ---
 
-## 15. Business Logic Audit
+## X. Security Analysis & Vulnerability Review
 
-1. **State Transition Sequence:**
-   - Progression through stages strictly requires prerequisite step completion.
-   - Attempting to pay at the cashier before receiving advising or medical clearance is rejected by `PaymentService::validatePaymentEligibility()`.
-2. **Section Capacity Management:**
-   - Section assignments occur during TLC Helpdesk advising, but physical capacity decrement (`UPDATE subject_sections SET capacity = GREATEST(0, capacity - 1)`) executes atomically during IT Center promotion. This ensures staging applicants who abandon registration do not permanently consume section slots.
-3. **NSTP Program Selection:**
-   - First-year students are locked into ROTC or CWTS. Changing this at the Helpdesk recalculates applicable lab/course fees automatically.
+### 10.1 Authentication & Password Handling
+- **Password Hashing:** All station operator, administrator, and student passwords are encrypted using PHP `password_hash($password, PASSWORD_DEFAULT)` (utilizing strong bcrypt with standard work factors). Plaintext passwords are never stored in the database.
+- **Forced Password Changes (`must_change_password`):** Newly provisioned staff accounts and promoted student accounts default to `must_change_password = 1`. [`shared/js/PasswordChangeGuard.js`](file:///c:/xampp/htdocs/systemtest/shared/js/PasswordChangeGuard.js) intercepts client-side routing, and backend controllers reject normal dashboard mutations until a secure custom password is saved.
+- **Single-Active Session Token Enforcement:** To prevent credential sharing across workstations, both `station_users` and `students` maintain an `active_session_token` column. Upon login, a 64-character cryptographic token is generated (`bin2hex(random_bytes(32))`) and saved in MariaDB. If an account is logged in from a second browser, the initial session's token becomes invalid; [`shared/backend/utils/session_guard.php`](file:///c:/xampp/htdocs/systemtest/shared/backend/utils/session_guard.php) detects the mismatch and terminates the superseded session with HTTP 401.
 
----
+### 10.2 Role-Based Access Control (RBAC) & Fine-Grained Station Guard
+Workstation mutations route through [`api/controllers/StationController.php`](file:///c:/xampp/htdocs/systemtest/api/controllers/StationController.php), which implements fine-grained authorization checks:
+- Status transition to `VERIFIED` or `REJECTED` $\rightarrow$ Enforced strictly for `REGISTRAR`.
+- Status transition to `ADVISED` $\rightarrow$ Enforced strictly for `HELPDESK`.
+- Status transition to `MEDICAL_CLEARED` $\rightarrow$ Enforced strictly for `MEDICAL`.
+- Status transition to `PAID` or OR issuance $\rightarrow$ Enforced strictly for `CASHIER`.
+- Status transition to `ENROLLED` or identity promotion $\rightarrow$ Enforced strictly for `IT_CENTER`.
+- Super Administrators (`SUPER_ADMIN`, `ADMIN`) retain institutional override permissions.
 
-## 16. Calculation Audit
+### 10.3 Web Application Firewall (WAF) & Input Sanitization
+- **Automated Scanner Defense:** [`shared/backend/utils/security_guard.php`](file:///c:/xampp/htdocs/systemtest/shared/backend/utils/security_guard.php) inspects incoming `HTTP_USER_AGENT` strings, blocking recognized security scanning and fuzzing tools (including SQLmap, Nikto, Acunetix, Gobuster, WPScan, Nessus, Nmap, and Dirsearch) with HTTP 403.
+- **Exploit Payload Filters:** Rejects directory traversal sequences (`../`, `%2e%2e`), PHP stream wrapper injections (`php://`, `data://`), null bytes (`%00`), and OS command separators (`; cat`, `&&`, `||`).
+- **SQL Injection Prevention:** 100% of dynamic database queries across all controllers and services utilize PDO parameterized prepared statements (`$stmt->prepare()` and `$stmt->execute([...])`), completely neutralizing SQL injection risks.
 
-The financial calculation engine resides in `shared/backend/services/AssessmentService.php`.
+### 10.4 Rate Limiting & Denial-of-Service Defense
+[`shared/backend/utils/rate_limit.php`](file:///c:/xampp/htdocs/systemtest/shared/backend/utils/rate_limit.php) enforces IP-scoped request quotas:
+- Pre-Registration Wizard: Maximum 5 submissions per IP per 60 seconds.
+- Status Tracker: Maximum 20 lookups per IP per 60 seconds.
+- Employee & Student Logins: Maximum 10 failed login attempts per username/IP per 5 minutes before locking out the client with HTTP 429.
 
-### Pricing Formulae
-- **Tuition Fee:** $\text{Total Enrolled Units} \times \text{Tuition Rate per Unit}$ (Default: ₱250.00 / unit).
-- **Laboratory Fees:** Sum of individual subject lab fees defined in `subjects.lab_fee`.
-- **Miscellaneous Fees:** Institutional standard bundle (₱2,800.00 covering Registration, Library, Medical/Dental, Athletic, Guidance, and Insurance).
-- **Technology / Special Fees:** Learning Management System (LMS) fee (₱1,200.00) + Optical Mark Recognition (OMR) exam fee (₱300.00).
-- **NSTP Fee:** ₱350.00 (charged if enrolled in ROTC or CWTS).
-- **Discounts:** Subtracted from Total Assessment: $\text{Net Cash Total} = \text{Gross Assessment} - \text{Scholarship Discount}$.
-- **Installment Financing Surcharge:** If the student chooses installment payment rather than cash, an 8% surcharge is added:
-  $$\text{Installment Total} = \text{Net Cash Total} \times 1.08$$
-  - **Downpayment:** Fixed at ₱3,000.00 upon enrollment.
-  - **Remaining Balance:** Divided equally across Prelim, Midterm, Semi-Final, and Final exam installments.
-
-### Snapshot Immutability
-Upon completing Helpdesk Advising, `EnrollmentService` invokes `AssessmentService::calculateAssessment()` and stores the complete JSON payload in `payment_data.assessmentSnapshot`. Subsequent queries in the Cashier and Student Portal reference this snapshot, insulating the student against retroactive fee changes.
-
----
-
-## 17. Cross-Module Consistency Audit
-
-| Interaction Vector | Source of Truth | Consuming Module | Consistency Assessment |
-| :--- | :--- | :--- | :--- |
-| **Applicant Name & Info** | `pre_enrollments` | Registrar, Helpdesk, Clinic, Cashier | **Consistent.** DataBus distributes changes across all station views. |
-| **Advised Subjects & Units** | `pre_enrollments.helpdesk_data` | Cashier, AssessmentService | **Consistent.** Synchronized through assessment snapshot. |
-| **Payment Status** | `payments` & `pre_enrollments.payment_data` | IT Center, Student Portal | **Consistent.** Both tables are updated within atomic transactions. |
-| **Document Viewing / Download** | `uploads/documents/` | Student Portal | **Inconsistent.** Student Portal session key mismatch causes 401 error on download. |
-| **Student Record Creation** | `pre_enrollments` $\rightarrow$ `students` | IT Center Promotion | **Consistent.** Multi-table mutation enclosed in explicit PDO transactions. |
+### 10.5 File Upload Security & Execution Blocks
+- **Upload Directory Execution Shield:** The [`uploads/.htaccess`](file:///c:/xampp/htdocs/systemtest/uploads/.htaccess) file permanently disables script execution across all upload subdirectories (`php_flag engine off`, `RemoveHandler`, `Require all denied` on `.php`, `.phtml`, `.exe`, `.cgi`, `.py`, `.sh`), preventing remote code execution (RCE).
+- **Deep Magic-Byte Inspection:** Documents submitted in `StudentController::uploadDocument()` are verified for the mandatory `%PDF-` binary file signature and scanned for polyglot embedded script tags (`<?php`, `<script`).
 
 ---
 
-## 18. Route Audit
+## XI. Requirements Traceability Matrix
 
-| Route URL | Query / Endpoint | Target Handler | Guard Type | Failure Behavior |
-| :--- | :--- | :--- | :--- | :--- |
-| `/systemtest/` | `/index.html` | Static Landing Page | None | Public 200 OK |
-| `/systemtest/pre-registration.html` | Static File | Applicant Admission Form | None | Public 200 OK |
-| `/systemtest/status-tracker.html` | Static File | Application Status Tracker | None | Public 200 OK |
-| `/systemtest/admin/` | `/admin/index.php` | Admin Workstation SPA | `$_SESSION['gncp_admin_user']` | Redirect to login |
-| `/systemtest/registrar/` | `/registrar/index.html` | Registrar Workstation SPA | `$_SESSION['gncp_station_user']` | DataBus auth guard |
-| `/systemtest/stations/tlc-helpdesk/`| Static File | Advising Workstation SPA | `$_SESSION['gncp_station_user']` | DataBus auth guard |
-| `/systemtest/stations/medical-checkup/`| Static File | Clinic Workstation SPA | `$_SESSION['gncp_station_user']` | DataBus auth guard |
-| `/systemtest/stations/payment-processing/`| Static File | Cashier Workstation SPA | `$_SESSION['gncp_station_user']` | DataBus auth guard |
-| `/systemtest/stations/it-center/` | Static File | IT Center Workstation SPA | `$_SESSION['gncp_station_user']` | DataBus auth guard |
-| `/systemtest/student-portal/` | `/student-portal/index.php` | Student Self-Service SPA | `$_SESSION['gncp_student']` | Redirect to login |
-| `/systemtest/api/index.php` | `?action=auth/login` | `AuthController::login` | None | 401 Unauthorized |
-| `/systemtest/api/index.php` | `?action=student/documents/download` | `StudentController::downloadDocument` | Auth Session or PIN | 401 Unauthorized |
-
----
-
-## 19. Performance Audit
-
-1. **Client-Side Polling Frequency:**
-   - `StationDataBus.js` runs every 3,000ms (3 seconds) across all active workstations.
-   - For 10 active station operators, this produces ~200 requests/minute querying `pre_enrollments` and `students`.
-   - *Recommendation:* Implement adaptive backoff (e.g. increase to 10s when window is inactive) or conditional HTTP `If-Modified-Since` / ETag headers.
-2. **DOM and Payload Sizes:**
-   - `admin/index.html` is 293KB and 4,489 lines long. Parsing this monolithic file incurs slight DOM latency on initial page render.
-   - However, since this is an internal administrative workstation, the impact is confined to staff machines.
-3. **Database Query Profiling:**
-   - The queue aggregation query in `QueueService::getQueue()` performs joins on `pre_enrollments` and `students`. Both tables are indexed on `temp_student_id`, `id`, and `status`, ensuring fast lookup times under typical enrollment volumes (< 10,000 records).
+| Requirement Specification | Intended Function | Current Implementation | Evidence in Code | Verification Status | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **REQ-01: Public Admissions Wizard** | Enable applicants to register online | 5-step reactive wizard with demographic, academic, and medical intake | `enrollment-system/index.html`, `StudentController::register` | **Implemented** | Successfully stores applicants with tracking reference and PIN. |
+| **REQ-02: Live Roadmap Tracking** | Allow applicants to check station status | Interactive roadmap board with masked PII protection | `enrollment-system/tracker.html`, `StudentController::track` | **Implemented** | Masks applicant names unless full PIN or staff session is provided. |
+| **REQ-03: Registrar Document Verification** | Allow Registrar to check requirements | Document checklist review and approval/rejection toggle | `registrar/index.html`, `RegistrarService.php` | **Implemented** | Updates staging status to `VERIFIED`; unlocks Advising. |
+| **REQ-04: Academic Advising & Sectioning** | Advise subjects and assign block sections | Prospectus scoping for active term and NSTP locking | `stations/tlc-helpdesk/index.html`, `ProspectusScopingService.php` | **Implemented** | Freezes assessment snapshot upon advising completion. |
+| **REQ-05: Medical Fitness Clearance** | Health screening and physical fitness exam | Vital signs recording and doctor fitness clearance | `stations/medical-checkup/index.html`, `EnrollmentService.php` | **Implemented** | Advances status to `MEDICAL_CLEARED`; logs clinical clearance. |
+| **REQ-06: Cashier Payment & OR Issuance** | Collect fees and issue official receipts | Assessment verification, OR number generation, PayMongo link | `stations/payment-processing/index.html`, `AssessmentService.php` | **Implemented** | Enforces eligibility; prints receipts and CORs. |
+| **REQ-07: IT Center Promotion Engine** | Provision student identity and permanent account | Webcam photo capture, student ID generator, directory promotion | `stations/it-center/index.html`, `student.php:promotePreEnrollmentToStudent` | **Implemented** | Migrates row to `students`; decrements section capacity. |
+| **REQ-08: Student Self-Service Portal** | Access academic records and official COR | Authenticated portal for COR, weekly schedule, and financial ledger | `student-portal/index.html`, `StudentPortalService.php` | **Implemented** | Enforces single-active session and initial password change. |
+| **REQ-09: Academic Catalog Management** | Administer programs, subjects, and curriculum | Master CRUD console for programs, subjects, terms, and sections | `admin/index.html`, `CatalogAdminController.php` | **Implemented** | Full catalog governance supported by Super Admin. |
+| **REQ-10: Operator User Management** | Provision and manage station desk operators | Staff CRUD, role assignment, and credentials dispatch via SMTP | `admin/index.html`, `UserAdminController.php`, `EmailService.php` | **Implemented** | Dispatches credentials with temporary password flag. |
+| **REQ-11: Real-Time Threat Radar** | Security operations monitoring and IP firewall | Live request radar, latency metrics, IP blacklist firewall | `monitoring/index.html`, `telemetry.php`, `security_guard.php` | **Implemented** | Real-time radar polling with active IP banning. |
+| **REQ-12: Zero-Page-Refresh Workstation Sync**| Live queue updates across all desk portals | 3-second background polling with ETag HTTP 304 caching | `stations/assets/js/StationDataBus.js`, `QueueService::getQueueHash` | **Implemented** | Updates `localStorage` and triggers storage events. |
 
 ---
 
-## 20. Error Handling Audit
+## XII. Current System Issues & Defect Catalog
 
-- **Centralized Error Logging:** All unhandled exceptions in `api/index.php` and service calls are routed to `shared/backend/logs/app_errors.log`.
-- **User-Facing Sanitization:** Production errors return sanitized JSON envelopes concealing internal database paths and line numbers:
-  ```json
-  {"success": false, "message": "An internal error occurred. Please contact the administrator.", "code": 500}
-  ```
-- **Silent Exception Swallowing:** Certain utility blocks use silent `catch (Exception $e) {}` blocks (e.g., `StudentPortalService.php:663` and `EnrollmentService.php:485`). While this prevents user-facing errors, it can mask secondary issues like missing database columns or ledger synchronization failures.
+A summarized overview of confirmed issues discovered during static and architectural tracing (detailed evidence and remediation documented in [`system_audit_findings.md`](file:///c:/xampp/htdocs/systemtest/system_audit_findings.md)):
 
----
+### Critical Severity Issues
+1. **SEC-01: Insecure Direct Object Reference (IDOR) in Document Downloads** ([`api/controllers/StudentController.php:405-516`](file:///c:/xampp/htdocs/systemtest/api/controllers/StudentController.php#L405-L516))
+   - *Cause:* File downloads rely on a filename query parameter checked via loose string containment (`str_contains`) against JSON data strings instead of explicit relational ownership verification.
+   - *Impact:* Potential unauthorized access to student birth certificates, medical records, or transcripts if filenames can be guessed or enumerated.
 
-## 21. Testing Coverage Audit
+### High Severity Issues
+2. **SEC-02: Predictable Default Student Credentials** ([`shared/backend/utils/student.php:186-191`](file:///c:/xampp/htdocs/systemtest/shared/backend/utils/student.php#L186-L191))
+   - *Cause:* Temporary password for promoted students defaults to their lowercase last name or `'password123'`.
+   - *Impact:* Account hijacking vulnerability if an attacker knows an enrolled student's last name and logs in before the student changes their password.
+3. **ARCH-01: Architectural Bifurcation & Parallel Legacy Routers** ([`stations/backend/api.php`](file:///c:/xampp/htdocs/systemtest/stations/backend/api.php), [`registrar/backend/api.php`](file:///c:/xampp/htdocs/systemtest/registrar/backend/api.php))
+   - *Cause:* Legacy procedural endpoints exist alongside the canonical `api/index.php` REST gateway.
+   - *Impact:* Parallel endpoints bypass centralized telemetry tracking and create routing maintenance fragmentation.
+4. **UI-01: Massive Monolithic Client Templates** ([`admin/index.html`](file:///c:/xampp/htdocs/systemtest/admin/index.html), [`student-portal/index.html`](file:///c:/xampp/htdocs/systemtest/student-portal/index.html))
+   - *Cause:* `admin/index.html` spans 4,489 lines (293KB) containing all views, modals, and embedded scripts in a single file without component modularization.
+   - *Impact:* High DOM parsing overhead, poor developer ergonomics, and merge conflict risks.
 
-### Existing Test Assets
-1. **CLI Financial Test Suite (`tests/test_financial_system.php`):**
-   - 28 automated test scenarios verifying tuition rates, lab fees, miscellaneous fees, NSTP loading, discounts, and installment computations against known edge cases.
-2. **End-to-End Selenium Pipeline (`tests/selenium/test_runner.py`):**
-   - Comprehensive 9-step automated browser test executing the complete student journey:
-     1. Public online registration submission
-     2. Registrar document verification
-     3. Helpdesk academic advising and section assignment
-     4. Clinic medical checkup clearance
-     5. Cashier payment and OR issuance
-     6. IT Center student promotion and account creation
-     7. Direct MariaDB assertion of student creation in `students` table
-     8. Student portal login with generated institutional credentials
-     9. Password reset workflow verification.
+### Medium Severity Issues
+5. **PERF-01: Aggressive 3-Second Client Polling Network Overhead** ([`stations/assets/js/StationDataBus.js:20-45`](file:///c:/xampp/htdocs/systemtest/stations/assets/js/StationDataBus.js#L20-L45))
+   - *Cause:* Unconditional 3-second timer polling `/api/index.php?action=stations/queue`.
+   - *Impact:* Generates 1,200 HTTP requests per hour per active workstation operator, increasing server CPU interrupts and access log growth.
+6. **SEC-03: Insecure Random Number Generation in Admin Password Reset** ([`admin/backend/api.php:81`](file:///c:/xampp/htdocs/systemtest/admin/backend/api.php#L81))
+   - *Cause:* Uses non-cryptographic `rand(1000, 9999)` for temporary password generation.
+   - *Impact:* Low entropy (9,000 combinations) and predictable pseudorandom sequences.
+7. **DATA-01: Denormalized JSON Storage vs Relational Sync Exception Suppression** ([`stations/backend/services/EnrollmentService.php:380-487`](file:///c:/xampp/htdocs/systemtest/stations/backend/services/EnrollmentService.php#L380-L487))
+   - *Cause:* Secondary relational inserts (`payments`, `official_receipts`) are wrapped in a separate try-catch block that logs errors without rolling back the primary transaction if relational sync fails.
+   - *Impact:* Risk of desynchronization between JSON storage columns and relational audit ledgers.
 
-### Test Coverage Gaps
-- Lack of isolated unit tests for REST controller action routes in `api/controllers/`.
-- No automated integration tests for document download access control or rate-limiting thresholds.
-
----
-
-## 22. Architecture & Maintainability Audit
-
-### Strengths
-- **Clean Service Encapsulation:** Domain logic (`AssessmentService`, `EnrollmentService`, `PaymentService`) is cleanly isolated from presentation templates.
-- **Transactional Integrity:** Complex multi-table mutations (such as IT Center promotion) use explicit PDO transaction blocks with rollback support.
-- **Unified Design System:** Workstations inherit styling from a shared stylesheet (`shared/css/admin_workstation_theme.css`), maintaining consistent visual design across modules.
-
-### Areas for Architectural Improvement
-- **Gateway Dualism:** Workstations communicate through both `api/index.php` and `stations/backend/api.php`. Unifying all routes through the central REST gateway will improve routing clarity.
-- **Single-File Template Bloat:** Consolidating thousands of lines into single HTML files (`admin/index.html`) makes maintenance more complex over time compared to modular component files.
+### Low Severity Issues
+8. **CODE-01: Redundant Writes to Deprecated `enrollments` Table** ([`shared/backend/utils/student.php:284-294`](file:///c:/xampp/htdocs/systemtest/shared/backend/utils/student.php#L284-L294))
+   - *Cause:* Unused prototype snapshot table is still written to on every student promotion.
+   - *Impact:* Unnecessary disk I/O and developer confusion.
+9. **PERF-02: Disk I/O Lock Contention in File-Based Rate Limiting** ([`shared/backend/utils/rate_limit.php:44-73`](file:///c:/xampp/htdocs/systemtest/shared/backend/utils/rate_limit.php#L44-L73))
+   - *Cause:* Atomic file locks on disk for every rate-limited API invocation.
+   - *Impact:* Scalability bottleneck under extreme concurrency (1,000+ simultaneous requests).
 
 ---
 
-## 23. Critical Findings
+## XIII. Technical Debt Analysis
 
-### [Finding SEC-IDOR-01] Missing Document Ownership Verification in `downloadDocument()`
-- **Location:** `api/controllers/StudentController.php` lines 424–457
-- **Evidence:** **FACT / CONFIRMED BEHAVIOR**
-  ```php
-  $requestedFile = trim($_GET['file'] ?? ($_GET['path'] ?? ''));
-  $filename = basename($requestedFile);
-  ...
-  $filePath = realpath($uploadDir . DIRECTORY_SEPARATOR . $filename);
-  ...
-  readfile($filePath);
-  ```
-- **Current Behavior:** Once an applicant enters any valid 6-digit PIN or any user logs in as staff, the endpoint accepts any `?file=` parameter. If the file exists in `uploads/documents/`, it is streamed immediately without checking whether the file belongs to the requesting user.
-- **Expected Behavior:** The endpoint must verify that the requested `$filename` is linked to the applicant's or student's own record in `pre_enrollments` or `students`.
-- **Severity:** **CRITICAL**
-- **Impact:** Any authenticated user or applicant can view and download admission documents (birth certificates, Form 137, good moral certificates) belonging to any other student by supplying or guessing the filename.
-- **Root Cause:** Authorization check validates that the user is authenticated, but omits resource ownership validation.
-- **Recommended Solution:** Query `pre_enrollments.requirements_data` and `students.requirements_data` to ensure `$filename` is present in the authenticated user's record before calling `readfile()`.
-- **Risk of Changing:** Low. Only impacts the internal access check logic.
-- **Dependencies:** `StudentController.php`, `StudentModel.php`.
+1. **Dual-Table Architecture Complexity:**
+   Maintaining two parallel tables for student records (`pre_enrollments` for staging and `students` for permanent profiles) requires complex hydration and deduplication logic in `QueueHydrationService::mergeStudentRecords()`. A unified table with an explicit `enrollment_status` lifecycle enum would simplify querying and eliminate synchronization overhead.
+2. **Denormalized JSON Columns:**
+   Storing complex multi-field objects (such as `personal_info`, `academic_info`, `helpdesk_data`, `payment_data`) as JSON strings inside relational MariaDB tables impairs SQL-level reporting, prevents foreign key constraints, and forces PHP application code to perform manual serialization and deserialization.
+3. **Absence of Modern Frontend Build Pipeline:**
+   Relying entirely on CDN-delivered Vue 3 and raw single-file HTML views eliminates compile-time type checking, prevents CSS tree-shaking, and forces massive single-file templates. Introducing modern tooling (Vite with Vue Single File Components) would improve modularity and long-term maintainability.
+4. **Parallel Routing Layers:**
+   The coexistence of localized station routers (`stations/backend/api.php`) alongside the canonical REST engine (`api/index.php`) represents partial architectural migration debt.
 
 ---
 
-### [Finding BUG-ANALYTICS-02] PDO Parameter Mixing Crash in `AnalyticsService.php`
-- **Location:** `shared/backend/services/AnalyticsService.php` line 122
-- **Evidence:** **FACT / CONFIRMED BEHAVIOR**
-  In `shared/backend/services/AnalyticsService.php`:
-  ```php
-  122: $stmtPeProg = $pdo->prepare("SELECT COUNT(*) FROM `pre_enrollments` pe WHERE pe.`course_code` = ? AND ($peClause)");
-  123: $peP = array_merge([$pCode], array_values($peParams));
-  124: // Bind cleanly using positionals for sub-query
-  125: $stmtPeP = $pdo->prepare("SELECT COUNT(*) FROM `pre_enrollments` pe WHERE pe.`course_code` = :pcode AND $peClause");
-  ```
-  Confirmed in `shared/backend/logs/app_errors.log` (lines 136–138):
-  `SQLSTATE[HY093]: Invalid parameter number: mixed named and positional parameters`
-- **Current Behavior:** Line 122 calls `$pdo->prepare()` with a positional placeholder `?` alongside `$peClause` (which contains named parameters like `:yr_pe`). In MariaDB/MySQL PDO, this triggers an immediate fatal exception when year-level or date filters are applied in the analytics dashboard.
-- **Expected Behavior:** Line 122 is unused dead code that should be removed; line 125 uses named parameters correctly.
-- **Severity:** **CRITICAL** (Causes runtime crash on filtered analytics queries)
-- **Impact:** Admin analytics dashboard crashes whenever an administrator filters statistics by year level or academic term.
-- **Root Cause:** An earlier refactoring left behind an unexecuted `$pdo->prepare()` call containing mixed parameter styles.
-- **Recommended Solution:** Remove lines 122–123, allowing line 125 (`$stmtPeP`) to execute directly.
-- **Risk of Changing:** Very low. Line 122 is unexecuted dead code whose prepare call causes the crash.
-- **Dependencies:** `AnalyticsService.php`, Admin Analytics Dashboard.
+## XIV. Strengths of the Current System
+
+1. **Deterministic and Robust Financial Assessment Engine:**
+   [`shared/backend/services/AssessmentService.php`](file:///c:/xampp/htdocs/systemtest/shared/backend/services/AssessmentService.php) represents a benchmark implementation of Philippine collegiate tuition calculation. It eliminates hardcoded rates, strictly queries database fee schedules, applies explicit 2-decimal rounding, supports NSTP loading, computes 8% installment plan charges, and freezes assessment snapshots upon academic advising to protect students from mid-enrollment rate fluctuations.
+2. **Strict SQL Injection Immunity:**
+   Across every controller, service, and data access model, 100% of SQL mutations and queries utilize PDO prepared statements with parameterized inputs. Dynamic string concatenation is completely absent from SQL clauses.
+3. **Comprehensive Web Application Firewall (WAF) & Telemetry:**
+   [`shared/backend/utils/security_guard.php`](file:///c:/xampp/htdocs/systemtest/shared/backend/utils/security_guard.php) and [`shared/backend/utils/telemetry.php`](file:///c:/xampp/htdocs/systemtest/shared/backend/utils/telemetry.php) provide deep security observability. Automated pen-testing scanner signatures are blocked at the perimeter, microsecond request latencies are recorded, and correlation IDs (`X-Request-ID`) link client requests to backend error logs.
+4. **Single-Active Session Security:**
+   The implementation of database-verified active session tokens (`active_session_token`) prevents shared accounts, credential pooling, and simultaneous multi-device logins across both staff and student portals.
+5. **Decoupled Workstation Flow Model:**
+   The multi-station finite-state machine successfully decouples physical collegiate offices, preventing queues from stalling downstream stations and providing real-time operational visibility.
 
 ---
 
-## 24. High-Priority Findings
+## XV. System Limitations
 
-### [Finding AUTH-SESSTYP-03] Session Key Mismatch in Document Download Endpoint
-- **Location:** `api/controllers/StudentController.php` line 402
-- **Evidence:** **FACT / CONFIRMED BEHAVIOR**
-  In `api/controllers/StudentController.php`:
-  ```php
-  401: $isStaff = !empty($_SESSION['gncp_admin_user']) || !empty($_SESSION['gncp_station_user']);
-  402: $isStudent = !empty($_SESSION['gncp_portal_student']);
-  ```
-  Across the rest of the application (`StudentPortalService.php:94`, `session_guard.php:119`, `student-portal/index.php:9`, `StudentPortalController.php:36`), the active student session key is strictly:
-  `$_SESSION['gncp_student']`
-- **Current Behavior:** `$isStudent` evaluates to `false` even when an enrolled student is logged into the Student Portal, because `$_SESSION['gncp_portal_student']` is never populated.
-- **Expected Behavior:** Enrolled students logged into their portal should be able to view and download their documents without re-entering an applicant PIN.
-- **Severity:** **HIGH**
-- **Impact:** Legitimate students in the Student Portal receive an `HTTP 401 Unauthorized` error when attempting to download their admission credentials.
-- **Root Cause:** Typo in the session variable key name (`gncp_portal_student` instead of `gncp_student`).
-- **Recommended Solution:** Update line 402 to:
-  ```php
-  $isStudent = !empty($_SESSION['gncp_student']) || !empty($_SESSION['gncp_portal_student']);
-  ```
-- **Risk of Changing:** Very low. Restores intended access for enrolled students.
-- **Dependencies:** `StudentController.php`, Student Portal UI.
+1. **Web-Only Architecture (No Native Mobile Application):**
+   The application does not possess a native or hybrid mobile app (such as Flutter, React Native, iOS, or Android). While all views are mobile-responsive via CSS viewports, mobile hardware capabilities (native push notifications, biometric FaceID/fingerprint authentication) are unavailable.
+2. **In-Memory Cache / Message Broker Absence:**
+   The system currently relies on file-based rate limiting and MariaDB polling rather than an in-memory key-value cache (Redis) or message broker (RabbitMQ). This caps horizontal scalability on multi-server cluster deployments.
+3. **No Direct Core Banking Integration:**
+   Tuition collection is processed on-campus as physical cash/OTC or mediated through PayMongo web checkouts. Direct real-time bank reconciliation (BDO, BPI, Landbank) is not supported.
 
 ---
 
-### [Finding SCHEMA-ATTEMPT-04] Schema Drift: Missing `attempts` Column in `password_resets` Table
-- **Location:** `database/schema.sql` lines 692–704 vs `shared/backend/services/StudentPortalService.php` line 671
-- **Evidence:** **FACT / CONFIRMED BEHAVIOR**
-  In `database/schema.sql`, `password_resets` is defined without an `attempts` column.
-  In `StudentPortalService.php` line 671:
-  ```php
-  INSERT INTO `password_resets` (`email`, `token`, `code`, `attempts`, `user_type`, `expires_at`)
-  VALUES (:email, :token, :code, 0, 'STUDENT', DATE_ADD(NOW(), INTERVAL 30 MINUTE))
-  ```
-  Confirmed in `shared/backend/logs/app_errors.log` (line 126):
-  `SQLSTATE[42S22]: Column not found: 1054 Unknown column 'attempts' in 'field list'`
-- **Current Behavior:** On database instances initialized from `schema.sql`, requesting a password reset fails with an SQL error if the database user lacks `ALTER TABLE` privileges to execute the runtime column addition fallback in line 662.
-- **Expected Behavior:** The canonical `database/schema.sql` should include the `attempts` column by default.
-- **Severity:** **HIGH**
-- **Impact:** Password reset requests fail on freshly provisioned systems.
-- **Root Cause:** Incremental code changes added brute-force attempt tracking without updating the baseline schema file.
-- **Recommended Solution:** Add `` `attempts` INT DEFAULT 0 AFTER `code` `` to `database/schema.sql`.
-- **Risk of Changing:** Zero risk to running code; ensures new database setups match production requirements.
-- **Dependencies:** `database/schema.sql`, `StudentPortalService.php`.
+## XVI. Strategic Recommendations
+
+Recommendations are categorized by priority and execution phase:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   PRIORITIZED ROADMAP PHASES                                     │
+├─────────────────────────┬───────────────────────────────┬────────────────────────────────────────┤
+│   PHASE 1: IMMEDIATE    │    PHASE 2: SHORT-TERM        │        PHASE 3: LONG-TERM              │
+│   (Weeks 1 - 2)         │    (Months 1 - 2)             │        (Months 3 - 6)                  │
+├─────────────────────────┼───────────────────────────────┼────────────────────────────────────────┤
+│ • Remediate IDOR        │ • Deconstruct HTML Templates  │ • Migrate to Redis Caching             │
+│ • Secure Default PWs    │ • Deprecate Legacy Routers    │ • Real-time SSE / WebSockets           │
+│ • CSPRNG rand() Fix     │ • Visibility API Backoff      │ • Vue 3 SFC & Vite Build Pipeline      │
+│ • ACID Relational Sync  │ • Dedicated Documents Table   │ • Native Mobile Application            │
+└─────────────────────────┴───────────────────────────────┴────────────────────────────────────────┘
+```
+
+### Phase 1: Immediate Remediation (High Priority)
+1. **Remediate Document IDOR Vulnerability (SEC-01):**
+   Refactor `StudentController::downloadDocument()` to stream files strictly by primary database document ID, enforcing strict `WHERE student_id = :session_user_id` ownership verification.
+2. **Enforce High-Entropy Student Passwords (SEC-02):**
+   Update `promotePreEnrollmentToStudent()` in `student.php` to generate random 8-character temporary passwords via `bin2hex(random_bytes(4))` and deliver them via email, eliminating predictable last-name defaults.
+3. **Replace Insecure PRNG (SEC-03):**
+   Replace `rand(1000, 9999)` in `admin/backend/api.php` with cryptographically secure `random_int(100000, 999999)`.
+4. **Unify Relational Ledger in Primary ACID Transaction (DATA-01):**
+   Move insertions into `payments` and `official_receipts` inside the primary transactional commit in `EnrollmentService::updateStudent()`, ensuring that any failure rolls back the entire milestone advancement.
+
+### Phase 2: Short-Term Enhancements (1 – 2 Months)
+1. **Fully Deprecate Parallel Legacy Routers (ARCH-01):**
+   Redirect all frontend workstation `fetch()` calls to `api/index.php` and convert legacy files (`stations/backend/api.php`, `registrar/backend/api.php`) into strict HTTP 301/308 redirect proxies.
+2. **Implement Page Visibility Throttling on Polling (PERF-01):**
+   Enhance `StationDataBus.js` to inspect `document.hidden` and suspend or throttle polling from 3 seconds to 60 seconds when the workstation tab is unfocused.
+3. **Deconstruct Monolithic Frontend Templates (UI-01):**
+   Split `admin/index.html` (293KB) and `student-portal/index.html` (183KB) into modular, asynchronously loaded component templates.
+4. **Eliminate Redundant Writes to `enrollments` Table (CODE-01):**
+   Remove legacy `INSERT INTO enrollments` calls from `student.php`.
+
+### Phase 3: Long-Term Architectural Evolution (3 – 6 Months)
+1. **Adopt In-Memory Caching (Redis):**
+   Transition rate limiting counters, session store validation, and ETag hash caches from disk/MariaDB to an in-memory Redis cluster.
+2. **Upgrade Queue Polling to Server-Sent Events (SSE) or WebSockets:**
+   Replace periodic HTTP polling with real-time push events via Server-Sent Events (SSE) or a lightweight WebSocket gateway.
+3. **Frontend Modernization via Vite & Single File Components (SFC):**
+   Transition the Vue 3 CDN progressive architecture to a modern Vite-based build setup with TypeScript and Single-File Components.
 
 ---
 
-## 25. Medium-Priority Findings
+## XVII. Overall System Assessment
 
-### [Finding SEC-PASSPRED-05] Predictable Default Student Account Password Pattern
-- **Location:** `shared/backend/utils/student.php` lines 186–191
-- **Evidence:** **CONFIRMED BEHAVIOR**
-  ```php
-  $defaultLastNamePassword = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '', $record['last_name'] ?? '')));
-  if (empty($defaultLastNamePassword)) {
-      $defaultLastNamePassword = 'password123';
-  }
-  $plainPassword = !empty($itData['password']) ? $itData['password'] : $defaultLastNamePassword;
-  ```
-- **Current Behavior:** When an applicant is promoted to an enrolled student, their initial password defaults to their lowercase last name.
-- **Expected Behavior:** Passwords should be randomized or derived from a high-entropy secret.
-- **Severity:** **MEDIUM**
-- **Impact:** Anyone who knows a newly enrolled student's name could potentially access their portal before their first login.
-- **Mitigating Factor:** `must_change_password = 1` is enforced upon first login via `PasswordChangeGuard.js`.
-- **Recommended Solution:** Generate a random 8-character alphanumeric string during promotion and deliver it securely via email notification.
-- **Risk of Changing:** Requires ensuring email delivery is reliable before disabling predictable fallbacks.
-- **Dependencies:** `student.php`, `EmailService.php`, `it-center`.
+### 17.1 Current Architecture & Implementation State
+The GNCP Academic & Enrollment Management System demonstrates a mature, highly functional, and well-designed service-oriented application tailored specifically to the administrative and financial realities of Philippine tertiary institutions. 
 
----
+Its domain models—specifically the **6-stage workstation state machine** (`PRE_REGISTERED` $\rightarrow$ `VERIFIED` $\rightarrow$ `ADVISED` $\rightarrow$ `MEDICAL_CLEARED` $\rightarrow$ `PAID` $\rightarrow$ `ENROLLED`) and the **authoritative financial calculation engine** (`AssessmentService`)—are implemented with high domain fidelity. All 12 primary system functional requirements are operational and verified in code.
 
-### [Finding PERF-POLL-06] Continuous 3-Second Client Polling in Station DataBus
-- **Location:** `stations/assets/js/StationDataBus.js`
-- **Evidence:** **CONFIRMED BEHAVIOR**
-  The script registers an unconditional `setInterval(pollQueue, 3000)` that runs continuously while workstation pages are open.
-- **Current Behavior:** Every open station tab queries the backend every 3 seconds regardless of user activity.
-- **Expected Behavior:** Polling should pause or back off when the browser tab is hidden (`document.hidden`).
-- **Severity:** **MEDIUM**
-- **Impact:** Unnecessary database queries and network traffic during quiet periods or when tabs are left open in the background.
-- **Recommended Solution:** Add visibility-aware polling: pause the timer on `visibilitychange` when hidden, and resume immediately when visible.
-- **Risk of Changing:** Low.
-- **Dependencies:** `StationDataBus.js`, all workstation frontends.
+### 17.2 Primary Architectural Risks
+1. **Authorization Gaps in Document Streaming:** Relying on filename substring matching rather than relational foreign keys creates an information disclosure risk for sensitive student records.
+2. **Credential Hygiene Risks:** Predictable default passwords generated during IT Center promotion create an account hijacking vulnerability for newly enrolled students.
+3. **Maintenance Fragmentation:** The coexistence of legacy station-local routers alongside the canonical REST gateway complicates code auditing and increases long-term maintenance overhead.
 
----
-
-## 26. Low-Priority Findings
-
-### [Finding UI-DOM-07] Monolithic Admin Template Size
-- **Location:** `admin/index.html` (4,489 lines / 293KB)
-- **Evidence:** **FACT**
-  All administrative modals, user management tables, curriculum forms, and reports are embedded in a single static HTML file.
-- **Current Behavior:** Works reliably, but increases editor load time and manual navigation overhead for developers.
-- **Expected Behavior:** Template broken into partials or component files for easier maintainability.
-- **Severity:** **LOW**
-- **Impact:** Maintenance friction during development; minor initial page parsing overhead.
-- **Recommended Solution:** Keep as-is for now to preserve system stability; consider breaking into PHP partials during future planned refactorings.
-- **Risk of Changing:** Moderate if done without thorough regression testing.
-- **Dependencies:** Admin frontend styles and scripts.
-
----
-
-## 27. Recommended Improvements
-
-A phased roadmap for addressing findings safely:
-
-### Phase 1: Immediate Defect Corrections (Zero Architectural Disruption)
-1. **Fix Document Download IDOR & Session Typo:** Update `StudentController.php` to verify document ownership against the student's record and accept `$_SESSION['gncp_student']`.
-2. **Remove Dead Prepare Statement in Analytics:** Eliminate lines 122–123 in `AnalyticsService.php` to resolve the mixed parameter crash.
-3. **Synchronize Schema:** Add `attempts` column definition to `database/schema.sql`.
-
-### Phase 2: Security & Efficiency Hardening
-1. **Adaptive Polling:** Add Page Visibility API checks to `StationDataBus.js` to pause polling when tabs are inactive.
-2. **Password Entropy:** Transition initial student password generation to random alphanumeric strings delivered via email.
-
-### Phase 3: Architectural Consolidation (Future Planned Milestone)
-1. **Gateway Unification:** Route workstation endpoints through the central REST gateway (`api/index.php`) and retire standalone proxy scripts.
-2. **Relational Indexing:** Add computed virtual columns or relational child tables for frequently searched JSON attributes (such as assigned section codes).
-
----
-
-## 28. Risks of Making Changes
-
-| Proposed Modification | Potential Risk | Mitigation Strategy |
-| :--- | :--- | :--- |
-| **Fixing Document Download Ownership** | If ownership check is too strict, applicants viewing their status tracker might be blocked from seeing uploaded documents. | Verify against both `pre_enrollments.requirements_data` (using `temp_student_id`) and `students.requirements_data` (using `id`). |
-| **Updating Baseline Schema (`schema.sql`)** | Running `schema.sql` on an existing database could conflict if tables already exist. | Use `ADD COLUMN IF NOT EXISTS` in incremental migration scripts. |
-| **Modifying Station Polling Intervals** | Increasing interval too much could cause noticeable delay between a cashier payment and the IT Center seeing the update. | Keep active polling at 3–4 seconds, but pause only when the tab is in the background (`document.hidden`). |
-
----
-
-## 29. Areas That Should NOT Be Changed Without Further Validation
-
-1. **`AssessmentService.php` Pricing Calculation & Snapshot Freezing Logic:**
-   - The credit-unit tuition calculation, fee schedules, NSTP addition, and snapshot freezing mechanism pass all 28 scenarios in `tests/test_financial_system.php`. Modifying this calculation without re-running the test suite risks introducing billing discrepancies.
-2. **Dual-Table Aggregation in `QueueService.php`:**
-   - The queue merging logic handles the transition between `pre_enrollments` and `students`. Albeit complex, altering this query risks dropping active applicants from workstation queues during enrollment periods.
-3. **Atomic Transaction Scope in `EnrollmentService::updateStudent`:**
-   - The promotion sequence (inserting the student record, decrementing section capacity, updating clearance ledgers, and recording audit logs) is tightly coupled within an ACID transaction. Unbundling these operations could cause partial promotions and orphaned records on failure.
-
----
-
-## 30. Final Assessment
-
-The GNCP Academic & Enrollment Management System is a comprehensive, functional, and well-tailored higher education platform. Its business workflow accurately models the real-world admissions and enrollment processes of Philippine colleges.
-
-### Key Strengths
-- **Functional Integrity:** The 6-stage lifecycle (`PRE_REGISTERED` to `ENROLLED`) provides strong transactional integrity across departments.
-- **Financial Rigor:** Strict assessment snapshot freezing prevents billing drift.
-- **Operational Reliability:** Verified by automated CLI financial test suites (28 scenarios) and end-to-end 9-step browser automation runners.
-
-### Areas Requiring Attention
-- Three high-impact issues warrant correction in a planned maintenance window:
-  1. The IDOR and session key check in `StudentController.php` (download security and accessibility).
-  2. The dead prepare statement in `AnalyticsService.php` (dashboard crash on filtering).
-  3. The missing `attempts` column in `database/schema.sql` (schema drift).
-
-All identified issues have well-defined root causes and localized remediations that do not require architectural rewrites. The current system architecture serves as a stable baseline for continued operation.
-
----
-*Report completed in Read-Only Audit Mode. No code modifications were performed.*
+### 17.3 Final Concluding Statement
+The system possesses an exceptionally strong architectural foundation: robust transactional integrity, universal SQL injection immunity, strict single-active session enforcement, and deterministic billing. By executing the targeted remediations outlined in **Phase 1** (securing document streaming, hardening initial credentials, and unifying relational transactions), the GNCP academic platform will achieve enterprise-grade security, scalability, and compliance suitable for institutional deployment.

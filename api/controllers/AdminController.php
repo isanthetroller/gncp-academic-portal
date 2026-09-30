@@ -38,7 +38,10 @@ class AdminController {
     public function saveTerm($payload) { return $this->scheduleCtrl->saveTerm($payload); }
 
     public function getUsers() { return $this->userCtrl->getUsers(); }
+    public function getProfessors() { return $this->userCtrl->getProfessors(); }
+    public function getDepartments() { return $this->userCtrl->getDepartments(); }
     public function saveUser($payload) { return $this->userCtrl->saveUser($payload); }
+    public function updateUserStatus($payload) { return $this->userCtrl->updateUserStatus($payload); }
     public function resetOperatorPassword($payload) { return $this->userCtrl->resetOperatorPassword($payload); }
     public function cleanupTestUsers($payload) { return $this->userCtrl->cleanupTestUsers($payload); }
 

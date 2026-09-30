@@ -63,6 +63,8 @@ require_once __DIR__ . '/controllers/StationController.php';
 require_once __DIR__ . '/controllers/AdminController.php';
 require_once __DIR__ . '/controllers/StudentPortalController.php';
 require_once __DIR__ . '/controllers/RegistrarAdminController.php';
+require_once __DIR__ . '/controllers/SchedulerController.php';
+require_once __DIR__ . '/controllers/ProfessorController.php';
 
 require_once __DIR__ . '/../shared/backend/services/CatalogService.php';
 require_once __DIR__ . '/../shared/backend/services/SectionService.php';
@@ -206,9 +208,49 @@ try {
         'admin/save_section'      => fn($p) => (new AdminController($pdo))->saveSection($p),
         'admin/save_term'         => fn($p) => (new AdminController($pdo))->saveTerm($p),
         'admin/save_user'         => fn($p) => (new AdminController($pdo))->saveUser($p),
+        'save_user'               => fn($p) => (new AdminController($pdo))->saveUser($p),
+        'admin/save_professor'    => fn($p) => (new AdminController($pdo))->saveUser(['user' => array_merge($p['user'] ?? $p, ['role' => 'PROFESSOR'])]),
+        'admin/professors'        => fn($p) => (new AdminController($pdo))->getProfessors(),
+        'admin/departments'       => fn($p) => (new AdminController($pdo))->getDepartments(),
+        'admin/update_user_status'=> fn($p) => (new AdminController($pdo))->updateUserStatus($p),
+        'update_user_status'      => fn($p) => (new AdminController($pdo))->updateUserStatus($p),
+        'admin/toggle_professor_status' => fn($p) => (new AdminController($pdo))->updateUserStatus($p),
         'admin/reset_operator_password' => fn($p) => (new AdminController($pdo))->resetOperatorPassword($p),
         'reset_operator_password' => fn($p) => (new AdminController($pdo))->resetOperatorPassword($p),
         'admin/cleanup_test_users'=> fn($p) => (new AdminController($pdo))->cleanupTestUsers($p),
+
+        // Academic Scheduling Routes
+        'scheduler/context'                => fn($p) => (new SchedulerController($pdo))->getCatalogContext(),
+        'scheduler/section_schedule'       => fn($p) => (new SchedulerController($pdo))->getSectionSchedule($_GET),
+        'scheduler/professors_for_subject' => fn($p) => (new SchedulerController($pdo))->getEligibleProfessors($_GET),
+        'scheduler/assign_professor'       => fn($p) => (new SchedulerController($pdo))->assignProfessor($p),
+        'scheduler/auto_assign'            => fn($p) => (new SchedulerController($pdo))->autoAssignSection($p),
+        'scheduler/auto_assign_section'    => fn($p) => (new SchedulerController($pdo))->autoAssignSection($p),
+        'scheduler/validate_slot'          => fn($p) => (new SchedulerController($pdo))->validateSlot($p),
+        'scheduler/save_subject_section'   => fn($p) => (new SchedulerController($pdo))->saveSubjectSection($p),
+
+        // Professor & Teacher Workstation Routes
+        'professor/profile'               => fn($p) => (new ProfessorController($pdo))->getProfile(),
+        'professor/sections'              => fn($p) => (new ProfessorController($pdo))->getSections(),
+        'professor/subjects'              => fn($p) => (new ProfessorController($pdo))->getSubjects(),
+        'professor/schedule'              => fn($p) => (new ProfessorController($pdo))->getSchedule(),
+        'professor/files'                 => fn($p) => (new ProfessorController($pdo))->getFiles(),
+        'professor/upload_file'           => fn($p) => (new ProfessorController($pdo))->uploadFile(),
+        'professor/delete_file'           => fn($p) => (new ProfessorController($pdo))->deleteFile($p),
+        'professor/download_file'         => fn($p) => (new ProfessorController($pdo))->downloadFile(),
+        'professor/publish_material'      => fn($p) => (new ProfessorController($pdo))->publishMaterial($p),
+        'professor/materials'             => fn($p) => (new ProfessorController($pdo))->getPublishedMaterials(),
+        'professor/unpublish_material'    => fn($p) => (new ProfessorController($pdo))->unpublishMaterial($p),
+        'professor/announcements'         => fn($p) => (new ProfessorController($pdo))->getAnnouncements(),
+        'professor/create_announcement'   => fn($p) => (new ProfessorController($pdo))->createAnnouncement($p),
+        'professor/save_announcement'     => fn($p) => (new ProfessorController($pdo))->createAnnouncement($p),
+        'professor/delete_announcement'   => fn($p) => (new ProfessorController($pdo))->deleteAnnouncement($p),
+
+        // Student Portal LMS Routes
+        'student_portal/learning_materials' => fn($p) => (new StudentPortalController($pdo))->getLearningMaterials($_GET),
+        'student_portal/materials'          => fn($p) => (new StudentPortalController($pdo))->getLearningMaterials($_GET),
+        'student_portal/download_material'  => fn($p) => (new StudentPortalController($pdo))->downloadMaterial($_GET),
+        'student_portal/announcements'      => fn($p) => (new StudentPortalController($pdo))->getAnnouncements($_GET),
 
         'announcements/list'              => fn($p) => (new AdminController($pdo))->getAnnouncements($_GET),
         'admin/save_announcement'         => fn($p) => (new AdminController($pdo))->saveAnnouncement($p),

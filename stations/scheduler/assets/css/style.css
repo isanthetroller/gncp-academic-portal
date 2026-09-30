@@ -1,0 +1,347 @@
+/* GNCP Academic Scheduler Workstation Stylesheet */
+:root {
+    --primary-green: #006A4E;
+    --dark-green: #0b1e15;
+    --gold: #D4AF37;
+    --gold-light: #fef9e7;
+    --gray-bg: #f8fafc;
+    --gray-border: #e2e8f0;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+}
+
+[v-cloak] { display: none !important; }
+
+/* Workbench Layout */
+.scheduler-shell {
+    display: flex;
+    min-height: 100vh;
+    background: #f1f5f9;
+}
+
+.main-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    min-width: 0;
+}
+
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--gray-border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.eyebrow {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--primary-green);
+    text-transform: uppercase;
+}
+
+.top-bar-divider {
+    color: var(--gray-border);
+}
+
+.top-bar h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.page-body {
+    padding: 24px 28px;
+    flex: 1;
+}
+
+/* Stat Cards Grid */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.stat-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.stat-icon-green { background: #e6f4ed; color: var(--primary-green); }
+.stat-icon-gold  { background: #fef3c7; color: #b45309; }
+.stat-icon-blue  { background: #e0f2fe; color: #0284c7; }
+.stat-icon-red   { background: #fee2e2; color: #dc2626; }
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-dark);
+    line-height: 1.1;
+}
+
+.stat-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+/* Card Container */
+.content-card {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.card-header-bar {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--gray-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.card-header-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Filter Controls */
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.select-control {
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-border);
+    background: #ffffff;
+    color: var(--text-dark);
+    font-size: 0.85rem;
+    font-weight: 600;
+    outline: none;
+    min-width: 160px;
+}
+
+.select-control:focus {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 3px rgba(0, 106, 78, 0.1);
+}
+
+/* Tables */
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.schedule-table th {
+    background: #f8fafc;
+    padding: 12px 16px;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--gray-border);
+    text-align: left;
+}
+
+.schedule-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--gray-border);
+    color: var(--text-dark);
+    vertical-align: middle;
+}
+
+.schedule-table tr:hover td {
+    background: #fdfdfd;
+}
+
+/* Badges */
+.badge-slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.badge-morning   { background: #e0f2fe; color: #0369a1; }
+.badge-afternoon { background: #fef3c7; color: #b45309; }
+.badge-evening   { background: #ede9fe; color: #6d28d9; }
+
+.badge-conflict  { background: #fee2e2; color: #b91c1c; }
+.badge-ok        { background: #dcfce7; color: #15803d; }
+.badge-unassigned{ background: #f1f5f9; color: #64748b; }
+
+/* Buttons */
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+}
+
+.btn-primary-action {
+    background: var(--primary-green);
+    color: #ffffff;
+}
+
+.btn-primary-action:hover {
+    background: #00563f;
+}
+
+.btn-gold-action {
+    background: linear-gradient(135deg, #D4AF37, #b8961e);
+    color: #0b1511;
+    font-weight: 700;
+}
+
+.btn-outline-action {
+    background: #ffffff;
+    border: 1px solid var(--gray-border);
+    color: var(--text-dark);
+}
+
+.btn-outline-action:hover {
+    background: #f8fafc;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 16px;
+}
+
+.modal-dialog-box {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 680px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    overflow: hidden;
+}
+
+.modal-head {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--gray-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-body-scroll {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-foot {
+    padding: 16px 24px;
+    border-top: 1px solid var(--gray-border);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    background: #f8fafc;
+}
+
+/* Candidate Professor Option Item */
+.candidate-item {
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
+}
+
+.candidate-item:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.candidate-item.selected {
+    border-color: var(--primary-green);
+    background: #f0fdf4;
+}
+
+.candidate-item.has-conflict {
+    opacity: 0.6;
+    border-color: #fca5a5;
+    background: #fff5f5;
+    cursor: not-allowed;
+}

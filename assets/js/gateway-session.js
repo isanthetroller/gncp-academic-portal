@@ -31,6 +31,8 @@
                         'MEDICAL':     _bp + '/stations/medical-checkup/',
                         'CASHIER':     _bp + '/stations/payment-processing/',
                         'IT_CENTER':   _bp + '/stations/it-center/',
+                        'SCHEDULER':   _bp + '/stations/scheduler/',
+                        'PROFESSOR':   _bp + '/stations/professor/',
                         'DEVELOPER':   _bp + '/monitoring/'
                     };
                     const target = roleRedirects[user.role] || (_bp + '/admin/');

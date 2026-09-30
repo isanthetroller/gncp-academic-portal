@@ -104,10 +104,324 @@ window.StudentPortalController = {
                 case 'announcements': return 'Campus Feed & Bulletins';
                 case 'dashboard': return 'Dashboard Overview & COR';
                 case 'courses': return 'My Enrolled Classes (COR)';
+                case 'materials':
+                case 'subjects':
+                    if (currentSubject.value) {
+                        return 'Subjects / ' + (currentSubject.value.code || 'Classroom');
+                    }
+                    return 'Enrolled Subjects';
                 case 'documents': return 'Documents & Undertakings Hub';
                 case 'profile': return 'My Student Profile';
                 default: return 'Student Portal';
             }
+        });
+
+        // ── Subjects & LMS Classroom State (Google Classroom-Style Grid) ─────
+        const currentSubject = ref(null);
+        const subjectSearch = ref('');
+        const subjectsLoadingError = ref('');
+        const learningMaterials = ref([]);
+        const isLoadingMaterials = ref(false);
+        const materialsSearch = ref('');
+        const selectedSubjectFilter = ref('ALL');
+        const materialsViewMode = ref('grid'); // 'grid' | 'list'
+
+        const academicThemes = [
+            { id: 'navy', primary: '#1B3676', secondary: '#284B9B', accent: '#60A5FA', lightBg: '#eff6ff', icon: 'fa-book-bookmark' },
+            { id: 'emerald', primary: '#006A4E', secondary: '#008B66', accent: '#34D399', lightBg: '#ecfdf5', icon: 'fa-laptop-code' },
+            { id: 'amber', primary: '#854D0E', secondary: '#A16207', accent: '#FBBF24', lightBg: '#fffbeb', icon: 'fa-cubes' },
+            { id: 'slate', primary: '#1E293B', secondary: '#334155', accent: '#94A3B8', lightBg: '#f8fafc', icon: 'fa-microchip' },
+            { id: 'crimson', primary: '#7F1D1D', secondary: '#991B1B', accent: '#F87171', lightBg: '#fef2f2', icon: 'fa-graduation-cap' },
+            { id: 'indigo', primary: '#312E81', secondary: '#3730A3', accent: '#818CF8', lightBg: '#eef2ff', icon: 'fa-network-wired' },
+            { id: 'teal', primary: '#0F766E', secondary: '#115E59', accent: '#2DD4BF', lightBg: '#f0fdfa', icon: 'fa-atom' },
+            { id: 'purple', primary: '#581C87', secondary: '#6B21A8', accent: '#C084FC', lightBg: '#faf5ff', icon: 'fa-brain' }
+        ];
+
+        const fetchLearningMaterials = async () => {
+            isLoadingMaterials.value = true;
+            try {
+                const res = await fetch('../api/index.php?action=student_portal/materials');
+                const json = await res.json();
+                if (json.success && Array.isArray(json.data)) {
+                    learningMaterials.value = json.data;
+                } else {
+                    learningMaterials.value = [];
+                }
+            } catch (e) {
+                console.error('[StudentPortal] Failed to fetch learning materials:', e);
+                learningMaterials.value = [];
+            } finally {
+                isLoadingMaterials.value = false;
+            }
+        };
+
+        const downloadMaterial = (material) => {
+            const fId = material?.file_id || material?.fileId;
+            if (!fId) return;
+            window.open('../api/index.php?action=student_portal/download_material&fileId=' + encodeURIComponent(fId), '_blank');
+        };
+
+        // Enrolled Subjects List: Maps authoritatively from official COR schedule or curriculum subjects
+        const enrolledSubjectsList = computed(() => {
+            let rawList = [];
+            if (state.corData && Array.isArray(state.corData.schedule) && state.corData.schedule.length > 0) {
+                rawList = state.corData.schedule;
+            } else if (Array.isArray(state.subjects) && state.subjects.length > 0) {
+                rawList = state.subjects;
+            }
+
+            const allMaterials = Array.isArray(learningMaterials.value) ? learningMaterials.value : [];
+            const allAnnouncements = Array.isArray(announcements.value) ? announcements.value : [];
+
+            return rawList.map((item, idx) => {
+                const code = (item.code || item.subject_code || '').trim();
+                const name = (item.description || item.title || item.name || code).trim();
+                const section = (item.section || state.profile?.section || 'BSIT').trim();
+                const instructor = (item.instructor || item.professor || 'Prof. Faculty').trim();
+                const days = (item.days || '').trim();
+                const start = (item.start || '').trim();
+                const end = (item.end || '').trim();
+                const timeStr = (start && end && start !== 'TBA') ? `${start} - ${end}` : (item.time || 'Schedule TBA');
+                const room = (item.room || 'TBA').trim();
+                const units = item.units ? item.units : '3.00';
+                const type = item.type || 'Lec';
+
+                // Stable academic theme deterministically based on subject code characters + index
+                const charSum = code.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                const theme = academicThemes[Math.abs(charSum + idx) % academicThemes.length];
+
+                // Clean instructor initials for classroom avatar badge
+                const cleanInst = instructor.replace(/^(Prof\.|Dr\.|Engr\.|Mr\.|Ms\.|Mrs\.)\s*/i, '').trim();
+                const parts = cleanInst.split(/\s+/).filter(Boolean);
+                const initials = parts.length >= 2 
+                    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() 
+                    : (cleanInst.substring(0, 2).toUpperCase() || 'PR');
+
+                // Subject-isolated materials
+                const subjectMats = allMaterials.filter(m => {
+                    const mCode = (m.subject_code || m.subjectCode || '').trim().toLowerCase();
+                    return mCode === code.toLowerCase();
+                });
+
+                // Subject-isolated announcements
+                const subjectAnns = allAnnouncements.filter(a => {
+                    const aCode = (a.subject_code || a.subjectCode || '').trim().toLowerCase();
+                    return aCode === code.toLowerCase();
+                });
+
+                // Latest Activity Preview: Priority -> Latest subject announcement, then latest material, else quiet state
+                let latestActivity = null;
+                if (subjectAnns.length > 0) {
+                    const sorted = [...subjectAnns].sort((a, b) => {
+                        const da = new Date(a.created_at || a.createdAt || 0).getTime() || 0;
+                        const db = new Date(b.created_at || b.createdAt || 0).getTime() || 0;
+                        return db - da;
+                    });
+                    const latest = sorted[0];
+                    const rawDate = latest.created_at || latest.createdAt;
+                    let dateStr = 'Recent';
+                    if (rawDate) {
+                        try {
+                            dateStr = new Date(rawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        } catch (e) {
+                            dateStr = 'Recent';
+                        }
+                    }
+                    latestActivity = {
+                        type: 'announcement',
+                        label: 'Latest announcement',
+                        title: latest.title || 'Announcement',
+                        preview: latest.content ? (latest.content.length > 55 ? latest.content.substring(0, 55) + '...' : latest.content) : '',
+                        date: dateStr
+                    };
+                } else if (subjectMats.length > 0) {
+                    const sorted = [...subjectMats].sort((a, b) => {
+                        const da = new Date(a.published_at || a.publishedAt || 0).getTime() || 0;
+                        const db = new Date(b.published_at || b.publishedAt || 0).getTime() || 0;
+                        return db - da;
+                    });
+                    const latest = sorted[0];
+                    const rawDate = latest.published_at || latest.publishedAt;
+                    let dateStr = 'Recent';
+                    if (rawDate) {
+                        try {
+                            dateStr = new Date(rawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        } catch (e) {
+                            dateStr = 'Recent';
+                        }
+                    }
+                    latestActivity = {
+                        type: 'material',
+                        label: 'New material',
+                        title: latest.title || latest.filename || 'Course Document',
+                        preview: latest.filename || latest.description || '',
+                        date: dateStr
+                    };
+                } else {
+                    latestActivity = {
+                        type: 'none',
+                        label: 'Class status',
+                        title: 'No announcements yet',
+                        preview: 'Course is up to date',
+                        date: null
+                    };
+                }
+
+                return {
+                    code,
+                    name,
+                    description: name,
+                    section,
+                    instructor,
+                    initials,
+                    days,
+                    start,
+                    end,
+                    timeStr,
+                    room,
+                    units,
+                    type,
+                    theme,
+                    materialsCount: subjectMats.length,
+                    announcementsCount: subjectAnns.length,
+                    materials: subjectMats,
+                    announcements: subjectAnns,
+                    latestActivity
+                };
+            });
+        });
+
+        // Filtered Subjects for search box
+        const filteredSubjects = computed(() => {
+            const list = enrolledSubjectsList.value;
+            const q = (subjectSearch.value || '').trim().toLowerCase();
+            if (!q) return list;
+            return list.filter(s => 
+                (s.code || '').toLowerCase().includes(q) ||
+                (s.name || '').toLowerCase().includes(q) ||
+                (s.instructor || '').toLowerCase().includes(q) ||
+                (s.section || '').toLowerCase().includes(q) ||
+                (s.room || '').toLowerCase().includes(q)
+            );
+        });
+
+        // Open specific subject classroom view (with authorization check)
+        const openSubject = (subjectOrCode) => {
+            if (!subjectOrCode) return;
+            let target = null;
+            if (typeof subjectOrCode === 'string') {
+                target = enrolledSubjectsList.value.find(s => 
+                    (s.code || '').toLowerCase().trim() === subjectOrCode.toLowerCase().trim()
+                );
+            } else if (typeof subjectOrCode === 'object') {
+                target = enrolledSubjectsList.value.find(s => 
+                    (s.code || '').toLowerCase().trim() === (subjectOrCode.code || '').toLowerCase().trim()
+                ) || subjectOrCode;
+            }
+
+            if (!target) {
+                console.warn('[StudentPortal] Unauthorized or un-enrolled subject:', subjectOrCode);
+                subjectsLoadingError.value = 'You are not enrolled in this subject or access is restricted.';
+                return;
+            }
+
+            subjectsLoadingError.value = '';
+            currentSubject.value = target;
+            activeTab.value = 'subjects';
+            materialsSearch.value = '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (isMobileMenuOpen) isMobileMenuOpen.value = false;
+        };
+
+        const closeSubject = () => {
+            currentSubject.value = null;
+            subjectsLoadingError.value = '';
+            materialsSearch.value = '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // Backward compatibility for viewSubjectMaterials(code)
+        const viewSubjectMaterials = (subjectCode) => {
+            if (!subjectCode) return;
+            openSubject(subjectCode);
+        };
+
+        // Materials strictly isolated to the open classroom
+        const currentSubjectMaterials = computed(() => {
+            if (!currentSubject.value) return [];
+            const targetCode = (currentSubject.value.code || '').toLowerCase().trim();
+            const allMats = Array.isArray(learningMaterials.value) ? learningMaterials.value : [];
+            let list = allMats.filter(m => {
+                const c = (m.subject_code || m.subjectCode || '').toLowerCase().trim();
+                return c === targetCode;
+            });
+            if (materialsSearch.value.trim()) {
+                const q = materialsSearch.value.toLowerCase().trim();
+                list = list.filter(m => 
+                    (m.title || '').toLowerCase().includes(q) ||
+                    (m.description || '').toLowerCase().includes(q) ||
+                    (m.filename || '').toLowerCase().includes(q)
+                );
+            }
+            return list;
+        });
+
+        // Announcements strictly isolated to the open classroom
+        const currentSubjectAnnouncements = computed(() => {
+            if (!currentSubject.value) return [];
+            const targetCode = (currentSubject.value.code || '').toLowerCase().trim();
+            const allAnns = Array.isArray(announcements.value) ? announcements.value : [];
+            return allAnns.filter(a => {
+                const c = (a.subject_code || a.subjectCode || '').toLowerCase().trim();
+                return c === targetCode;
+            });
+        });
+
+        const filteredMaterials = computed(() => {
+            let list = learningMaterials.value;
+            if (selectedSubjectFilter.value !== 'ALL') {
+                const targetSub = selectedSubjectFilter.value.toLowerCase().trim();
+                list = list.filter(m => {
+                    const code = (m.subject_code || m.subjectCode || '').toLowerCase().trim();
+                    return code === targetSub;
+                });
+            }
+            if (materialsSearch.value.trim()) {
+                const q = materialsSearch.value.toLowerCase().trim();
+                list = list.filter(m => {
+                    const title = (m.title || '').toLowerCase();
+                    const desc = (m.description || '').toLowerCase();
+                    const code = (m.subject_code || m.subjectCode || '').toLowerCase();
+                    const prof = (m.professor_name || m.professorName || '').toLowerCase();
+                    const fname = (m.filename || m.original_filename || '').toLowerCase();
+                    return title.includes(q) || desc.includes(q) || code.includes(q) || prof.includes(q) || fname.includes(q);
+                });
+            }
+            return list;
+        });
+
+        const studentSubjects = computed(() => {
+            return enrolledSubjectsList.value.map(s => s.code);
+        });
+
+        const materialsStats = computed(() => {
+            const list = Array.isArray(learningMaterials.value) ? learningMaterials.value : [];
+            const total = list.length;
+            const subjectsCount = Array.isArray(enrolledSubjectsList.value) ? enrolledSubjectsList.value.length : 0;
+            let latest = null;
+            if (list.length > 0) {
+                const sorted = [...list].sort((a, b) => {
+                    const da = new Date(a.published_at || a.publishedAt || 0).getTime() || 0;
+                    const db = new Date(b.published_at || b.publishedAt || 0).getTime() || 0;
+                    return db - da;
+                });
+                latest = sorted[0].published_at || sorted[0].publishedAt || null;
+            }
+            return {
+                total,
+                subjectsCount,
+                latest: latest || null
+            };
         });
 
         // ── Documents & Undertaking Management State ──────────────────────────
@@ -231,6 +545,8 @@ window.StudentPortalController = {
         watch(activeTab, (newTab) => {
             if (newTab === 'documents') {
                 loadStudentDocuments(false);
+            } else if (newTab === 'materials' || newTab === 'subjects') {
+                fetchLearningMaterials();
             }
         });
 
@@ -888,12 +1204,14 @@ window.StudentPortalController = {
 
         const fetchAnnouncements = async () => {
             try {
-                const res = await fetch('../api/index.php?action=announcements/list');
+                const res = await fetch('../api/index.php?action=student_portal/announcements');
                 const json = await res.json();
                 if (json.success && Array.isArray(json.data)) {
                     announcements.value = json.data;
                 } else {
-                    announcements.value = [];
+                    const fb = await fetch('../api/index.php?action=announcements/list');
+                    const fbJson = await fb.json();
+                    announcements.value = (fbJson.success && Array.isArray(fbJson.data)) ? fbJson.data : [];
                 }
             } catch (e) {
                 console.error('[StudentPortal] Failed to fetch announcements:', e);
@@ -962,6 +1280,7 @@ window.StudentPortalController = {
                 fetchDashboardData(true);
                 fetchAnnouncements();
                 fetchMilestones();
+                fetchLearningMaterials();
             }, 10000);
         };
 
@@ -976,6 +1295,7 @@ window.StudentPortalController = {
             checkSession();
             fetchAnnouncements();
             fetchMilestones();
+            fetchLearningMaterials();
             startLiveSync();
         });
 
@@ -1183,7 +1503,29 @@ window.StudentPortalController = {
             zoomOutDoc,
             resetDocZoom,
             rotateDoc,
-            downloadDoc
+            downloadDoc,
+
+            // Subjects & LMS Classroom Hub
+            currentSubject,
+            subjectSearch,
+            subjectsLoadingError,
+            enrolledSubjectsList,
+            filteredSubjects,
+            currentSubjectMaterials,
+            currentSubjectAnnouncements,
+            openSubject,
+            closeSubject,
+            learningMaterials,
+            isLoadingMaterials,
+            materialsSearch,
+            selectedSubjectFilter,
+            materialsViewMode,
+            viewSubjectMaterials,
+            materialsStats,
+            filteredMaterials,
+            studentSubjects,
+            fetchLearningMaterials,
+            downloadMaterial
         };
     }
 };

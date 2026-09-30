@@ -132,6 +132,8 @@ const EmployeeSidebar = {
             if (r === 'MEDICAL') return 'Campus Clinic Physician';
             if (r === 'CASHIER') return 'Finance Cashier';
             if (r === 'IT_CENTER') return 'IT Center Administrator';
+            if (r === 'SCHEDULER') return 'Academic Scheduler';
+            if (r === 'PROFESSOR' || r === 'TEACHER') return 'Faculty Professor';
             if (r === 'SUPER_ADMIN') return 'Executive Administrator';
             if (r === 'ADMIN') return 'System Administrator';
             return r.replace(/_/g, ' ');

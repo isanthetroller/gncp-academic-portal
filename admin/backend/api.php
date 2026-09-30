@@ -28,7 +28,7 @@ try {
 
     } elseif ($action === 'update_user_status') {
         $payload  = json_decode(file_get_contents('php://input'), true);
-        $userId   = $payload['userId'] ?? null;
+        $userId   = $payload['userId'] ?? ($payload['user_id'] ?? ($payload['id'] ?? null));
         $status   = $payload['status'] ?? null;
         if (!$userId || !$status) sendResponse(false, null, 'User ID and status are required.', 400);
 
@@ -42,11 +42,17 @@ try {
 
         $stmt = $pdo->prepare("UPDATE `station_users` SET `status` = :status WHERE `id` = :id");
         $stmt->execute(['status' => strtoupper(trim($status)), 'id' => (int)$userId]);
+
+        try {
+            $pStmt = $pdo->prepare("UPDATE `professors` SET `status` = :status WHERE `user_id` = :uid OR `id` = :pid");
+            $pStmt->execute(['status' => strtoupper(trim($status)), 'uid' => (int)$userId, 'pid' => (int)$userId]);
+        } catch (Exception $e) {}
+
         sendResponse(true, null, 'Status updated successfully.');
 
     } elseif ($action === 'delete_user') {
         $payload = json_decode(file_get_contents('php://input'), true);
-        $userId  = $payload['userId'] ?? null;
+        $userId  = $payload['userId'] ?? ($payload['user_id'] ?? ($payload['id'] ?? null));
         if (!$userId) sendResponse(false, null, 'User ID is required.', 400);
 
         // Safeguard Admin accounts
@@ -63,7 +69,7 @@ try {
 
     } elseif ($action === 'reset_operator_password') {
         $payload       = json_decode(file_get_contents('php://input'), true);
-        $userId        = $payload['userId'] ?? null;
+        $userId        = $payload['userId'] ?? ($payload['user_id'] ?? ($payload['id'] ?? null));
         $newPassword   = trim($payload['newPassword'] ?? '');
         $overrideEmail = trim($payload['email'] ?? '');
         if (!$userId) sendResponse(false, null, 'User ID is required.', 400);
@@ -138,8 +144,8 @@ try {
         if ($targetRole === 'SUPER_ADMIN' && strtoupper($role) !== 'SUPER_ADMIN') {
             sendResponse(false, null, 'Cannot modify Super Admin role.', 403);
         }
-        if (in_array(strtoupper($role), ['ADMIN', 'SUPER_ADMIN']) && !in_array($targetRole, ['ADMIN', 'SUPER_ADMIN'])) {
-            sendResponse(false, null, 'Cannot elevate account to Admin via operator editor.', 403);
+        if (strtoupper($role) === 'SUPER_ADMIN' && $targetRole !== 'SUPER_ADMIN') {
+            sendResponse(false, null, 'Cannot elevate account to Super Admin via operator editor.', 403);
         }
 
         $stmt = $pdo->prepare("UPDATE `station_users` SET `name` = :name, `email` = :email, `role` = :role WHERE `id` = :id");
@@ -171,9 +177,9 @@ try {
             $password = 'Gncp#' . rand(1000, 9999) . '!';
         }
 
-        // Block creating another super admin through this form
-        if (in_array(strtoupper($role), ['ADMIN', 'SUPER_ADMIN'])) {
-            sendResponse(false, null, 'Cannot create an admin account through this form.', 403);
+        // Block creating another super admin through this form (Super Admin creation is reserved)
+        if (strtoupper($role) === 'SUPER_ADMIN') {
+            sendResponse(false, null, 'Cannot create another Super Admin account through this form.', 403);
         }
 
         $check = $pdo->prepare("SELECT COUNT(*) FROM `station_users` WHERE `username` = :user");
@@ -206,6 +212,35 @@ try {
             'emailMessage'         => $mailResult['message'] ?? '',
             'must_change_password' => true
         ], 'Operator account created and credentials dispatched.');
+
+    // ──────────────────────────────────────────────────────────────────
+    // PROFESSOR & FACULTY MANAGEMENT
+    // ──────────────────────────────────────────────────────────────────
+    } elseif ($action === 'professors' || $action === 'fetch_professors') {
+        require_once __DIR__ . '/../../api/controllers/UserAdminController.php';
+        $userCtrl = new UserAdminController($pdo);
+        $res = $userCtrl->getProfessors();
+        sendResponse($res['success'], $res['data'] ?? [], $res['message'] ?? '', $res['code'] ?? 200);
+
+    } elseif ($action === 'departments') {
+        require_once __DIR__ . '/../../api/controllers/UserAdminController.php';
+        $userCtrl = new UserAdminController($pdo);
+        $res = $userCtrl->getDepartments();
+        sendResponse($res['success'], $res['data'] ?? [], $res['message'] ?? '', $res['code'] ?? 200);
+
+    } elseif ($action === 'save_professor') {
+        require_once __DIR__ . '/../../api/controllers/UserAdminController.php';
+        $payload = json_decode(file_get_contents('php://input'), true) ?? [];
+        $userCtrl = new UserAdminController($pdo);
+        $res = $userCtrl->saveUser(['user' => array_merge($payload['user'] ?? $payload, ['role' => 'PROFESSOR'])]);
+        sendResponse($res['success'], $res['data'] ?? null, $res['message'] ?? '', $res['code'] ?? 200);
+
+    } elseif ($action === 'toggle_professor_status') {
+        require_once __DIR__ . '/../../api/controllers/UserAdminController.php';
+        $payload = json_decode(file_get_contents('php://input'), true) ?? [];
+        $userCtrl = new UserAdminController($pdo);
+        $res = $userCtrl->updateUserStatus($payload);
+        sendResponse($res['success'], null, $res['message'] ?? '', $res['code'] ?? 200);
 
     // ──────────────────────────────────────────────────────────────────
     // ACADEMIC DATA — READ ALL
