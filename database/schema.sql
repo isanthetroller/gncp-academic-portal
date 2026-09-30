@@ -13,6 +13,14 @@
 --  IF NOT EXISTS / INSERT WHERE NOT EXISTS guards.
 -- ============================================================
 -- ============================================================
+-- DATABASE CREATION & SELECTION GUARD
+-- Ensures successful import in phpMyAdmin even when imported
+-- from the top-level server screen without selecting a database first.
+-- ============================================================
+CREATE DATABASE IF NOT EXISTS `gncp_portal` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `gncp_portal`;
+
+-- ============================================================
 --  TABLE 1: pre_enrollments
 --  Central student application queue shared by all stations.
 -- ============================================================
@@ -553,9 +561,11 @@ CREATE TABLE IF NOT EXISTS `subject_sections` (
     `room`       VARCHAR(50) NOT NULL,
     `capacity`   INT NOT NULL,
     `section_id` INT DEFAULT NULL,
+    `professor_id` INT DEFAULT NULL,
     INDEX `idx_ss_lookup` (`program`, `year_level`, `semester`, `subject`),
     INDEX `idx_ss_section_id` (`section_id`),
-    INDEX `idx_ss_capacity` (`capacity`)
+    INDEX `idx_ss_capacity` (`capacity`),
+    INDEX `idx_ss_professor` (`professor_id`)
 ) ENGINE=InnoDB;
 
 INSERT INTO `subject_sections` (`program`, `year_level`, `semester`, `subject`, `code`, `instructor`, `days`, `time`, `room`, `capacity`) VALUES
@@ -717,13 +727,15 @@ CREATE TABLE IF NOT EXISTS `announcements` (
     `author_id`       INT DEFAULT NULL,
     `author_name`     VARCHAR(100) DEFAULT 'GNCP Administration',
     `target_audience` VARCHAR(50) DEFAULT 'ALL',
+    `subject_code`    VARCHAR(50) DEFAULT NULL,
     `is_pinned`       TINYINT(1) DEFAULT 0,
     `status`          VARCHAR(20) DEFAULT 'PUBLISHED',
     `created_at`      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at`      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_status_pinned_created` (`status`, `is_pinned`, `created_at`),
     INDEX `idx_category` (`category`),
-    INDEX `idx_author_id` (`author_id`)
+    INDEX `idx_author_id` (`author_id`),
+    INDEX `idx_ann_subject` (`subject_code`)
 ) ENGINE=InnoDB;
 
 INSERT INTO `announcements` (`id`, `title`, `category`, `content`, `image_url`, `author_name`, `is_pinned`, `status`, `target_audience`) VALUES
@@ -770,3 +782,229 @@ ON DUPLICATE KEY UPDATE
     `date_display` = VALUES(`date_display`),
     `status` = VALUES(`status`),
     `display_order` = VALUES(`display_order`);
+
+
+-- ============================================================
+--  TABLE 19: payments
+--  Cashier and financial transactions tracking.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `payments` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `student_reference` varchar(50) NOT NULL,
+  `student_id` varchar(50) DEFAULT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `payment_method` varchar(50) NOT NULL,
+  `payment_type` varchar(50) NOT NULL DEFAULT 'DOWNPAYMENT',
+  `channel` varchar(50) NOT NULL DEFAULT 'CASH',
+  `transaction_reference` varchar(100) NOT NULL,
+  `official_receipt_number` varchar(50) DEFAULT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'COMPLETED',
+  `cashier_username` varchar(50) NOT NULL,
+  `notes` text DEFAULT NULL,
+  `paid_at` datetime NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_student_reference` (`student_reference`),
+  KEY `idx_student_id` (`student_id`),
+  KEY `idx_transaction_reference` (`transaction_reference`),
+  KEY `idx_or_number` (`official_receipt_number`),
+  KEY `idx_paid_at` (`paid_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  TABLE 20: official_receipts
+--  Permanent official receipt records issued by Cashier.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `official_receipts` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `or_number` varchar(50) NOT NULL,
+  `student_reference` varchar(50) NOT NULL,
+  `student_name` varchar(150) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `payment_id` bigint(20) DEFAULT NULL,
+  `cashier_username` varchar(50) NOT NULL,
+  `issued_at` datetime NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `or_number` (`or_number`),
+  KEY `idx_or_student_ref` (`student_reference`),
+  KEY `idx_issued_at` (`issued_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  TABLE 21: student_clearances
+--  Multi-station digital clearance flags per applicant.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `student_clearances` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `student_reference` varchar(50) NOT NULL,
+  `station_code` varchar(50) NOT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'PENDING',
+  `verified_by` varchar(50) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `clearance_data` longtext DEFAULT NULL,
+  `cleared_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_student_station` (`student_reference`,`station_code`),
+  KEY `idx_station_status` (`station_code`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  TABLE 22: professors
+--  Faculty members linked to station_users and departments.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `professors` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL COMMENT 'FK to station_users.id',
+  `employee_id` varchar(50) NOT NULL COMMENT 'Faculty ID e.g. FAC-2026-001',
+  `name` varchar(150) NOT NULL,
+  `department_id` int(11) NOT NULL COMMENT 'FK to departments.id',
+  `email` varchar(150) DEFAULT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'ACTIVE',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_id` (`user_id`),
+  UNIQUE KEY `employee_id` (`employee_id`),
+  KEY `idx_prof_dept` (`department_id`,`status`),
+  KEY `idx_prof_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  TABLE 23: professor_availability
+--  Faculty weekly availability matrix for the scheduler.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `professor_availability` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `professor_id` int(11) NOT NULL,
+  `day_of_week` varchar(20) NOT NULL COMMENT 'Monday, Tuesday, Wednesday, Thursday, Friday, Saturday',
+  `start_time` time NOT NULL,
+  `end_time` time NOT NULL,
+  `is_available` tinyint(1) NOT NULL DEFAULT 1,
+  `notes` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_avail_prof_day` (`professor_id`,`day_of_week`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  TABLE 24: professor_files
+--  Professor Personal Drive storage metadata.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `professor_files` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `professor_id` int(11) NOT NULL,
+  `filename` varchar(255) NOT NULL,
+  `stored_filename` varchar(255) NOT NULL,
+  `file_type` varchar(20) NOT NULL,
+  `mime_type` varchar(100) NOT NULL,
+  `file_size` bigint(20) NOT NULL,
+  `storage_path` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_files_prof` (`professor_id`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  TABLE 25: lms_materials
+--  Learning materials published by faculty to classrooms.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `lms_materials` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `professor_id` int(11) NOT NULL,
+  `file_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `subject_code` varchar(50) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_mat_prof` (`professor_id`),
+  KEY `idx_mat_file` (`file_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  TABLE 26: lms_material_sections
+--  Section targeting for published LMS learning materials.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `lms_material_sections` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `material_id` int(11) NOT NULL,
+  `section_id` int(11) DEFAULT NULL,
+  `section_code` varchar(50) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_lms_sec_mat` (`material_id`),
+  KEY `idx_lms_sec_code` (`section_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  TABLE 27: announcement_sections
+--  Section targeting for class-specific announcements.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `announcement_sections` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `announcement_id` int(11) NOT NULL,
+  `section_id` int(11) DEFAULT NULL,
+  `section_code` varchar(50) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_ann_sec_id` (`announcement_id`),
+  KEY `idx_ann_sec_code` (`section_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+--  BOOTSTRAP SEED: Academic Scheduler Operator Account
+--  Password: Gncp#2026!
+-- ============================================================
+INSERT INTO `station_users` (`username`, `password`, `name`, `email`, `role`, `status`, `must_change_password`)
+VALUES ('scheduler', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Academic Scheduler Officer', 'scheduler@gncp.edu.ph', 'SCHEDULER', 'ACTIVE', 0)
+ON DUPLICATE KEY UPDATE `role` = 'SCHEDULER', `status` = 'ACTIVE';
+
+-- ============================================================
+--  BOOTSTRAP SEED: Faculty Accounts & Department Associations
+-- ============================================================
+INSERT INTO `station_users` (`id`, `username`, `password`, `name`, `email`, `role`, `status`, `must_change_password`) VALUES
+(199, 'steve.jobs', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Prof. Steve Jobs', 'steve.jobs@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0),
+(200, 'dennis.ritchie', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Prof. Dennis Ritchie', 'dennis.ritchie@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0),
+(201, 'pythagoras', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Dr. Pythagoras', 'pythagoras@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0),
+(202, 'shakespeare', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Dr. Shakespeare', 'shakespeare@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0),
+(203, 'freud', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Dr. Freud', 'freud@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0),
+(204, 'carter', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Coach Carter', 'carter@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0),
+(205, 'payne', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Major Payne', 'payne@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0),
+(206, 'alan.turing', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Prof. Alan Turing', 'alan.turing@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0),
+(207, 'grace.hopper', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Prof. Grace Hopper', 'grace.hopper@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0),
+(208, 'steve.wozniak', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Prof. Steve Wozniak', 'steve.wozniak@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0),
+(209, 'euler', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Dr. Euler', 'euler@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0),
+(210, 'nobel', '$2y$10$wN9v2rVvVwK4U7F4Xv3GKe2Z8Wf9Yt4O0Qp6L5M1N8P3R7S9T0V1W', 'Dr. Nobel', 'nobel@gncp.edu.ph', 'PROFESSOR', 'ACTIVE', 0)
+ON DUPLICATE KEY UPDATE `status` = 'ACTIVE';
+
+INSERT INTO `professors` (`id`, `user_id`, `employee_id`, `name`, `department_id`, `email`, `status`) VALUES
+(1, 199, 'FAC-CCS-001', 'Prof. Steve Jobs', 1, 'steve.jobs@gncp.edu.ph', 'ACTIVE'),
+(2, 200, 'FAC-CCS-002', 'Prof. Dennis Ritchie', 1, 'dennis.ritchie@gncp.edu.ph', 'ACTIVE'),
+(3, 201, 'FAC-GED-001', 'Dr. Pythagoras', 4, 'pythagoras@gncp.edu.ph', 'ACTIVE'),
+(4, 202, 'FAC-GED-002', 'Dr. Shakespeare', 4, 'shakespeare@gncp.edu.ph', 'ACTIVE'),
+(5, 203, 'FAC-GED-003', 'Dr. Freud', 4, 'freud@gncp.edu.ph', 'ACTIVE'),
+(6, 204, 'FAC-PE-001', 'Coach Carter', 6, 'carter@gncp.edu.ph', 'ACTIVE'),
+(7, 205, 'FAC-NSTP-001', 'Major Payne', 5, 'payne@gncp.edu.ph', 'ACTIVE'),
+(8, 206, 'FAC-CCS-003', 'Prof. Alan Turing', 1, 'alan.turing@gncp.edu.ph', 'ACTIVE'),
+(9, 207, 'FAC-CCS-004', 'Prof. Grace Hopper', 1, 'grace.hopper@gncp.edu.ph', 'ACTIVE'),
+(10, 208, 'FAC-CCS-005', 'Prof. Steve Wozniak', 1, 'steve.wozniak@gncp.edu.ph', 'ACTIVE'),
+(11, 209, 'FAC-CCS-006', 'Dr. Euler', 1, 'euler@gncp.edu.ph', 'ACTIVE'),
+(12, 210, 'FAC-GED-004', 'Dr. Nobel', 4, 'nobel@gncp.edu.ph', 'ACTIVE')
+ON DUPLICATE KEY UPDATE `status` = 'ACTIVE';
+
+-- Link existing subject sections to their professor IDs
+UPDATE `subject_sections` SET `professor_id` = 1 WHERE `instructor` LIKE '%Steve Jobs%';
+UPDATE `subject_sections` SET `professor_id` = 2 WHERE `instructor` LIKE '%Dennis Ritchie%';
+UPDATE `subject_sections` SET `professor_id` = 3 WHERE `instructor` LIKE '%Pythagoras%';
+UPDATE `subject_sections` SET `professor_id` = 4 WHERE `instructor` LIKE '%Shakespeare%';
+UPDATE `subject_sections` SET `professor_id` = 5 WHERE `instructor` LIKE '%Freud%';
+UPDATE `subject_sections` SET `professor_id` = 6 WHERE `instructor` LIKE '%Carter%';
+UPDATE `subject_sections` SET `professor_id` = 7 WHERE `instructor` LIKE '%Payne%';
+UPDATE `subject_sections` SET `professor_id` = 8 WHERE `instructor` LIKE '%Alan Turing%';
+UPDATE `subject_sections` SET `professor_id` = 9 WHERE `instructor` LIKE '%Grace Hopper%';
+UPDATE `subject_sections` SET `professor_id` = 10 WHERE `instructor` LIKE '%Steve Wozniak%';
+UPDATE `subject_sections` SET `professor_id` = 11 WHERE `instructor` LIKE '%Euler%';
+UPDATE `subject_sections` SET `professor_id` = 12 WHERE `instructor` LIKE '%Nobel%';
