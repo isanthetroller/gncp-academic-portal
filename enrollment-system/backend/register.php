@@ -386,36 +386,44 @@ try {
                 $rawKey = substr($inputKey, 4);
                 $ext = strtolower(pathinfo($fileInfo['name'], PATHINFO_EXTENSION));
                 
-                // Strictly accept PDF files only
-                if ($ext === 'pdf') {
+                // Accept PDF and valid image files (JPG, PNG, WEBP)
+                $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+                if (in_array($ext, $allowedExtensions, true)) {
                     $finfo = finfo_open(FILEINFO_MIME_TYPE);
                     $detectedMime = finfo_file($finfo, $fileInfo['tmp_name']);
                     finfo_close($finfo);
 
-                    // Check MIME type
-                    if ($detectedMime === 'application/pdf') {
-                        // Check %PDF- header magic bytes
+                    $isValidFileType = false;
+                    if ($ext === 'pdf' && $detectedMime === 'application/pdf') {
                         $handle = @fopen($fileInfo['tmp_name'], 'rb');
                         $header = $handle ? @fread($handle, 5) : '';
                         if ($handle) @fclose($handle);
-
                         if ($header === '%PDF-') {
-                            $rawContent = @file_get_contents($fileInfo['tmp_name']);
-                            // Reject executable script injections
-                            if (!$rawContent || !preg_match('/<\?php|<\?=|<script\b|eval\s*\(|base64_decode\s*\(/i', $rawContent)) {
-                                $sanitizedKey = preg_replace('/[^a-zA-Z0-9_]/', '', $rawKey);
-                                $randomToken = bin2hex(random_bytes(8));
-                                $newFileName = 'doc_' . $sanitizedKey . '_' . preg_replace('/[^a-zA-Z0-9_]/', '', $tempStudentId) . '_' . $randomToken . '.pdf';
-                                $targetPath = $uploadDir . $newFileName;
-                                
-                                if (is_uploaded_file($fileInfo['tmp_name']) && move_uploaded_file($fileInfo['tmp_name'], $targetPath)) {
-                                    $uploadedFilesMeta[$sanitizedKey] = [
-                                        'fileName'   => basename($fileInfo['name']),
-                                        'filePath'   => 'uploads/documents/' . $newFileName,
-                                        'fileType'   => 'application/pdf',
-                                        'uploadedAt' => date('Y-m-d H:i:s')
-                                    ];
-                                }
+                            $isValidFileType = true;
+                        }
+                    } elseif (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                        $validImageMimes = ['image/jpeg', 'image/png', 'image/webp'];
+                        if (in_array($detectedMime, $validImageMimes, true) && @getimagesize($fileInfo['tmp_name']) !== false) {
+                            $isValidFileType = true;
+                        }
+                    }
+
+                    if ($isValidFileType) {
+                        $rawContent = @file_get_contents($fileInfo['tmp_name']);
+                        // Reject executable script injections
+                        if (!$rawContent || !preg_match('/<\?php|<\?=|\<script\b|eval\s*\(|base64_decode\s*\(/i', $rawContent)) {
+                            $sanitizedKey = preg_replace('/[^a-zA-Z0-9_]/', '', $rawKey);
+                            $randomToken = bin2hex(random_bytes(8));
+                            $newFileName = 'doc_' . $sanitizedKey . '_' . preg_replace('/[^a-zA-Z0-9_]/', '', $tempStudentId) . '_' . $randomToken . '.' . $ext;
+                            $targetPath = $uploadDir . $newFileName;
+                            
+                            if (is_uploaded_file($fileInfo['tmp_name']) && move_uploaded_file($fileInfo['tmp_name'], $targetPath)) {
+                                $uploadedFilesMeta[$sanitizedKey] = [
+                                    'fileName'   => basename($fileInfo['name']),
+                                    'filePath'   => 'uploads/documents/' . $newFileName,
+                                    'fileType'   => $detectedMime,
+                                    'uploadedAt' => date('Y-m-d H:i:s')
+                                ];
                             }
                         }
                     }

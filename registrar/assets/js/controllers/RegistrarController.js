@@ -709,19 +709,54 @@
 
             const getDocFileUrl = (fileObj) => {
                 if (!fileObj) return '';
-                const path = fileObj.filePath || fileObj.softCopyUrl || '';
-                if (!path) return '';
-                if (path.includes('action=student/download_document') || path.includes('action=students/download-document')) {
-                    return path;
+                const rawPath = typeof fileObj === 'string' ? fileObj : (fileObj.filePath || fileObj.softCopyUrl || fileObj.url || '');
+                if (!rawPath) return '';
+
+                if (rawPath.startsWith('data:') || (/^https?:\/\//i.test(rawPath) && !rawPath.includes(window.location.host))) {
+                    return rawPath;
                 }
-                if (path.includes('uploads/documents/')) {
-                    const cleanName = path.split('uploads/documents/').pop().split('?')[0];
-                    return '/systemtest/api/index.php?action=student/download_document&file=' + encodeURIComponent(cleanName);
+
+                let basePath = '';
+                if (typeof window !== 'undefined' && window.location && window.location.pathname) {
+                    const pathParts = window.location.pathname.split('/').filter(Boolean);
+                    const excludedFolders = ['api', 'stations', 'registrar', 'admin', 'student-portal', 'enrollment-system', 'shared', 'tests'];
+                    if (pathParts.length > 0 && !excludedFolders.includes(pathParts[0].toLowerCase())) {
+                        basePath = '/' + pathParts[0];
+                    }
                 }
-                if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
-                if (path.startsWith('/systemtest/')) return path;
-                if (path.startsWith('/')) return path;
-                return '../' + path.replace(/^\/+/, '');
+
+                // Extract clean document filename
+                let cleanName = '';
+                if (rawPath.includes('file=')) {
+                    const m = rawPath.match(/[?&]file=([^&#]+)/);
+                    if (m && m[1]) cleanName = decodeURIComponent(m[1]);
+                } else if (rawPath.includes('path=')) {
+                    const m = rawPath.match(/[?&]path=([^&#]+)/);
+                    if (m && m[1]) cleanName = decodeURIComponent(m[1]);
+                }
+
+                if (!cleanName) {
+                    if (rawPath.includes('uploads/documents/')) {
+                        cleanName = rawPath.split('uploads/documents/').pop().split('?')[0];
+                    } else if (rawPath.includes('uploads/docs/')) {
+                        cleanName = rawPath.split('uploads/docs/').pop().split('?')[0];
+                    } else if (rawPath.includes('uploads/')) {
+                        cleanName = rawPath.split('uploads/').pop().split('?')[0];
+                    } else {
+                        cleanName = rawPath.split('/').pop().split('\\').pop().split('?')[0];
+                    }
+                }
+
+                cleanName = cleanName.replace(/^.*[\\\/]/, '').trim();
+
+                if (cleanName && /\.(pdf|jpg|jpeg|png|webp|gif)$/i.test(cleanName)) {
+                    return `${basePath}/api/index.php?action=student/download_document&file=${encodeURIComponent(cleanName)}`;
+                }
+
+                if (rawPath.startsWith('/')) {
+                    return rawPath;
+                }
+                return `${basePath}/${rawPath.replace(/^\/+/, '')}`;
             };
 
             const openDocumentModal = (fileObj) => {
@@ -730,13 +765,15 @@
 
             const isImageFile = (pathOrName) => {
                 if (!pathOrName) return false;
-                const ext = pathOrName.split('.').pop().toLowerCase();
-                return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
+                const str = String(pathOrName).split('?')[0].toLowerCase();
+                const ext = str.split('.').pop();
+                return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext);
             };
 
             const isPdfFile = (pathOrName) => {
                 if (!pathOrName) return false;
-                const ext = pathOrName.split('.').pop().toLowerCase();
+                const str = String(pathOrName).split('?')[0].toLowerCase();
+                const ext = str.split('.').pop();
                 return ext === 'pdf';
             };
 

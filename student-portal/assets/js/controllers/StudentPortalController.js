@@ -660,14 +660,53 @@ window.StudentPortalController = {
 
         const getDocDownloadUrl = (url) => {
             if (!url) return '';
-            if (url.includes('action=student/download_document') || url.includes('action=students/download-document')) {
-                return url;
+            const rawPath = typeof url === 'string' ? url : (url.filePath || url.softCopyUrl || url.url || '');
+            if (!rawPath) return '';
+
+            if (rawPath.startsWith('data:') || (/^https?:\/\//i.test(rawPath) && !rawPath.includes(window.location.host))) {
+                return rawPath;
             }
-            if (url.includes('uploads/documents/')) {
-                const cleanName = url.split('uploads/documents/').pop().split('?')[0];
-                return '/systemtest/api/index.php?action=student/download_document&file=' + encodeURIComponent(cleanName);
+
+            let basePath = '';
+            if (typeof window !== 'undefined' && window.location && window.location.pathname) {
+                const pathParts = window.location.pathname.split('/').filter(Boolean);
+                const excludedFolders = ['api', 'stations', 'registrar', 'admin', 'student-portal', 'enrollment-system', 'shared', 'tests'];
+                if (pathParts.length > 0 && !excludedFolders.includes(pathParts[0].toLowerCase())) {
+                    basePath = '/' + pathParts[0];
+                }
             }
-            return url;
+
+            let cleanName = '';
+            if (rawPath.includes('file=')) {
+                const m = rawPath.match(/[?&]file=([^&#]+)/);
+                if (m && m[1]) cleanName = decodeURIComponent(m[1]);
+            } else if (rawPath.includes('path=')) {
+                const m = rawPath.match(/[?&]path=([^&#]+)/);
+                if (m && m[1]) cleanName = decodeURIComponent(m[1]);
+            }
+
+            if (!cleanName) {
+                if (rawPath.includes('uploads/documents/')) {
+                    cleanName = rawPath.split('uploads/documents/').pop().split('?')[0];
+                } else if (rawPath.includes('uploads/docs/')) {
+                    cleanName = rawPath.split('uploads/docs/').pop().split('?')[0];
+                } else if (rawPath.includes('uploads/')) {
+                    cleanName = rawPath.split('uploads/').pop().split('?')[0];
+                } else {
+                    cleanName = rawPath.split('/').pop().split('\\').pop().split('?')[0];
+                }
+            }
+
+            cleanName = cleanName.replace(/^.*[\\\/]/, '').trim();
+
+            if (cleanName && /\.(pdf|jpg|jpeg|png|webp|gif)$/i.test(cleanName)) {
+                return `${basePath}/api/index.php?action=student/download_document&file=${encodeURIComponent(cleanName)}`;
+            }
+
+            if (rawPath.startsWith('/')) {
+                return rawPath;
+            }
+            return `${basePath}/${rawPath.replace(/^\/+/, '')}`;
         };
 
         const openDocPreview = (doc) => {

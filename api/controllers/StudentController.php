@@ -434,7 +434,7 @@ class StudentController {
         $requestedFile = trim($_GET['file'] ?? ($_GET['path'] ?? ''));
         $filename = basename($requestedFile);
 
-        if (empty($filename) || !preg_match('/^[a-zA-Z0-9_\.-]+\.pdf$/i', $filename)) {
+        if (empty($filename) || !preg_match('/^[a-zA-Z0-9_\.-]+\.(pdf|jpg|jpeg|png|webp)$/i', $filename)) {
             http_response_code(400);
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['success' => false, 'message' => 'Invalid or missing document filename.', 'code' => 400]);
@@ -525,14 +525,38 @@ class StudentController {
 
         $filePath = realpath($uploadDir . DIRECTORY_SEPARATOR . $filename);
         if ($filePath === false || !str_starts_with($filePath, $uploadDir) || !is_file($filePath)) {
+            if ($filename === 'sample_psa.pdf') {
+                $fallback = realpath($uploadDir . DIRECTORY_SEPARATOR . 'sample_psa_birth_cert.pdf');
+                if ($fallback && is_file($fallback)) {
+                    $filePath = $fallback;
+                }
+            } elseif ($filename === 'sample_psa_birth_cert.pdf') {
+                $fallback = realpath($uploadDir . DIRECTORY_SEPARATOR . 'sample_psa.pdf');
+                if ($fallback && is_file($fallback)) {
+                    $filePath = $fallback;
+                }
+            }
+        }
+
+        if ($filePath === false || !str_starts_with($filePath, $uploadDir) || !is_file($filePath)) {
             http_response_code(404);
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['success' => false, 'message' => 'Requested document not found on server.', 'code' => 404]);
             exit;
         }
 
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $mimeMap = [
+            'pdf'  => 'application/pdf',
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png'  => 'image/png',
+            'webp' => 'image/webp'
+        ];
+        $contentType = $mimeMap[$ext] ?? 'application/octet-stream';
+
         // Send streaming headers
-        header('Content-Type: application/pdf');
+        header('Content-Type: ' . $contentType);
         header('Content-Disposition: inline; filename="' . $filename . '"');
         header('Content-Length: ' . filesize($filePath));
         header('X-Content-Type-Options: nosniff');

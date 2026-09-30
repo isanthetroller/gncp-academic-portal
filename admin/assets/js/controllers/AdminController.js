@@ -1287,6 +1287,7 @@ const app = createApp({
                 fetchDepartments();
             }
         };
+        window.__adminSetView = setView;
 
         // ── Auth ──
         const fetchCurrentProfile = () => {
@@ -1617,9 +1618,15 @@ const app = createApp({
                 });
             }
 
-            fetchOperators(false);
-            fetchAdminAnnouncements();
-            fetchAdminMilestones();
+            if (!isBackgroundSync || view.value === 'operators') {
+                fetchOperators(false);
+            }
+            if (!isBackgroundSync || view.value === 'announcements') {
+                fetchAdminAnnouncements();
+            }
+            if (!isBackgroundSync) {
+                fetchAdminMilestones();
+            }
         };
 
         let initialAnnouncementSnapshot = '';
@@ -2131,7 +2138,19 @@ const app = createApp({
         const deleteDepartment = () => {
             Swal.fire({ icon: 'warning', title: 'Action Locked', text: 'Collegiate departments are fixed and cannot be deleted.' });
         };
-        const saveProgram    = () => crudSave('save_program',   'program',    programs,   {});
+        const saveProgram = () => {
+            const code = (form.code || '').trim();
+            const name = (form.name || '').trim();
+            if (!code) {
+                notify(false, 'Please enter a Program Code.');
+                return;
+            }
+            if (!name) {
+                notify(false, 'Please enter a Program Name.');
+                return;
+            }
+            crudSave('save_program', 'program', programs, {});
+        };
         const deleteProgram = async (id) => {
             const prog = programs.value.find(p => p.id === id);
             if (!prog) return;
@@ -2174,7 +2193,19 @@ const app = createApp({
                 }
             });
         };
-        const saveSubject    = () => crudSave('save_subject',   'subject',    subjects,   {});
+        const saveSubject = () => {
+            const code = (form.code || '').trim();
+            const title = (form.title || '').trim();
+            if (!code) {
+                notify(false, 'Please enter a Subject Code.');
+                return;
+            }
+            if (!title) {
+                notify(false, 'Please enter a Subject Title.');
+                return;
+            }
+            crudSave('save_subject', 'subject', subjects, {});
+        };
         const deleteSubject  = id => crudDel('delete_subject',  id,           subjects,   'subject');
         const saveCurriculum = () => crudSave('save_curriculum','curriculum', curriculum, {});
         const deleteCurriculum=id => crudDel('delete_curriculum',id,          curriculum, 'entry');
@@ -2374,9 +2405,8 @@ const app = createApp({
         const saveFee        = () => crudSave('save_fee',       'fee',        fees,       {});
         const deleteFee      = id => crudDel('delete_fee',      id,           fees,       'fee');
 
-        // ── Operator Management (Isolated Methods & Tracing) ──
+        // ── Operator Management ──
         const fetchOperators = (forceRefresh = false) => {
-            console.log('[Trace: Operators] Fetching operators list...');
             const hasUsers = users.value && users.value.length > 0;
             if (!hasUsers && !(window.DataCache && window.DataCache.has('admin:users'))) {
                 isLoadingOperators.value = true;
@@ -2392,10 +2422,9 @@ const app = createApp({
                 }).then(r => {
                     if (r && r.success) {
                         users.value = r.data || [];
-                        console.log(`[Trace: Operators] Loaded ${users.value.length} operators:`, users.value);
                     }
                 }).catch(err => {
-                    console.error('[Trace: Operators] Failed to fetch operators:', err);
+                    console.error('[Admin] Failed to fetch operators:', err);
                 }).finally(() => {
                     isLoadingOperators.value = false;
                 });
@@ -2403,9 +2432,8 @@ const app = createApp({
             return fetchFn().then(r => {
                 if (r && r.success) {
                     users.value = r.data || [];
-                    console.log(`[Trace: Operators] Loaded ${users.value.length} operators:`, users.value);
                 } else {
-                    console.error('[Trace: Operators] Failed to fetch operators:', r);
+                    console.error('[Admin] Failed to fetch operators:', r);
                 }
             }).finally(() => {
                 isLoadingOperators.value = false;
@@ -2413,21 +2441,17 @@ const app = createApp({
         };
 
         const openCreateOperatorModal = () => {
-            console.log('[Trace: Operators] Triggered Create Operator Modal');
             search.value = '';
             Object.assign(operatorForm, { id: null, name: '', email: '', username: '', password: '', role: '' });
             isOperatorModalOpen.value = true;
-            console.log('[Trace: Operators] isOperatorModalOpen set to true');
         };
 
         const closeCreateOperatorModal = () => {
             if (isSubmittingOperator.value) return;
-            console.log('[Trace: Operators] Closing Create Operator Modal');
             isOperatorModalOpen.value = false;
         };
 
         const submitCreateOperator = () => {
-            console.log('[Trace: Operators] Submitting new operator:', operatorForm);
             if (!operatorForm.name || !operatorForm.username || !operatorForm.role) {
                 Swal.fire({
                     title: 'Missing Information',
@@ -2447,7 +2471,6 @@ const app = createApp({
             post('save_user', { user: { ...operatorForm } }).then(r => {
                 isSubmittingOperator.value = false;
                 if (r.success) {
-                    console.log('[Trace: Operators] Operator account created successfully:', r);
                     closeCreateOperatorModal();
                     if (window.DataCache) window.DataCache.invalidate('admin:users');
                     fetchOperators(true);
@@ -2475,7 +2498,7 @@ const app = createApp({
                         confirmButtonText: 'Done & Return'
                     });
                 } else {
-                    console.error('[Trace: Operators] Create operator failed:', r);
+                    console.error('[Admin Operators] Create operator failed:', r);
                     Swal.fire({
                         title: 'Account Creation Failed',
                         html: `<div style="color:#dc2626;font-weight:600">${r.message || r.error || 'Failed to create operator account.'}</div>`,
@@ -2485,7 +2508,7 @@ const app = createApp({
                 }
             }).catch(err => {
                 isSubmittingOperator.value = false;
-                console.error('[Trace: Operators] Network error creating operator:', err);
+                console.error('[Admin Operators] Network error creating operator:', err);
                 Swal.fire({
                     title: 'Server Error',
                     text: 'An error occurred while connecting to the server.',
@@ -2496,19 +2519,16 @@ const app = createApp({
         };
 
         const openEditOperatorModal = (u) => {
-            console.log('[Trace: Operators] Triggered Edit Operator Modal for user:', u);
             Object.assign(operatorForm, { id: u.id, name: u.name, username: u.username, email: u.email || '', role: u.role, password: '' });
             isEditOperatorModalOpen.value = true;
         };
 
         const closeEditOperatorModal = () => {
             if (isSubmittingOperator.value) return;
-            console.log('[Trace: Operators] Closing Edit Operator Modal');
             isEditOperatorModalOpen.value = false;
         };
 
         const submitEditOperator = () => {
-            console.log('[Trace: Operators] Submitting operator update:', operatorForm);
             if (!operatorForm.name || !operatorForm.role) {
                 Swal.fire({
                     title: 'Missing Required Fields',
@@ -2530,7 +2550,6 @@ const app = createApp({
             }).then(r => {
                 isSubmittingOperator.value = false;
                 if (r.success) {
-                    console.log('[Trace: Operators] Operator updated successfully:', r);
                     closeEditOperatorModal();
                     if (window.DataCache) window.DataCache.invalidate('admin:users');
                     fetchOperators(true);
@@ -2541,7 +2560,7 @@ const app = createApp({
                         confirmButtonColor: '#006A4E'
                     });
                 } else {
-                    console.error('[Trace: Operators] Update operator failed:', r);
+                    console.error('[Admin Operators] Update operator failed:', r);
                     Swal.fire({
                         title: 'Update Failed',
                         text: r.message || r.error || 'Failed to update operator account.',
@@ -2561,7 +2580,6 @@ const app = createApp({
         };
 
         const resetOperatorPassword = async (u) => {
-            console.log('[Trace: Operators] Initiating password reset for user:', u);
             const { value: formValues } = await Swal.fire({
                 title: 'Reset Operator Password',
                 html: `
@@ -2615,7 +2633,6 @@ const app = createApp({
                 email: formValues.email
             }).then(r => {
                 if (r.success) {
-                    console.log('[Trace: Operators] Password reset successful:', r);
                     fetchOperators();
                     const emailNotice = r.data.emailSent 
                         ? `<div style="margin-top: 14px; padding: 12px 14px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 0.88rem; text-align: left;">
@@ -2642,7 +2659,7 @@ const app = createApp({
                         confirmButtonColor: '#006A4E'
                     });
                 } else {
-                    console.error('[Trace: Operators] Password reset failed:', r);
+                    console.error('[Admin Operators] Password reset failed:', r);
                     Swal.fire({
                         title: 'Reset Failed',
                         text: r.message || r.error || 'Failed to reset operator password.',
@@ -2654,7 +2671,6 @@ const app = createApp({
         };
 
         const updateStatus = (userId, status) => {
-            console.log(`[Trace: Operators] Updating status for user ID ${userId} -> ${status}`);
             return post('update_user_status', { userId, status }).then(r => {
                 if (r.success) {
                     if (window.DataCache) window.DataCache.invalidate('admin:users');
@@ -2665,7 +2681,6 @@ const app = createApp({
         };
 
         const deleteUser = async userId => {
-            console.log(`[Trace: Operators] Requesting deletion for user ID ${userId}`);
             const result = await Swal.fire({
                 title: 'Are you sure?',
                 text: 'Delete this operator account?',
@@ -2678,11 +2693,10 @@ const app = createApp({
             if (!result.isConfirmed) return;
             post('delete_user', { userId }).then(r => {
                 if (r.success) {
-                    console.log(`[Trace: Operators] User ID ${userId} deleted`);
                     if (window.DataCache) window.DataCache.invalidate('admin:users');
                     fetchOperators(true);
                 } else {
-                    console.error('[Trace: Operators] Delete user failed:', r);
+                    console.error('[Admin Operators] Delete user failed:', r);
                     notify(false, r.error || 'Failed to delete.');
                 }
             });

@@ -56,27 +56,34 @@ class CourseModel {
     }
 
     public function saveSubject($subjectData) {
-        if (!empty($subjectData['id'])) {
-            $stmt = $this->pdo->prepare("UPDATE `subjects` SET `code`=:code, `title`=:title, `description`=:desc, `lecture_units`=:lec, `lab_units`=:lab, `lab_fee`=:fee, `prerequisites`=:pre WHERE `id`=:id");
+        $code = strtoupper(trim($subjectData['code'] ?? ''));
+        $title = trim($subjectData['title'] ?? '');
+        $dept = trim($subjectData['department'] ?? '');
+        $subId = !empty($subjectData['id']) ? (int)$subjectData['id'] : null;
+
+        if ($subId) {
+            $stmt = $this->pdo->prepare("UPDATE `subjects` SET `code`=:code, `title`=:title, `description`=:desc, `lecture_units`=:lec, `lab_units`=:lab, `lab_fee`=:fee, `department`=:dept, `prerequisites`=:pre WHERE `id`=:id");
             $stmt->execute([
-                'code'   => $subjectData['code'],
-                'title'  => $subjectData['title'],
+                'code'   => $code,
+                'title'  => $title,
                 'desc'   => $subjectData['description'] ?? '',
                 'lec'    => (int)($subjectData['lectureUnits'] ?? 0),
                 'lab'    => (int)($subjectData['labUnits'] ?? 0),
                 'fee'    => (float)($subjectData['labFee'] ?? 0),
+                'dept'   => $dept,
                 'pre'    => is_array($subjectData['prerequisites'] ?? null) ? json_encode($subjectData['prerequisites']) : ($subjectData['prerequisites'] ?? '[]'),
-                'id'     => (int)$subjectData['id']
+                'id'     => $subId
             ]);
         } else {
-            $stmt = $this->pdo->prepare("INSERT INTO `subjects` (`code`, `title`, `description`, `lecture_units`, `lab_units`, `lab_fee`, `prerequisites`) VALUES (:code, :title, :desc, :lec, :lab, :fee, :pre)");
+            $stmt = $this->pdo->prepare("INSERT INTO `subjects` (`code`, `title`, `description`, `lecture_units`, `lab_units`, `lab_fee`, `department`, `prerequisites`) VALUES (:code, :title, :desc, :lec, :lab, :fee, :dept, :pre)");
             $stmt->execute([
-                'code'   => $subjectData['code'],
-                'title'  => $subjectData['title'],
+                'code'   => $code,
+                'title'  => $title,
                 'desc'   => $subjectData['description'] ?? '',
                 'lec'    => (int)($subjectData['lectureUnits'] ?? 0),
                 'lab'    => (int)($subjectData['labUnits'] ?? 0),
                 'fee'    => (float)($subjectData['labFee'] ?? 0),
+                'dept'   => $dept,
                 'pre'    => is_array($subjectData['prerequisites'] ?? null) ? json_encode($subjectData['prerequisites']) : ($subjectData['prerequisites'] ?? '[]')
             ]);
         }

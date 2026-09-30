@@ -7,51 +7,76 @@ if ($action === 'save_program') {
     $prog = json_decode(file_get_contents('php://input'), true)['program'] ?? null;
     if (!$prog) sendResponse(false, null, 'Program data missing.', 400);
 
+    $code = strtoupper(trim($prog['code'] ?? ''));
+    $name = trim($prog['name'] ?? '');
+    $dept = trim($prog['department'] ?? '');
     $status = $prog['status'] ?? 'Active';
+    $progId = !empty($prog['id']) ? (int)$prog['id'] : null;
 
-    if (!empty($prog['id'])) {
-        // Fetch old name/code before update for rename cascading
-        $oldStmt = $pdo->prepare("SELECT `name`, `code` FROM `programs` WHERE `id` = :id");
-        $oldStmt->execute(['id' => (int)$prog['id']]);
-        $oldProg = $oldStmt->fetch();
+    if ($code === '' || $name === '') {
+        sendResponse(false, null, 'Program Code and Name are required.', 400);
+    }
 
-        $stmt = $pdo->prepare("UPDATE `programs` SET `code`=:code,`name`=:name,`department`=:dept,`status`=:status WHERE `id`=:id");
-        $stmt->execute([
-            'code'   => $prog['code'] ?? '',
-            'name'   => $prog['name'] ?? '',
-            'dept'   => $prog['department'] ?? '',
-            'status' => $status,
-            'id'     => (int)$prog['id']
-        ]);
+    // Check duplicate code
+    if ($progId) {
+        $chk = $pdo->prepare("SELECT `id` FROM `programs` WHERE `code` = :code AND `id` != :id LIMIT 1");
+        $chk->execute(['code' => $code, 'id' => $progId]);
+    } else {
+        $chk = $pdo->prepare("SELECT `id` FROM `programs` WHERE `code` = :code LIMIT 1");
+        $chk->execute(['code' => $code]);
+    }
+    if ($chk->fetch()) {
+        sendResponse(false, null, "Program code '{$code}' already exists. Please choose a unique code.", 400);
+    }
 
-        // Cascade rename to child tables if name changed
-        if ($oldProg && $oldProg['name'] !== ($prog['name'] ?? '')) {
-            $newName = $prog['name'] ?? '';
-            $oldName = $oldProg['name'];
-            $pdo->prepare("UPDATE `curriculum` SET `program` = :new WHERE `program` = :old")->execute(['new' => $newName, 'old' => $oldName]);
-            $pdo->prepare("UPDATE `subject_sections` SET `program` = :new WHERE `program` = :old")->execute(['new' => $newName, 'old' => $oldName]);
-            $pdo->prepare("UPDATE `sections` SET `program` = :new WHERE `program` = :old")->execute(['new' => $newName, 'old' => $oldName]);
-            // Cascade to student records and active applications
-            $pdo->prepare("UPDATE `students` SET `program` = :new WHERE `program` = :old")->execute(['new' => $newName, 'old' => $oldName]);
-            $pdo->prepare("UPDATE `pre_enrollments` SET `course_code` = :new WHERE `course_code` = :old")->execute(['new' => $newName, 'old' => $oldName]);
-            // Also cascade old code references
-            if ($oldProg['code'] !== ($prog['code'] ?? '')) {
-                $newCode = $prog['code'] ?? '';
+    try {
+        if ($progId) {
+            // Fetch old name/code before update for rename cascading
+            $oldStmt = $pdo->prepare("SELECT `name`, `code` FROM `programs` WHERE `id` = :id");
+            $oldStmt->execute(['id' => $progId]);
+            $oldProg = $oldStmt->fetch();
+
+            $stmt = $pdo->prepare("UPDATE `programs` SET `code`=:code,`name`=:name,`department`=:dept,`status`=:status WHERE `id`=:id");
+            $stmt->execute([
+                'code'   => $code,
+                'name'   => $name,
+                'dept'   => $dept,
+                'status' => $status,
+                'id'     => $progId
+            ]);
+
+            // Cascade rename to child tables if name changed
+            if ($oldProg && $oldProg['name'] !== $name) {
+                $newName = $name;
+                $oldName = $oldProg['name'];
+                $pdo->prepare("UPDATE `curriculum` SET `program` = :new WHERE `program` = :old")->execute(['new' => $newName, 'old' => $oldName]);
+                $pdo->prepare("UPDATE `subject_sections` SET `program` = :new WHERE `program` = :old")->execute(['new' => $newName, 'old' => $oldName]);
+                $pdo->prepare("UPDATE `sections` SET `program` = :new WHERE `program` = :old")->execute(['new' => $newName, 'old' => $oldName]);
+                $pdo->prepare("UPDATE `students` SET `program` = :new WHERE `program` = :old")->execute(['new' => $newName, 'old' => $oldName]);
+                $pdo->prepare("UPDATE `pre_enrollments` SET `course_code` = :new WHERE `course_code` = :old")->execute(['new' => $newName, 'old' => $oldName]);
+            }
+            if ($oldProg && $oldProg['code'] !== $code) {
+                $newCode = $code;
                 $oldCode = $oldProg['code'];
                 $pdo->prepare("UPDATE `students` SET `program` = :new WHERE `program` = :old")->execute(['new' => $newCode, 'old' => $oldCode]);
                 $pdo->prepare("UPDATE `pre_enrollments` SET `course_code` = :new WHERE `course_code` = :old")->execute(['new' => $newCode, 'old' => $oldCode]);
             }
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO `programs`(`code`,`name`,`department`,`status`) VALUES(:code,:name,:dept,:status)");
+            $stmt->execute([
+                'code'   => $code,
+                'name'   => $name,
+                'dept'   => $dept,
+                'status' => $status
+            ]);
         }
-    } else {
-        $stmt = $pdo->prepare("INSERT INTO `programs`(`code`,`name`,`department`,`status`) VALUES(:code,:name,:dept,:status)");
-        $stmt->execute([
-            'code'   => $prog['code'] ?? '',
-            'name'   => $prog['name'] ?? '',
-            'dept'   => $prog['department'] ?? '',
-            'status' => $status
-        ]);
+        sendResponse(true, $pdo->query("SELECT * FROM `programs` ORDER BY `id` DESC")->fetchAll(), 'Program saved successfully.');
+    } catch (PDOException $e) {
+        if ($e->getCode() == 23000 || str_contains($e->getMessage(), 'Duplicate entry')) {
+            sendResponse(false, null, "Program code '{$code}' already exists. Please choose a unique code.", 400);
+        }
+        sendResponse(false, null, 'Unable to save program: ' . $e->getMessage(), 400);
     }
-    sendResponse(true, $pdo->query("SELECT * FROM `programs` ORDER BY `id` DESC")->fetchAll());
 
 } elseif ($action === 'delete_program') {
     $id = json_decode(file_get_contents('php://input'), true)['id'] ?? null;
@@ -93,47 +118,84 @@ if ($action === 'save_program') {
     $sub = json_decode(file_get_contents('php://input'), true)['subject'] ?? null;
     if (!$sub) sendResponse(false, null, 'Subject data missing.', 400);
 
+    $code = strtoupper(trim($sub['code'] ?? ''));
+    $title = trim($sub['title'] ?? '');
+    $dept = trim($sub['department'] ?? '');
+    $subId = !empty($sub['id']) ? (int)$sub['id'] : null;
+
+    if ($code === '') {
+        sendResponse(false, null, 'Subject Code is required.', 400);
+    }
+    if ($title === '') {
+        sendResponse(false, null, 'Subject Title is required.', 400);
+    }
+
+    // Check duplicate code
+    if ($subId) {
+        $chk = $pdo->prepare("SELECT `id` FROM `subjects` WHERE `code` = :code AND `id` != :id LIMIT 1");
+        $chk->execute(['code' => $code, 'id' => $subId]);
+    } else {
+        $chk = $pdo->prepare("SELECT `id` FROM `subjects` WHERE `code` = :code LIMIT 1");
+        $chk->execute(['code' => $code]);
+    }
+    if ($chk->fetch()) {
+        sendResponse(false, null, "Subject code '{$code}' already exists. Please choose a unique code.", 400);
+    }
+
     $params = [
-        'code'   => $sub['code'],
-        'title'  => $sub['title'],
+        'code'   => $code,
+        'title'  => $title,
         'desc'   => $sub['description'] ?? '',
-        'lec'    => (int)($sub['lectureUnits'] ?? 0),
-        'lab'    => (int)($sub['labUnits'] ?? 0),
-        'fee'    => (float)($sub['labFee'] ?? 0),
-        'dept'   => $sub['department'] ?? '',
+        'lec'    => max(0, (int)($sub['lectureUnits'] ?? 0)),
+        'lab'    => max(0, (int)($sub['labUnits'] ?? 0)),
+        'fee'    => max(0.0, (float)($sub['labFee'] ?? 0)),
+        'dept'   => $dept,
         'prereq' => $sub['prerequisites'] ?? 'None'
     ];
 
-    if (!empty($sub['id'])) {
-        // Fetch old title before update for rename cascading
-        $oldStmt = $pdo->prepare("SELECT `title`, `code` FROM `subjects` WHERE `id` = :id");
-        $oldStmt->execute(['id' => (int)$sub['id']]);
-        $oldSub = $oldStmt->fetch();
+    try {
+        if ($subId) {
+            // Fetch old title before update for rename cascading
+            $oldStmt = $pdo->prepare("SELECT `title`, `code` FROM `subjects` WHERE `id` = :id");
+            $oldStmt->execute(['id' => $subId]);
+            $oldSub = $oldStmt->fetch();
 
-        $params['id'] = (int)$sub['id'];
-        $stmt = $pdo->prepare("UPDATE `subjects` SET `code`=:code,`title`=:title,`description`=:desc,`lecture_units`=:lec,`lab_units`=:lab,`lab_fee`=:fee,`department`=:dept,`prerequisites`=:prereq WHERE `id`=:id");
-        $stmt->execute($params);
+            $params['id'] = $subId;
+            $stmt = $pdo->prepare("UPDATE `subjects` SET `code`=:code,`title`=:title,`description`=:desc,`lecture_units`=:lec,`lab_units`=:lab,`lab_fee`=:fee,`department`=:dept,`prerequisites`=:prereq WHERE `id`=:id");
+            $stmt->execute($params);
 
-        // Cascade rename to child tables if title changed
-        if ($oldSub && $oldSub['title'] !== $sub['title']) {
-            $newTitle = $sub['title'];
-            $oldTitle = $oldSub['title'];
-            $pdo->prepare("UPDATE `curriculum` SET `subject` = :new WHERE `subject` = :old")->execute(['new' => $newTitle, 'old' => $oldTitle]);
-            $pdo->prepare("UPDATE `subject_sections` SET `subject` = :new WHERE `subject` = :old")->execute(['new' => $newTitle, 'old' => $oldTitle]);
+            // Cascade rename to child tables if title or code changed
+            if ($oldSub && $oldSub['title'] !== $title) {
+                $newTitle = $title;
+                $oldTitle = $oldSub['title'];
+                $pdo->prepare("UPDATE `curriculum` SET `subject` = :new WHERE `subject` = :old")->execute(['new' => $newTitle, 'old' => $oldTitle]);
+                $pdo->prepare("UPDATE `subject_sections` SET `subject` = :new WHERE `subject` = :old")->execute(['new' => $newTitle, 'old' => $oldTitle]);
+            }
+            if ($oldSub && $oldSub['code'] !== $code) {
+                $newCode = $code;
+                $oldCode = $oldSub['code'];
+                $pdo->prepare("UPDATE `curriculum` SET `subject` = :new WHERE `subject` = :old")->execute(['new' => $newCode, 'old' => $oldCode]);
+                $pdo->prepare("UPDATE `subject_sections` SET `subject` = :new WHERE `subject` = :old")->execute(['new' => $newCode, 'old' => $oldCode]);
+            }
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO `subjects`(`code`,`title`,`description`,`lecture_units`,`lab_units`,`lab_fee`,`department`,`prerequisites`) VALUES(:code,:title,:desc,:lec,:lab,:fee,:dept,:prereq)");
+            $stmt->execute($params);
         }
-    } else {
-        $stmt = $pdo->prepare("INSERT INTO `subjects`(`code`,`title`,`description`,`lecture_units`,`lab_units`,`lab_fee`,`department`,`prerequisites`) VALUES(:code,:title,:desc,:lec,:lab,:fee,:dept,:prereq)");
-        $stmt->execute($params);
-    }
 
-    $rows = $pdo->query("SELECT * FROM `subjects` ORDER BY `id` DESC")->fetchAll();
-    $out  = [];
-    foreach ($rows as $r) {
-        $out[] = ['id'=>(int)$r['id'],'code'=>$r['code'],'title'=>$r['title'],'description'=>$r['description'],
-                  'lectureUnits'=>(int)$r['lecture_units'],'labUnits'=>(int)$r['lab_units'],'labFee'=>(float)$r['lab_fee'],
-                  'department'=>$r['department'],'prerequisites'=>$r['prerequisites']];
+        $rows = $pdo->query("SELECT * FROM `subjects` ORDER BY `id` DESC")->fetchAll();
+        $out  = [];
+        foreach ($rows as $r) {
+            $out[] = ['id'=>(int)$r['id'],'code'=>$r['code'],'title'=>$r['title'],'description'=>$r['description'],
+                      'lectureUnits'=>(int)$r['lecture_units'],'labUnits'=>(int)$r['lab_units'],'labFee'=>(float)$r['lab_fee'],
+                      'department'=>$r['department'],'prerequisites'=>$r['prerequisites']];
+        }
+        sendResponse(true, $out, 'Subject saved successfully.');
+    } catch (PDOException $e) {
+        if ($e->getCode() == 23000 || str_contains($e->getMessage(), 'Duplicate entry')) {
+            sendResponse(false, null, "Subject code '{$code}' already exists. Please choose a unique code.", 400);
+        }
+        sendResponse(false, null, 'Unable to save subject: ' . $e->getMessage(), 400);
     }
-    sendResponse(true, $out);
 
 } elseif ($action === 'delete_subject') {
     $id = json_decode(file_get_contents('php://input'), true)['id'] ?? null;
